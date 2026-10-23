@@ -26,7 +26,7 @@ RunService.Heartbeat:Connect(function()
 			if outsideStation and (not lastRecovery[player] or os.clock() - lastRecovery[player] > 2) then
 				lastRecovery[player] = os.clock()
 				local stop = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
-				local x = (stop - 1) * GameConfig.StationSpacing - 40
+				local x = (stop - 1) * GameConfig.StationSpacing - 80
 				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
 				root.AssemblyLinearVelocity = Vector3.zero
 				root.AssemblyAngularVelocity = Vector3.zero

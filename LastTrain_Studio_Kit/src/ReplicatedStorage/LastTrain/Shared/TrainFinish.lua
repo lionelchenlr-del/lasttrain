@@ -1,0 +1,34 @@
+-- A shared finish keeps lobby and playable stock in the same silver livery.
+local Finish = {}
+Finish.Silver = Color3.fromRGB(150, 160, 176)
+Finish.Roof = Color3.fromRGB(169, 179, 194)
+Finish.Orange = Color3.fromRGB(219, 106, 38)
+Finish.Graphite = Color3.fromRGB(25, 29, 35)
+local bodyNames = {
+ CarBodyShell=true, ContinuousCoachRoof=true, RoofShoulder=true,
+ CoachLowerSideSkin=true, CoachUpperSideSkin=true, DoorJambLowerSkin=true,
+ DoorJambHeaderSkin=true, DoorJambMiddleSkin=true, CoachEndSideSkin=true,
+ LowerSidePanel_Front=true, LowerSidePanel_Rear=true, SideHeader=true,
+ FlushServicePanel=true, DoorFrame=true, ConnectedCeiling=true,
+ DisplayCarBody=true, DisplayShoulderBody=true, DisplaySculptedNose=true, DisplayPassengerDoor=true,
+}
+local orangeNames = {CyanBeltline=true,BeltlineAccent_Front=true,BeltlineAccent_Rear=true,DisplayCyanStripe=true}
+local blackNames = {GoldBeltline=true,ContinuousLowerSkirt=true,DisplayLowerBlueStripe=true,DisplayContinuousSkirt=true}
+function Finish.Apply(model)
+ for _,p in ipairs(model:GetDescendants()) do
+  if p:IsA("BasePart") then
+   if bodyNames[p.Name] then
+    p.Color = p.Name=="ContinuousCoachRoof" and Finish.Roof or Finish.Silver
+    p.Material = Enum.Material.Metal
+    p.Reflectance = 0.2
+   elseif orangeNames[p.Name] then
+    p.Color=Finish.Orange; p.Material=Enum.Material.Metal; p.Reflectance=0.08
+   elseif blackNames[p.Name] then
+    p.Color=Finish.Graphite; p.Material=Enum.Material.Metal; p.Reflectance=0.1
+   elseif p.Name=="PanoramicWindowBand" or p.Name=="DisplayWindowBand" then
+    p.Color=Color3.fromRGB(15,21,28); p.Reflectance=0.16; p.Transparency=0.12
+   end
+  end
+ end
+end
+return Finish

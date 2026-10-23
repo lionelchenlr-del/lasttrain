@@ -14,7 +14,9 @@ local function getStationSpawnCFrame()
 	Workspace:WaitForChild("LastTrainWorld")
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
 	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
-	local x = (station - 1) * config.StationSpacing - 40
+	-- Respawns use the same clear approach point as a new round, away from the
+	-- carriage body so the locked first-person camera cannot start inside it.
+	local x = (station - 1) * config.StationSpacing - 80
 	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
 end
 

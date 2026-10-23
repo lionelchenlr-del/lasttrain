@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+local CharacterAppearance = require(ReplicatedStorage.LastTrain.Shared:WaitForChild("CharacterAppearance"))
 local isUnpublishedStudioTest = RunService:IsStudio() and game.PlaceId == 0
 local Store
 local storeOk, storeResult = pcall(function()
@@ -21,6 +22,7 @@ local Profiles = {}
 local cache = {}
 local locks = {}
 local characterHooks = {}
+local appearanceHooks = {}
 
 local function normalize(raw)
     raw = type(raw) == "table" and raw or {}
@@ -64,74 +66,7 @@ local function applySkin(player, skinKey)
     local humanoid = character:FindFirstChildWhichIsA("Humanoid")
     if humanoid then humanoid.WalkSpeed = 16 * (skin.WalkSpeedMultiplier or 1) end
 
-    local bodyColors = character:FindFirstChildOfClass("BodyColors")
-    if not bodyColors then
-        bodyColors = Instance.new("BodyColors")
-        bodyColors.Parent = character
-    end
-    local main = skin.Colors.Main
-    local accent = skin.Colors.Accent
-    bodyColors.HeadColor3 = accent
-    bodyColors.LeftArmColor3 = main
-    bodyColors.RightArmColor3 = main
-    bodyColors.LeftLegColor3 = main
-    bodyColors.RightLegColor3 = main
-    bodyColors.TorsoColor3 = main
-
-    local oldVisuals = character:FindFirstChild("LastTrainSkinVisuals")
-    if oldVisuals then oldVisuals:Destroy() end
-    local visuals = Instance.new("Folder")
-    visuals.Name = "LastTrainSkinVisuals"
-    visuals.Parent = character
-    local head = character:FindFirstChild("Head")
-    local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
-
-    local function weldedPart(name, parentPart, size, color, shape, offset, material)
-        if not parentPart then return end
-        local visual = Instance.new("Part")
-        visual.Name = name
-        visual.Size = size
-        visual.Color = color
-        visual.Material = material or Enum.Material.SmoothPlastic
-        visual.Shape = shape or Enum.PartType.Block
-        visual.Anchored = false
-        visual.Massless = true
-        visual.CanCollide = false
-        visual.CanTouch = false
-        visual.CanQuery = false
-        visual.CastShadow = true
-        visual.CFrame = parentPart.CFrame * offset
-        visual.Parent = visuals
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = parentPart
-        weld.Part1 = visual
-        weld.Parent = visual
-        return visual
-    end
-
-    if skinKey == "PlatformWorker" then
-        weldedPart("ReflectiveVestStripe", torso, Vector3.new(1.9, 0.16, 0.07), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.25, -0.38), Enum.Material.Neon)
-    elseif skinKey == "Conductor" then
-        weldedPart("ConductorCap", head, Vector3.new(1.35, 0.22, 1.12), skin.Colors.Main, Enum.PartType.Cylinder, CFrame.new(0, 0.43, 0) * CFrame.Angles(0, 0, math.rad(90)))
-        weldedPart("CapVisor", head, Vector3.new(0.76, 0.1, 0.42), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.38, -0.47))
-    elseif skinKey == "Signalman" then
-        weldedPart("SignalHelmet", head, Vector3.new(1.25, 0.54, 1.12), skin.Colors.Main, Enum.PartType.Ball, CFrame.new(0, 0.43, 0))
-        weldedPart("HelmetBand", head, Vector3.new(1.18, 0.1, 0.12), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.47, -0.49), Enum.Material.Neon)
-    elseif skinKey == "NightGuard" then
-        weldedPart("NightCap", head, Vector3.new(1.18, 0.34, 1.02), skin.Colors.Main, Enum.PartType.Cylinder, CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.rad(90)))
-        weldedPart("RedNeckScarf", torso, Vector3.new(1.45, 0.25, 0.32), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.47, -0.37), Enum.Material.Fabric)
-    end
-
-    if skin.ShirtTemplate and skin.ShirtTemplate > 0 then
-        local shirt = character:FindFirstChildOfClass("Shirt") or Instance.new("Shirt")
-        shirt.ShirtTemplate = "rbxassetid://" .. tostring(skin.ShirtTemplate)
-        shirt.Parent = character
-    end
-    if skin.PantsTemplate and skin.PantsTemplate > 0 then
-        local pants = character:FindFirstChildOfClass("Pants") or Instance.new("Pants")
-        pants.PantsTemplate = "rbxassetid://" .. tostring(skin.PantsTemplate)
-        pants.Parent = character
-    end
+    CharacterAppearance.Apply(character, skinKey)
 end
 
 local function syncPlayer(userId, profile)
@@ -204,6 +139,12 @@ function Profiles.Load(player)
                 task.wait(0.15)
                 local latest = cache[player.UserId]
                 if latest then applySkin(player, latest.EquippedSkin) end
+            end)
+        end
+        if not appearanceHooks[player.UserId] then
+            appearanceHooks[player.UserId] = player.CharacterAppearanceLoaded:Connect(function(character)
+                local latest = cache[player.UserId]
+                if latest and player.Character == character then applySkin(player, latest.EquippedSkin) end
             end)
         end
         if player.Character then applySkin(player, cache[player.UserId].EquippedSkin) end
@@ -298,6 +239,10 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
     cache[player.UserId] = nil -- Every mutation is already committed through UpdateAsync.
+    if appearanceHooks[player.UserId] then
+        appearanceHooks[player.UserId]:Disconnect()
+        appearanceHooks[player.UserId] = nil
+    end
     if characterHooks[player.UserId] then
         characterHooks[player.UserId]:Disconnect()
         characterHooks[player.UserId] = nil

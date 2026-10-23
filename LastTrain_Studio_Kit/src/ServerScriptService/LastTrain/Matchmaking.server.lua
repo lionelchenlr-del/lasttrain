@@ -63,7 +63,10 @@ local function studioRound(party)
 	local config = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
 	local function placeCharacter(player, character)
 		local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, #config.Stations)
-		character:PivotTo(CFrame.new((station - 1) * config.StationSpacing - 40, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		-- Keep the first-person spawn clear of the rear carriage side. Starting at
+		-- the west end gives the player a readable view of the train and the nearby
+		-- platform approach, instead of spawning alongside an opaque cab panel.
+		character:PivotTo(CFrame.new((station - 1) * config.StationSpacing - 80, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
 		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
 		if humanoid then
 			humanoid.Died:Once(function()

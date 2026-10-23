@@ -17,6 +17,7 @@ local remotes = root:WaitForChild("Remotes")
 local objectiveEvent = remotes:WaitForChild("ObjectiveUpdate")
 local shopRequest = remotes:WaitForChild("ShopRequest")
 local GameConfig = require(root:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local CharacterAppearance = require(root.Shared:WaitForChild("CharacterAppearance"))
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "LastTrainHUD"
@@ -143,6 +144,7 @@ Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(attachFlashlightToCa
 RunService:BindToRenderStep("LastTrainFlashlight", Enum.RenderPriority.Camera.Value + 1, attachFlashlightToCamera)
 
 local shop = Instance.new("Frame")
+shop.Name = "CharacterShop"
 shop.Size = UDim2.new(0.82, 0, 0.78, 0)
 shop.Position = UDim2.fromScale(0.5, 0.5)
 shop.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -182,6 +184,7 @@ closeButton.Size = UDim2.fromOffset(40, 36)
 closeButton.Position = UDim2.new(1, -58, 0, 18)
 closeButton.BackgroundColor3 = Color3.fromRGB(34, 43, 48)
 closeButton.Text = "×"
+closeButton.Modal = true
 closeButton.TextColor3 = Color3.fromRGB(232, 236, 235)
 closeButton.TextSize = 24
 closeButton.Font = Enum.Font.Gotham
@@ -232,32 +235,50 @@ portrait.Position = UDim2.fromOffset(14, 18)
 portrait.BackgroundColor3 = Color3.fromRGB(32, 47, 52)
 portrait.Parent = details
 rounded(portrait, 11)
-local portraitIcon = Instance.new("TextLabel")
-portraitIcon.Size = UDim2.fromScale(1, 1)
-portraitIcon.BackgroundTransparency = 1
-portraitIcon.Text = ""
-portraitIcon.Parent = portrait
-local silhouetteBody = Instance.new("Frame")
-silhouetteBody.AnchorPoint = Vector2.new(0.5, 1)
-silhouetteBody.Position = UDim2.new(0.5, 0, 1, 8)
-silhouetteBody.Size = UDim2.new(0.34, 0, 0.56, 0)
-silhouetteBody.BackgroundColor3 = Color3.fromRGB(39, 58, 65)
-silhouetteBody.Parent = portraitIcon
-rounded(silhouetteBody, 22)
-local silhouetteHead = Instance.new("Frame")
-silhouetteHead.AnchorPoint = Vector2.new(0.5, 0.5)
-silhouetteHead.Position = UDim2.new(0.5, 0, 0.37, 0)
-silhouetteHead.Size = UDim2.new(0, 56, 0, 56)
-silhouetteHead.BackgroundColor3 = Color3.fromRGB(223, 211, 184)
-silhouetteHead.Parent = portraitIcon
-rounded(silhouetteHead, 28)
-local silhouetteCap = Instance.new("Frame")
-silhouetteCap.AnchorPoint = Vector2.new(0.5, 1)
-silhouetteCap.Position = UDim2.new(0.5, 0, 0.34, 0)
-silhouetteCap.Size = UDim2.new(0, 68, 0, 14)
-silhouetteCap.BackgroundColor3 = Color3.fromRGB(226, 181, 91)
-silhouetteCap.Parent = portraitIcon
-rounded(silhouetteCap, 7)
+local characterViewport = Instance.new("ViewportFrame")
+characterViewport.Name = "UniformPreview"
+characterViewport.Size = UDim2.fromScale(1, 1)
+characterViewport.BackgroundTransparency = 1
+characterViewport.Ambient = Color3.fromRGB(168, 177, 190)
+characterViewport.LightColor = Color3.fromRGB(255, 240, 217)
+characterViewport.LightDirection = Vector3.new(-1, -1, -2)
+characterViewport.Parent = portrait
+local previewCamera = Instance.new("Camera")
+previewCamera.FieldOfView = 31
+previewCamera.Parent = characterViewport
+characterViewport.CurrentCamera = previewCamera
+local previewWorld = Instance.new("WorldModel")
+previewWorld.Parent = characterViewport
+local previewKey
+local function showUniformPreview(key)
+    if previewKey == key and #previewWorld:GetChildren() > 0 then return end
+    local character = player.Character
+    if not character then return end
+    local wasArchivable = character.Archivable
+    character.Archivable = true
+    local model = character:Clone()
+    character.Archivable = wasArchivable
+    if not model then return end
+    for _, descendant in ipairs(model:GetDescendants()) do
+        if descendant:IsA("LuaSourceContainer") or descendant:IsA("Tool") then
+            descendant:Destroy()
+        elseif descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.LocalTransparencyModifier = 0
+        end
+    end
+    CharacterAppearance.Apply(model, key)
+    -- The same tailored uniform and preserved face are visible before purchase.
+    model:PivotTo(CFrame.Angles(0, math.rad(16), 0))
+    previewWorld:ClearAllChildren()
+    model.Parent = previewWorld
+    local bounds, size = model:GetBoundingBox()
+    local focus = bounds.Position + Vector3.new(0, size.Y * 0.05, 0)
+    local verticalFov = math.rad(previewCamera.FieldOfView / 2)
+    local distance = math.max(size.Y * 0.56, size.X * 0.68) / math.tan(verticalFov)
+    previewCamera.CFrame = CFrame.lookAt(focus + Vector3.new(0, size.Y * 0.04, -distance), focus)
+    previewKey = key
+end
 local selectedName = Instance.new("TextLabel")
 selectedName.BackgroundTransparency = 1
 selectedName.Position = UDim2.new(0, 18, 0.48, 0)
@@ -423,8 +444,7 @@ local function renderSelection()
     abilityLine.Text = flavor.Ability
     portrait.BackgroundColor3 = info.Colors.Main
     detailAccent.BackgroundColor3 = info.Colors.Accent
-    silhouetteBody.BackgroundColor3 = info.Colors.Main
-    silhouetteCap.BackgroundColor3 = info.Colors.Accent
+    showUniformPreview(selectedKey)
     for key, card in pairs(cardFrames) do
         card.Button.BackgroundColor3 = key == selectedKey and Color3.fromRGB(39, 54, 56) or Color3.fromRGB(25, 37, 41)
     end
@@ -564,6 +584,48 @@ UserInputService.InputBegan:Connect(function(input, processed)
     if input.KeyCode == Enum.KeyCode.Escape and shop.Visible then setShopVisible(false) end
 end)
 
+local function orientFirstPersonCamera(character)
+    if not inGame or not character then return end
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    if not humanoid or not rootPart or not head then return end
+
+    -- The lobby's orbit camera can retain its old heading when the local round
+    -- switches to first person. Seed the camera from the server-set character
+    -- heading so players face along the platform toward the train on arrival.
+    player.CameraMode = Enum.CameraMode.LockFirstPerson
+    local camera = Workspace.CurrentCamera
+    if not camera then return end
+    camera.CameraType = Enum.CameraType.Scriptable
+    camera.CameraSubject = humanoid
+    local flatLook = Vector3.new(1, 0, 0) -- train and platform run along the X axis
+    local eye = head.Position
+    camera.CFrame = CFrame.lookAt(eye, eye + flatLook.Unit)
+    camera.Focus = CFrame.new(eye + flatLook.Unit * 12)
+    RunService.RenderStepped:Wait()
+    if inGame and player.Character == character and Workspace.CurrentCamera == camera then
+        -- Hand the aligned view back to Roblox's normal first-person controller
+        -- after it has received the new heading.
+        camera.CameraType = Enum.CameraType.Custom
+        camera.CameraSubject = humanoid
+    end
+end
+
+local function queueFirstPersonCamera(character)
+    task.spawn(function()
+        character:WaitForChild("HumanoidRootPart", 10)
+        character:WaitForChild("Humanoid", 10)
+        character:WaitForChild("Head", 10)
+        task.wait(0.2) -- let server spawn placement and Roblox camera subject settle
+        orientFirstPersonCamera(character)
+    end)
+end
+
+player.CharacterAdded:Connect(function(character)
+    if inGame then queueFirstPersonCamera(character) end
+end)
+
 local function applyMode()
     inGame = Workspace:GetAttribute("LastTrainMode") == "Game"
     player.CameraMode = inGame and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
@@ -572,8 +634,10 @@ local function applyMode()
     crosshair.Visible = inGame
     flashlight.Enabled = inGame
     shopButton.Visible = inGame
+    if inGame and player.Character then queueFirstPersonCamera(player.Character) end
 end
 Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(applyMode)
+if inGame and player.Character then queueFirstPersonCamera(player.Character) end
 local function applyFlashlightAbility()
     flashlight.Range = 58 * (player:GetAttribute("FlashlightMultiplier") or 1)
 end
