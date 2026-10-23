@@ -1,0 +1,59 @@
+-- Wait until the generated station spawn exists before assigning or loading characters.
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+if Workspace:GetAttribute("LastTrainMode") ~= "Game" then
+	Players.CharacterAutoLoads = true
+	return
+end
+Players.CharacterAutoLoads = false
+
+local function getStationSpawnCFrame()
+	Workspace:WaitForChild("LastTrainWorld")
+	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+	local x = (station - 1) * config.StationSpacing - 40
+	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
+end
+
+local function placeCharacter(player, character)
+	local spawnCFrame = getStationSpawnCFrame()
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	if root and character.Parent then
+		character:PivotTo(spawnCFrame * CFrame.new(0, 3, 0))
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+	end
+end
+
+local function loadAtStation(player)
+	if not player.Parent then return end
+	player.RespawnLocation = Workspace:WaitForChild("PlatformSpawn")
+	player:LoadCharacterAsync()
+	local character = player.Character
+	if character then
+		placeCharacter(player, character)
+	end
+end
+
+local function setupPlayer(player)
+	-- Connect before waiting for the generated map: Roblox can raise CharacterAdded
+	-- while this script is still waiting for WorldBuilder to finish.
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(placeCharacter, player, character)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if humanoid then
+			humanoid.Died:Once(function()
+				task.delay(3, loadAtStation, player)
+			end)
+		end
+	end)
+	loadAtStation(player)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(setupPlayer, player)
+end

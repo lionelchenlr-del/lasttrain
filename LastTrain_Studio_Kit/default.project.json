@@ -1,0 +1,53 @@
+{
+  "name": "LastTrain",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false
+      },
+      "PlatformSpawn": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "CanCollide": true,
+          "Size": [8, 1, 8],
+          "CFrame": [0, 0.4, 42, 0, 0, -1, 0, 1, 0, 1, 0, 0],
+          "Transparency": 1,
+          "Neutral": true,
+          "Duration": 0
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "Brightness": 2.2,
+        "ClockTime": 1.4,
+        "GlobalShadows": true,
+        "EnvironmentDiffuseScale": 0.42,
+        "EnvironmentSpecularScale": 0.36,
+        "Ambient": [0.412, 0.467, 0.514],
+        "OutdoorAmbient": [0.318, 0.376, 0.431],
+        "FogColor": [0.086, 0.122, 0.169],
+        "FogStart": 190,
+        "FogEnd": 520
+      }
+    },
+    "ReplicatedStorage": {
+      "LastTrain": {
+        "$path": "src/ReplicatedStorage/LastTrain"
+      }
+    },
+    "ServerScriptService": {
+      "LastTrain": {
+        "$path": "src/ServerScriptService/LastTrain"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      }
+    }
+  }
+}

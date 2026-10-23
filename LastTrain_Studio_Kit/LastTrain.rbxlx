@@ -1,0 +1,3203 @@
+<roblox version="4">
+  <Item class="Lighting" referent="0">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <Color3 name="Ambient">
+        <R>0.412</R>
+        <G>0.467</G>
+        <B>0.514</B>
+      </Color3>
+      <float name="Brightness">2.2</float>
+      <float name="ClockTime">1.4</float>
+      <float name="EnvironmentDiffuseScale">0.42</float>
+      <float name="EnvironmentSpecularScale">0.36</float>
+      <Color3 name="FogColor">
+        <R>0.086</R>
+        <G>0.122</G>
+        <B>0.169</B>
+      </Color3>
+      <float name="FogEnd">520</float>
+      <float name="FogStart">190</float>
+      <bool name="GlobalShadows">true</bool>
+      <Color3 name="OutdoorAmbient">
+        <R>0.318</R>
+        <G>0.376</G>
+        <B>0.431</B>
+      </Color3>
+      <token name="Technology">4</token>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="1">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">LastTrain</string>
+      </Properties>
+      <Item class="Folder" referent="3">
+        <Properties>
+          <string name="Name">Shared</string>
+        </Properties>
+        <Item class="ModuleScript" referent="4">
+          <Properties>
+            <string name="Name">GameConfig</string>
+            <string name="Source"><![CDATA[-- Shared configuration. Replace every 0 marketplace ID with the ID from Creator Dashboard.
+local GameConfig = {}
+
+GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
+GameConfig.StationSpacing = 600
+GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
+GameConfig.Objectives = {
+	"登上列車，檢查沒有目的地的車票",
+	"調查乘客紀錄簿，找出空白的離站紀錄",
+	"找到真正的錄音，關閉錯誤的廣播",
+	"拍下異常倒影，找回實驗報告缺頁",
+	"調查乘客留下的物品與監視器影像",
+	"搜尋事故紀錄，決定是否相信站務員",
+	"進入 HOME TERMINAL，揭開列車循環的真相",
+}
+
+GameConfig.Stations = {
+	{ Name = "新月站", English = "NEW MOON", Accent = Color3.fromRGB(94, 205, 230), Story = "車票沒有目的地。背面卻多了一行字：你的旅程早已開始。" },
+	{ Name = "失語站", English = "SILENT", Accent = Color3.fromRGB(132, 220, 162), Story = "候車乘客全都面向牆壁。小女孩把照片塞進你手裡：「不要讓他知道你認出他了。」" },
+	{ Name = "回聲站", English = "ECHO", Accent = Color3.fromRGB(250, 194, 93), Story = "錄音說這是第三次循環。控制室外有人敲玻璃，監視器裡卻空無一人。" },
+	{ Name = "鏡湖站", English = "MIRROR LAKE", Accent = Color3.fromRGB(105, 190, 245), Story = "湖面倒影慢了幾秒。另一列相同的列車裡，所有乘客都正看著你。" },
+	{ Name = "遺忘站", English = "FORGOTTEN", Accent = Color3.fromRGB(244, 181, 113), Story = "監視器拍到三天前的你。影像中的你轉向鏡頭：「不要讓列車到第七站。」" },
+	{ Name = "終寂站", English = "LAST MAINTENANCE", Accent = Color3.fromRGB(244, 126, 82), Story = "維修基地停著數十列 LAST TRAIN。站務員摘下帽子，那張臉和你一模一樣。" },
+	{ Name = "不存在的終點", English = "HOME TERMINAL", Accent = Color3.fromRGB(255, 218, 132), Story = "原始紀錄寫著你的名字：第七站事故調查員。站務員一直在阻止循環崩塌。" },
+}
+
+GameConfig.Endings = {
+	Conductor = "你相信站務員，列車載你穿過明亮隧道。你回到熟悉的城市。身後廣播響起，傳出的卻是你的聲音。",
+	Truth = "你關閉核心，七站燈光依序熄滅。站務員恢復原貌：「謝謝你，終於有人讓這趟列車停下來。」",
+	Station08 = "你啟動封存系統。七個站名消失，電子看板亮起 STATION 08。廣播說：「歡迎回來，調查員。」",
+}
+
+-- Purchasable characters are visual loadouts. The default body colors work without any assets.
+-- Optional ShirtTemplate/PantsTemplate values accept clothing template asset IDs (not catalog page IDs).
+GameConfig.Skins = {
+    PlatformWorker = {
+        DisplayName = "月台巡守",
+        Ability = "穩定步伐：標準移速，適合初次調查。",
+        WalkSpeedMultiplier = 1,
+        FlashlightMultiplier = 1,
+        MonsterDetectionMultiplier = 1,
+        PriceCoins = 0,
+        GamePassId = 0,
+        Colors = { Main = Color3.fromRGB(80, 104, 112), Accent = Color3.fromRGB(216, 171, 78) },
+        ShirtTemplate = 0,
+        PantsTemplate = 0,
+    },
+    Conductor = {
+        DisplayName = "夜班列車長",
+        Ability = "列車長步法：移動速度提高 15%。",
+        WalkSpeedMultiplier = 1.15,
+        FlashlightMultiplier = 1,
+        MonsterDetectionMultiplier = 1,
+        PriceCoins = 350,
+        GamePassId = 0,
+        Colors = { Main = Color3.fromRGB(38, 53, 72), Accent = Color3.fromRGB(220, 187, 111) },
+        ShirtTemplate = 0,
+        PantsTemplate = 0,
+    },
+    Signalman = {
+        DisplayName = "號誌技師",
+        Ability = "訊號探照燈：手電筒照射距離提高 40%。",
+        WalkSpeedMultiplier = 1,
+        FlashlightMultiplier = 1.4,
+        MonsterDetectionMultiplier = 1,
+        PriceCoins = 700,
+        GamePassId = 0,
+        Colors = { Main = Color3.fromRGB(112, 49, 42), Accent = Color3.fromRGB(225, 207, 166) },
+        ShirtTemplate = 0,
+        PantsTemplate = 0,
+    },
+    NightGuard = {
+        DisplayName = "深夜站務員",
+        Ability = "靜默巡查：站務員感知距離降低 25%。",
+        WalkSpeedMultiplier = 1,
+        FlashlightMultiplier = 1,
+        MonsterDetectionMultiplier = 0.75,
+        PriceCoins = 0,
+        GamePassId = 0, -- Create a one-time game pass, then paste its ID here.
+        RequiresGamePass = true,
+        Colors = { Main = Color3.fromRGB(28, 31, 36), Accent = Color3.fromRGB(171, 47, 39) },
+        ShirtTemplate = 0,
+        PantsTemplate = 0,
+    },
+}
+
+-- Developer products are repeatable Robux purchases. Receipt handling is server-side.
+GameConfig.Products = {
+    CoinPouch = { DisplayName = "300 張車票幣", ProductId = 0, Coins = 300 },
+    CoinCrate = { DisplayName = "1,000 張車票幣", ProductId = 0, Coins = 1000 },
+}
+
+return GameConfig
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="5">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="6">
+      <Properties>
+        <string name="Name">LastTrain</string>
+      </Properties>
+      <Item class="Script" referent="7">
+        <Properties>
+          <string name="Name">Atmosphere</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Lighting = game:GetService("Lighting")
+
+local Workspace = game:GetService("Workspace")
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+atmosphere.Parent = Lighting
+local color = Lighting:FindFirstChild("LastTrainColor") or Instance.new("ColorCorrectionEffect")
+color.Name = "LastTrainColor"
+color.Parent = Lighting
+local bloom = Lighting:FindFirstChild("LastTrainBloom") or Instance.new("BloomEffect")
+bloom.Name = "LastTrainBloom"
+bloom.Parent = Lighting
+
+local function applyLighting(isLobby)
+	Lighting.ClockTime = isLobby and 20.4 or 20.15
+	Lighting.Brightness = isLobby and 3.1 or 2.05
+	Lighting.ExposureCompensation = isLobby and 0.28 or 0.06
+	Lighting.GlobalShadows = true
+	Lighting.Ambient = isLobby and Color3.fromRGB(158, 171, 180) or Color3.fromRGB(68, 82, 95)
+	Lighting.OutdoorAmbient = isLobby and Color3.fromRGB(121, 136, 148) or Color3.fromRGB(47, 62, 78)
+	Lighting.EnvironmentDiffuseScale = 0.42
+	Lighting.EnvironmentSpecularScale = 0.5
+	Lighting.FogColor = Color3.fromRGB(22, 31, 43)
+	Lighting.FogStart = isLobby and 1000 or 250
+	Lighting.FogEnd = isLobby and 3000 or 620
+	atmosphere.Color = Color3.fromRGB(151, 174, 193)
+	atmosphere.Decay = Color3.fromRGB(39, 53, 70)
+	atmosphere.Density = isLobby and 0 or 0.07
+	atmosphere.Glare = isLobby and 0.03 or 0.06
+	atmosphere.Haze = isLobby and 0 or 0.36
+	atmosphere.Offset = 0.1
+	color.Brightness = 0.015
+	color.Contrast = isLobby and 0.035 or 0.1
+	color.Saturation = isLobby and 0.03 or -0.12
+	color.TintColor = isLobby and Color3.fromRGB(222, 236, 232) or Color3.fromRGB(214, 229, 240)
+	bloom.Intensity = isLobby and 0.07 or 0.12
+	bloom.Size = 14
+	bloom.Threshold = 1.45
+end
+
+applyLighting(Workspace:GetAttribute("LastTrainMode") == "Lobby")
+Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(function()
+	applyLighting(Workspace:GetAttribute("LastTrainMode") == "Lobby")
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="8">
+        <Properties>
+          <string name="Name">Bootstrap</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local root = ReplicatedStorage:FindFirstChild("LastTrain")
+if not root then
+    root = Instance.new("Folder")
+    root.Name = "LastTrain"
+    root.Parent = ReplicatedStorage
+end
+
+local remotes = root:FindFirstChild("Remotes")
+if not remotes then
+    remotes = Instance.new("Folder")
+    remotes.Name = "Remotes"
+    remotes.Parent = root
+end
+
+local function ensure(className, name)
+    local object = remotes:FindFirstChild(name)
+    if not object then
+        object = Instance.new(className)
+        object.Name = name
+        object.Parent = remotes
+    end
+    return object
+end
+
+ensure("RemoteEvent", "ObjectiveUpdate")
+ensure("RemoteFunction", "ShopRequest")
+ensure("RemoteFunction", "MatchmakingRequest")
+ensure("RemoteEvent", "MatchmakingUpdate")
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="9">
+        <Properties>
+          <string name="Name">CharacterShopServer</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local root = ReplicatedStorage:WaitForChild("LastTrain")
+local GameConfig = require(root:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local shopRequest = root:WaitForChild("Remotes"):WaitForChild("ShopRequest")
+local Profiles = require(script.Parent:WaitForChild("ProfileService"))
+
+local passToSkin = {}
+local productById = {}
+local lastRequestAt = {}
+for skinKey, skin in pairs(GameConfig.Skins) do
+    if skin.GamePassId and skin.GamePassId > 0 then
+        passToSkin[skin.GamePassId] = skinKey
+    end
+end
+for productKey, product in pairs(GameConfig.Products) do
+    if product.ProductId and product.ProductId > 0 then
+        productById[product.ProductId] = { Key = productKey, Coins = product.Coins }
+    end
+end
+
+local function waitForProfile(player)
+    local deadline = os.clock() + 20
+    while player.Parent and not Profiles.IsLoaded(player) and os.clock() < deadline do
+        task.wait(0.1)
+    end
+    return player.Parent ~= nil and Profiles.IsLoaded(player)
+end
+
+local function refreshPassOwnership(player, skinKey)
+    local skin = GameConfig.Skins[skinKey]
+    if not skin or not skin.GamePassId or skin.GamePassId <= 0 then return end
+    for attempt = 1, 3 do
+        local success, ownsPass = pcall(function()
+            return MarketplaceService:UserOwnsGamePassAsync(player.UserId, skin.GamePassId)
+        end)
+        if success then
+            if ownsPass and player.Parent then
+                Profiles.GrantSkin(player, skinKey)
+            end
+            return
+        end
+        if attempt < 3 then task.wait(attempt) end
+    end
+    warn("Could not verify game pass for user " .. tostring(player.UserId))
+end
+
+Players.PlayerAdded:Connect(function(player)
+    task.spawn(function()
+        if not waitForProfile(player) then return end
+        for skinKey in pairs(passToSkin) do
+            refreshPassOwnership(player, skinKey)
+        end
+    end)
+end)
+for _, player in ipairs(Players:GetPlayers()) do
+    task.spawn(function()
+        if not waitForProfile(player) then return end
+        for skinKey in pairs(passToSkin) do
+            refreshPassOwnership(player, skinKey)
+        end
+    end)
+end
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+    local skinKey = passToSkin[gamePassId]
+    if not skinKey or not wasPurchased then return end
+    task.spawn(function()
+        -- Verify ownership against Roblox before the experience grants the permanent character.
+        refreshPassOwnership(player, skinKey)
+    end)
+end)
+
+shopRequest.OnServerInvoke = function(player, action, key)
+    if type(action) ~= "string" then
+        return { ok = false, message = "無效的商店請求。" }
+    end
+    local now = os.clock()
+    if action ~= "GetState" then
+        if now - (lastRequestAt[player.UserId] or 0) < 0.25 then
+            return { ok = false, message = "操作太快，請稍候。" }
+        end
+        lastRequestAt[player.UserId] = now
+    end
+    if not waitForProfile(player) then
+        return { ok = false, message = "資料尚未載入，請稍後再試。" }
+    end
+
+    if action == "GetState" then
+        return { ok = true, state = Profiles.GetState(player) }
+    end
+    if type(key) ~= "string" then
+        return { ok = false, message = "無效的商店請求。" }
+    end
+
+    if action == "BuyCoins" then
+        local succeeded, message = Profiles.BuySkin(player, key)
+        return { ok = succeeded, message = message, state = Profiles.GetState(player) }
+    elseif action == "Equip" then
+        local succeeded, message = Profiles.EquipSkin(player, key)
+        return { ok = succeeded, message = message, state = Profiles.GetState(player) }
+    elseif action == "PromptPass" then
+        local skin = GameConfig.Skins[key]
+        if not skin or not skin.GamePassId or skin.GamePassId <= 0 then
+            return { ok = false, message = "這個角色尚未設定 Robux 商品。" }
+        end
+        return { ok = true, promptType = "GamePass", id = skin.GamePassId }
+    elseif action == "PromptProduct" then
+        local product = GameConfig.Products[key]
+        if not product or not product.ProductId or product.ProductId <= 0 then
+            return { ok = false, message = "這個商品尚未設定 Robux 商品 ID。" }
+        end
+        return { ok = true, promptType = "Product", id = product.ProductId }
+    end
+
+    return { ok = false, message = "不支援的商店操作。" }
+end
+
+-- ProcessReceipt is the sole authority for granting repeatable Robux products.
+Players.PlayerRemoving:Connect(function(player)
+    lastRequestAt[player.UserId] = nil
+end)
+
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+    local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+    local product = productById[receiptInfo.ProductId]
+    if not player or not product then
+        return Enum.ProductPurchaseDecision.NotProcessedYet
+    end
+
+    local granted = Profiles.GrantCoinsFromReceipt(
+        receiptInfo.PlayerId,
+        receiptInfo.PurchaseId,
+        product.Coins
+    )
+    if granted then
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+    end
+    return Enum.ProductPurchaseDecision.NotProcessedYet
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="10">
+        <Properties>
+          <string name="Name">ExperienceMode</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- The public place is the lobby. Reserved servers are private round instances.
+local Workspace = game:GetService("Workspace")
+local mode = game.PrivateServerId ~= "" and "Game" or "Lobby"
+Workspace:SetAttribute("LastTrainMode", mode)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="11">
+        <Properties>
+          <string name="Name">LobbyWorldBuilder</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+if Workspace:GetAttribute("LastTrainMode") ~= "Lobby" then return end
+
+local old = Workspace:FindFirstChild("LastTrainLobby")
+if old then old:Destroy() end
+local lobby = Instance.new("Folder")
+lobby.Name = "LastTrainLobby"
+lobby.Parent = Workspace
+
+local function part(name, size, position, color, material, transparency, collide)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Position = position
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Transparency = transparency or 0
+	p.Anchored = true
+	p.CanCollide = collide ~= false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = lobby
+	return p
+end
+
+local midnight = Color3.fromRGB(43, 60, 72)
+local steel = Color3.fromRGB(145, 161, 170)
+local cyan = Color3.fromRGB(75, 205, 221)
+local gold = Color3.fromRGB(226, 181, 91)
+part("PolishedStoneFloor", Vector3.new(190, 1, 200), Vector3.new(0, -0.5, 0), Color3.fromRGB(132, 148, 156), Enum.Material.Marble)
+-- Inlaid floor lanes and a framed central concourse break up the broad stone
+-- surface without adding collision clutter to the player routes.
+for _, x in ipairs({-82, -62, 62, 82}) do
+	part("FloorInlayLong", Vector3.new(0.22, 0.035, 120), Vector3.new(x, 0.025, 0), Color3.fromRGB(129, 150, 151), Enum.Material.Metal, 0, false)
+end
+for _, z in ipairs({-90, -70, 70, 90}) do
+	part("FloorInlayCross", Vector3.new(170, 0.035, 0.22), Vector3.new(0, 0.025, z), Color3.fromRGB(129, 150, 151), Enum.Material.Metal, 0, false)
+end
+for _, x in ipairs({-12, 12}) do
+	part("ConcourseWayfindingLine", Vector3.new(0.42, 0.045, 118), Vector3.new(x, 0.035, 1), cyan, Enum.Material.Neon, 0.12, false)
+end
+part("LobbyCeiling", Vector3.new(190, 2, 200), Vector3.new(0, 24, 0), midnight, Enum.Material.Metal)
+part("RearWall", Vector3.new(190, 24, 2), Vector3.new(0, 12, -100), steel, Enum.Material.Concrete)
+part("FrontGlassWall", Vector3.new(190, 24, 1), Vector3.new(0, 12, 100), Color3.fromRGB(38, 74, 87), Enum.Material.Glass, 0.45, false)
+for _, x in ipairs({-96, 96}) do
+	part("SideWall", Vector3.new(2, 24, 200), Vector3.new(x, 12, 0), steel, Enum.Material.Concrete)
+end
+
+-- Repeated metal ribs and inset wall bays give the terminal a designed, vaulted
+-- station profile instead of the original empty rectangular hall.
+for _, z in ipairs({-84, -56, -28, 0, 28, 56, 84}) do
+	local points = {}
+	for segment = 0, 8 do
+		local angle = math.pi * segment / 8
+		local x = math.cos(angle) * 88
+		local y = 4 + math.sin(angle) * 18
+		table.insert(points, Vector3.new(x, y, z))
+	end
+	for segment = 1, #points - 1 do
+		local a, b = points[segment], points[segment + 1]
+		local length = (b - a).Magnitude
+		local rib = part("VaultRib", Vector3.new(0.66, length + 0.2, 1.8), (a + b) / 2, Color3.fromRGB(142, 159, 166), Enum.Material.Metal, 0, false)
+		rib.Shape = Enum.PartType.Cylinder
+		rib.CFrame = CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(math.rad(90), 0, 0)
+	end
+	local crown = part("VaultCrownLight", Vector3.new(28, 0.18, 1.1), Vector3.new(0, 21.4, z), cyan, Enum.Material.Neon, 0.12, false)
+	local glow = Instance.new("SurfaceLight"); glow.Face = Enum.NormalId.Bottom; glow.Range = 22; glow.Brightness = 1.1; glow.Color = cyan; glow.Parent = crown
+end
+for _, z in ipairs({-92, -76, -60, -44, -28, -12, 4, 20, 36, 52, 68, 84}) do
+	for _, side in ipairs({-1, 1}) do
+		part("WallCladdingBay", Vector3.new(0.16, 14, 12), Vector3.new(side * 94.85, 10, z), Color3.fromRGB(108, 129, 139), Enum.Material.SmoothPlastic, 0, false)
+		part("WallBayReveal", Vector3.new(0.12, 0.14, 10.8), Vector3.new(side * 94.72, 16.8, z), cyan, Enum.Material.Neon, 0.22, false)
+	end
+end
+
+	for _, z in ipairs({-84, -56, -28, 0, 28, 56, 84}) do
+	local strip = part("CeilingLight", Vector3.new(148, 0.2, 1.6), Vector3.new(0, 22.7, z), Color3.fromRGB(227, 242, 236), Enum.Material.Neon, 0, false)
+	local light = Instance.new("SurfaceLight")
+	light.Face = Enum.NormalId.Bottom
+	light.Range = 34
+	light.Brightness = 2.7
+	light.Color = Color3.fromRGB(197, 233, 231)
+	light.Parent = strip
+end
+for _, x in ipairs({-76, -38, 38, 76}) do
+	local pillar = part("OvalLobbyPillar", Vector3.new(3.2, 22, 3.2), Vector3.new(x, 11, 4), Color3.fromRGB(124, 148, 151), Enum.Material.SmoothPlastic)
+	pillar.Shape = Enum.PartType.Cylinder
+	part("PillarFoot", Vector3.new(5, 0.65, 5), Vector3.new(x, 0.3, 4), midnight, Enum.Material.Metal)
+	local accent = part("PillarAccent", Vector3.new(3.25, 0.18, 3.25), Vector3.new(x, 18.7, 4), cyan, Enum.Material.Neon, 0, false)
+	accent.Shape = Enum.PartType.Cylinder
+end
+
+-- Platform-style information furniture gives the lobby a finished terminal
+-- identity and makes the story, queue and route legible at a glance.
+local infoBoard = part("DepartureBoardHousing", Vector3.new(30, 6.8, 0.8), Vector3.new(0, 14.8, -63.6), midnight, Enum.Material.Metal)
+local boardFace = part("DepartureBoardFace", Vector3.new(28.4, 5.2, 0.12), Vector3.new(0, 14.8, -63.12), Color3.fromRGB(8, 20, 27), Enum.Material.Glass, 0.04, false)
+local boardGui = Instance.new("SurfaceGui")
+boardGui.Face = Enum.NormalId.Back
+boardGui.CanvasSize = Vector2.new(1200, 420)
+boardGui.LightInfluence = 0
+boardGui.Parent = boardFace
+local boardText = Instance.new("TextLabel")
+boardText.Size = UDim2.fromScale(1, 1)
+boardText.BackgroundTransparency = 1
+boardText.Text = "末班車  /  LAST TRAIN\n七站旅程    •    夜間列車    •    請留意月台廣播"
+boardText.TextColor3 = Color3.fromRGB(195, 239, 232)
+boardText.Font = Enum.Font.GothamBold
+boardText.TextScaled = true
+boardText.Parent = boardGui
+for _, x in ipairs({-54, 54}) do
+	local kiosk = part("RouteMapKiosk", Vector3.new(4.4, 5.5, 1.2), Vector3.new(x, 2.75, 4), midnight, Enum.Material.Metal)
+	local map = part("RouteMapScreen", Vector3.new(3.8, 4.1, 0.1), Vector3.new(x, 3.05, 3.34), Color3.fromRGB(23, 53, 60), Enum.Material.Glass, 0.02, false)
+	local mapGui = Instance.new("SurfaceGui")
+	mapGui.Face = Enum.NormalId.Front
+	mapGui.CanvasSize = Vector2.new(360, 500)
+	mapGui.LightInfluence = 0
+	mapGui.Parent = map
+	local mapText = Instance.new("TextLabel")
+	mapText.Size = UDim2.fromScale(1, 1)
+	mapText.BackgroundTransparency = 1
+	mapText.Text = "路線圖\n新月 ─ 失語 ─ 回聲\n鏡湖 ─ 遺忘 ─ 終寂 ─ 歸途"
+	mapText.TextWrapped = true
+	mapText.TextColor3 = cyan
+	mapText.Font = Enum.Font.GothamBold
+	mapText.TextScaled = true
+	mapText.Parent = mapGui
+	part("KioskFoot", Vector3.new(5, 0.28, 1.6), Vector3.new(x, 0.14, 4), steel, Enum.Material.Metal)
+end
+
+-- A sculpted silver train display makes the lobby read as a high speed terminal.
+local train = Instance.new("Model")
+train.Name = "LobbyTrainDisplay"
+train.Parent = lobby
+local shell = part("DisplayCarBody", Vector3.new(1, 1, 1), Vector3.new(-1, 4.7, -31), Color3.fromRGB(246, 249, 250), Enum.Material.Metal, 0, false)
+local mesh = Instance.new("SpecialMesh")
+mesh.MeshType = Enum.MeshType.Sphere
+mesh.Scale = Vector3.new(102, 8.8, 12.5)
+mesh.Parent = shell
+shell.Reflectance = 0.16
+shell.Parent = train
+local nose = part("DisplaySculptedNose", Vector3.new(1, 1, 1), Vector3.new(47, 4.7, -31), Color3.fromRGB(252, 253, 253), Enum.Material.Metal, 0, false)
+local noseMesh = Instance.new("SpecialMesh")
+noseMesh.MeshType = Enum.MeshType.Sphere
+noseMesh.Scale = Vector3.new(34, 6.4, 9.7)
+noseMesh.Parent = nose
+nose.Reflectance = 0.12
+nose.Parent = train
+local glass = part("DisplayWindowBand", Vector3.new(91, 2.55, 0.18), Vector3.new(-5, 6.0, -24.8), Color3.fromRGB(12, 31, 43), Enum.Material.Glass, 0.025, false)
+glass.Parent = train
+local stripe = part("DisplayCyanStripe", Vector3.new(93, 0.26, 0.18), Vector3.new(-5, 2.55, -24.6), cyan, Enum.Material.Neon, 0, false)
+stripe.Parent = train
+local lowerBlueStripe = part("DisplayLowerBlueStripe", Vector3.new(93, 0.11, 0.18), Vector3.new(-5, 2.18, -24.6), Color3.fromRGB(24, 112, 162), Enum.Material.Metal, 0, false)
+lowerBlueStripe.Parent = train
+-- Car doors, dark window mullions, a separate lower skirt, and an unmistakable
+-- blue/cyan HTSR-style nose band make the display read as a train at a glance.
+for _, x in ipairs({-39, -25, -11, 3, 17, 31}) do
+	local mullion = part("DisplayWindowMullion", Vector3.new(0.16, 2.8, 0.22), Vector3.new(x, 6, -24.65), Color3.fromRGB(51, 76, 86), Enum.Material.Metal, 0, false); mullion.Parent = train
+end
+for _, x in ipairs({-30, 10}) do
+	local door = part("DisplayPassengerDoor", Vector3.new(3.3, 5.9, 0.2), Vector3.new(x, 4.7, -24.65), Color3.fromRGB(111, 145, 153), Enum.Material.Glass, 0.16, false); door.Parent = train
+end
+local noseBand = part("DisplayNoseBand", Vector3.new(0.2, 1.7, 8.2), Vector3.new(63.3, 5.3, -31), Color3.fromRGB(16, 91, 120), Enum.Material.Metal, 0, false); noseBand.Parent = train
+for _, z in ipairs({-33.5, -28.5}) do
+	local lamp = part("DisplayHeadlight", Vector3.new(0.18, 0.45, 1.25), Vector3.new(63.42, 3.6, z), Color3.fromRGB(255, 239, 194), Enum.Material.Neon, 0, false); lamp.Parent = train
+end
+local skirt = part("DisplayContinuousSkirt", Vector3.new(90, 1, 0.42), Vector3.new(-5, 1.9, -24.75), Color3.fromRGB(69, 86, 93), Enum.Material.Metal, 0, false); skirt.Parent = train
+for _, x in ipairs({-44, -30, -12, 10, 30, 48}) do
+	local bogie = part("DisplayBogie", Vector3.new(7.4, 1.15, 9.6), Vector3.new(x, 1.15, -31), Color3.fromRGB(44, 55, 60), Enum.Material.Metal, 0, false)
+	bogie.Parent = train
+	for _, z in ipairs({-36, -26}) do
+		local wheel = part("DisplayWheel", Vector3.new(1.1, 2.7, 2.7), Vector3.new(x, 0.9, z), Color3.fromRGB(27, 35, 39), Enum.Material.Metal, 0, false)
+		wheel.Shape = Enum.PartType.Cylinder
+		wheel.CFrame = CFrame.new(x, 0.9, z) * CFrame.Angles(math.rad(90), 0, 0)
+		wheel.Parent = train
+	end
+end
+local displayTrack = part("DisplayTrack", Vector3.new(126, 0.4, 20), Vector3.new(-1, 0.15, -31), midnight, Enum.Material.Metal, 0, false); displayTrack.Parent = train
+
+-- Turn the long display toward the entrance and leave a clear walking lane.
+local oldPivot = CFrame.new(-1, 4.7, -31)
+-- The default spawn looks down the station's +X axis. Align the train nose with
+-- that sightline so players can read the cab instead of seeing a broad side wall.
+local newPivot = CFrame.new(-58, 4.7, -14)
+for _, descendant in ipairs(train:GetDescendants()) do
+	if descendant:IsA("BasePart") then descendant.CFrame = newPivot * oldPivot:ToObjectSpace(descendant.CFrame) end
+end
+
+-- Four walk-up party gates sit in two calm side bays, leaving the central
+-- entrance-to-platform concourse clear as shown in the approved floor plan.
+local gateFolder = Instance.new("Folder")
+gateFolder.Name = "MatchmakingGates"
+gateFolder.Parent = lobby
+local gateColors = {
+	Color3.fromRGB(90, 207, 218), Color3.fromRGB(105, 205, 172),
+	Color3.fromRGB(232, 190, 99), Color3.fromRGB(221, 139, 104),
+}
+local gatePositions = {
+	Vector3.new(-68, 0, -4), Vector3.new(-68, 0, 28),
+	Vector3.new(68, 0, -4), Vector3.new(68, 0, 28),
+}
+for count, center in ipairs(gatePositions) do
+	local x, z = center.X, center.Z
+	local accent = gateColors[count]
+	local side = x < 0 and 1 or -1
+	local pad = part("Gate" .. count, Vector3.new(18, 0.6, 14), Vector3.new(x, 0.3, z), Color3.fromRGB(16, 39, 53), Enum.Material.Metal)
+	pad.Parent = gateFolder
+	local inset = part("GateFloorGlow", Vector3.new(16.2, 0.08, 12.2), Vector3.new(x, 0.64, z), accent, Enum.Material.Neon, 0.18, false)
+	inset.Parent = gateFolder
+	local centerDisc = part("GateQueueDisc", Vector3.new(7.8, 0.1, 7.8), Vector3.new(x, 0.72, z), Color3.fromRGB(20, 59, 76), Enum.Material.Glass, 0.08, false)
+	centerDisc.Shape = Enum.PartType.Cylinder
+	centerDisc.Parent = gateFolder
+	for _, dx in ipairs({-7.4, 7.4}) do
+		for _, dz in ipairs({-5.4, 5.4}) do
+			local post = part("GateFramePost", Vector3.new(0.72, 8.8, 0.72), Vector3.new(x + dx, 4.7, z + dz), steel, Enum.Material.Metal)
+			post.Parent = gateFolder
+			local light = part("GateFrameLight", Vector3.new(0.18, 7.8, 0.18), Vector3.new(x + dx, 4.8, z + dz), accent, Enum.Material.Neon, 0.03, false)
+			light.Parent = gateFolder
+		end
+	end
+	local header = part("GateHeader", Vector3.new(15.4, 0.8, 1), Vector3.new(x, 9.2, z), steel, Enum.Material.Metal)
+	header.Parent = gateFolder
+	local promptAnchor = part("GatePrompt" .. count, Vector3.new(18, 5, 14), Vector3.new(x, 2.5, z), accent, Enum.Material.Neon, 1, false)
+	promptAnchor.Parent = gateFolder
+	promptAnchor:SetAttribute("PartySize", count)
+	promptAnchor.CanCollide = false
+	promptAnchor.CanTouch = true
+	local facePoint = Vector3.new(0, 6.1, z)
+	local signPosition = Vector3.new(x + side * 7.45, 6.1, z)
+	local sign = part("GateSign" .. count, Vector3.new(11.4, 4.1, 0.24), signPosition, Color3.fromRGB(24, 67, 84), Enum.Material.SmoothPlastic, 0.04, false)
+	sign.CFrame = CFrame.lookAt(sign.Position, facePoint)
+	sign.Parent = gateFolder
+	local signGui = Instance.new("SurfaceGui")
+	signGui.Name = "GateDisplay"
+	signGui.Face = Enum.NormalId.Front
+	signGui.CanvasSize = Vector2.new(600, 340)
+	signGui.LightInfluence = 0
+	signGui.Parent = sign
+	local signText = Instance.new("TextLabel")
+	signText.Name = "PortalStatus"
+	signText.Size = UDim2.fromScale(1, 1)
+	signText.BackgroundColor3 = Color3.fromRGB(17, 51, 67)
+	signText.BackgroundTransparency = 0.03
+	signText.Text = string.format("%d 人列車\n走進入口加入\n0 / %d", count, count)
+	signText.TextColor3 = accent
+	signText.Font = Enum.Font.GothamBlack
+	signText.TextScaled = true
+	signText.TextWrapped = true
+	local signStroke = Instance.new("UIStroke")
+	signStroke.Color = accent
+	signStroke.Transparency = 0.48
+	signStroke.Thickness = 3
+	signStroke.Parent = signText
+	signText.Parent = signGui
+	local rearGui = Instance.new("SurfaceGui")
+	rearGui.Name = "GateDisplayRear"
+	rearGui.Face = Enum.NormalId.Back
+	rearGui.CanvasSize = Vector2.new(600, 340)
+	rearGui.LightInfluence = 0
+	rearGui.Parent = sign
+	local rearText = signText:Clone()
+	rearText.Parent = rearGui
+	local counter = part("GateCounter" .. count, Vector3.new(5.2, 1.05, 0.18), Vector3.new(x, 9.95, z), Color3.fromRGB(24, 67, 84), Enum.Material.SmoothPlastic, 0.02, false)
+	counter.CFrame = CFrame.lookAt(counter.Position, facePoint)
+	counter.Parent = gateFolder
+	local counterGui = Instance.new("SurfaceGui")
+	counterGui.Face = Enum.NormalId.Front
+	counterGui.CanvasSize = Vector2.new(500, 140)
+	counterGui.LightInfluence = 0
+	counterGui.Parent = counter
+	local counterText = Instance.new("TextLabel")
+	counterText.Name = "QueueCounter"
+	counterText.Size = UDim2.fromScale(1, 1)
+	counterText.BackgroundTransparency = 1
+	counterText.Text = string.format("0 / %d   •   10", count)
+	counterText.TextColor3 = accent
+	counterText.Font = Enum.Font.GothamBlack
+	counterText.TextScaled = true
+	counterText.Parent = counterGui
+	local counterBackGui = Instance.new("SurfaceGui")
+	counterBackGui.Name = "CounterDisplayRear"
+	counterBackGui.Face = Enum.NormalId.Back
+	counterBackGui.CanvasSize = Vector2.new(500, 140)
+	counterBackGui.LightInfluence = 0
+	counterBackGui.Parent = counter
+	local counterBackText = counterText:Clone()
+	counterBackText.Parent = counterBackGui
+end
+
+-- Large, readable story and character-shop kiosks anchor the entrance zone.
+local function buildLobbyKiosk(name, title, subtitle, x, accent, promptAction)
+	local body = part(name .. "Body", Vector3.new(18, 8, 2.2), Vector3.new(x, 4, 49), midnight, Enum.Material.Metal)
+	local screen = part(name .. "Screen", Vector3.new(16.8, 6.4, 0.16), Vector3.new(x, 4.4, 47.82), Color3.fromRGB(10, 31, 43), Enum.Material.Glass, 0.02, false)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(900, 360)
+	gui.LightInfluence = 0
+	gui.Parent = screen
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.Text = title .. "\n" .. subtitle
+	text.TextColor3 = accent
+	text.Font = Enum.Font.GothamBold
+	text.TextScaled = true
+	text.TextWrapped = true
+	text.Parent = gui
+	local base = part(name .. "Base", Vector3.new(20, 0.4, 3.2), Vector3.new(x, 0.2, 49), steel, Enum.Material.Metal)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = promptAction
+	prompt.ObjectText = title
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = body
+	return body, screen, base
+end
+buildLobbyKiosk("StoryKiosk", "故事序章", "七站旅程即將開始\n末班車，請準備上車", -34, Color3.fromRGB(147, 225, 235), "查看故事")
+buildLobbyKiosk("CharacterShopKiosk", "角色商店", "解鎖角色外觀與能力\n遊戲幣 / Robux", 34, Color3.fromRGB(245, 204, 116), "開啟商店")
+
+-- A small staffed-looking uniform counter gives the shop a real place in the
+-- concourse. Rounded display figures and warm brass lights distinguish it from
+-- the matching story kiosk across the aisle.
+local shopTrim = Color3.fromRGB(201, 160, 91)
+local shopCream = Color3.fromRGB(220, 214, 192)
+local shopTeal = Color3.fromRGB(38, 86, 91)
+part("UniformShopRunner", Vector3.new(40, 0.08, 28), Vector3.new(34, 0.06, 43), Color3.fromRGB(52, 76, 78), Enum.Material.Fabric, 0, false)
+part("UniformShopBackWall", Vector3.new(40, 10, 1.1), Vector3.new(34, 5, 24), Color3.fromRGB(89, 111, 116), Enum.Material.Metal, 0, false)
+part("UniformShopWallInset", Vector3.new(37, 7.4, 0.16), Vector3.new(34, 5.2, 23.38), Color3.fromRGB(53, 78, 84), Enum.Material.SmoothPlastic, 0, false)
+part("UniformShopHeader", Vector3.new(40, 1.25, 1.4), Vector3.new(34, 11.8, 48), shopTeal, Enum.Material.Metal, 0, false)
+local shopHeader = part("UniformShopHeaderLight", Vector3.new(38, 0.16, 1.6), Vector3.new(34, 12.45, 48), shopTrim, Enum.Material.Neon, 0.18, false)
+local headerGlow = Instance.new("SurfaceLight")
+headerGlow.Face = Enum.NormalId.Bottom
+headerGlow.Range = 20
+headerGlow.Brightness = 1.15
+headerGlow.Color = Color3.fromRGB(255, 218, 154)
+headerGlow.Parent = shopHeader
+for _, x in ipairs({14.5, 53.5}) do
+	local post = part("UniformShopPost", Vector3.new(1.3, 12, 1.6), Vector3.new(x, 6, 48), shopTrim, Enum.Material.Metal)
+	post.Shape = Enum.PartType.Cylinder
+	post.CFrame = CFrame.new(post.Position) * CFrame.Angles(0, 0, math.rad(90))
+	part("UniformShopFoot", Vector3.new(2.2, 0.48, 2.2), Vector3.new(x, 0.24, 48), shopTeal, Enum.Material.Metal)
+end
+
+local function roundedMannequin(prefix, x, colors, label)
+	local z = 37
+	part(prefix .. "Plinth", Vector3.new(6.6, 0.65, 5.2), Vector3.new(x, 0.325, z), Color3.fromRGB(87, 103, 103), Enum.Material.Marble)
+	part(prefix .. "PlinthTrim", Vector3.new(6.8, 0.12, 5.4), Vector3.new(x, 0.68, z), shopTrim, Enum.Material.Metal, 0, false)
+	local legA = part(prefix .. "LegA", Vector3.new(0.68, 2.25, 0.72), Vector3.new(x - 0.48, 2.03, z), colors.Legs, Enum.Material.SmoothPlastic, 0, false)
+	local legB = part(prefix .. "LegB", Vector3.new(0.68, 2.25, 0.72), Vector3.new(x + 0.48, 2.03, z), colors.Legs, Enum.Material.SmoothPlastic, 0, false)
+	legA.Shape = Enum.PartType.Cylinder; legB.Shape = Enum.PartType.Cylinder
+	local torso = part(prefix .. "Coat", Vector3.new(2.5, 2.4, 1.25), Vector3.new(x, 4.2, z), colors.Coat, Enum.Material.SmoothPlastic, 0, false)
+	torso.Shape = Enum.PartType.Cylinder
+	torso.CFrame = CFrame.new(torso.Position) * CFrame.Angles(0, 0, math.rad(90))
+	local collar = part(prefix .. "Collar", Vector3.new(1.05, 0.18, 0.2), Vector3.new(x, 5.35, z - 0.62), colors.Trim, Enum.Material.Metal, 0, false)
+	local head = part(prefix .. "Head", Vector3.new(1.35, 1.35, 1.25), Vector3.new(x, 6.15, z), shopCream, Enum.Material.SmoothPlastic, 0, false)
+	head.Shape = Enum.PartType.Ball
+	local cap = part(prefix .. "Cap", Vector3.new(1.6, 0.3, 1.4), Vector3.new(x, 6.82, z), colors.Trim, Enum.Material.SmoothPlastic, 0, false)
+	cap.Shape = Enum.PartType.Cylinder
+	cap.CFrame = CFrame.new(cap.Position) * CFrame.Angles(0, 0, math.rad(90))
+	local shoulderA = part(prefix .. "SleeveA", Vector3.new(0.72, 1.75, 0.72), Vector3.new(x - 1.35, 4.15, z), colors.Coat, Enum.Material.SmoothPlastic, 0, false)
+	local shoulderB = part(prefix .. "SleeveB", Vector3.new(0.72, 1.75, 0.72), Vector3.new(x + 1.35, 4.15, z), colors.Coat, Enum.Material.SmoothPlastic, 0, false)
+	shoulderA.Shape = Enum.PartType.Cylinder; shoulderB.Shape = Enum.PartType.Cylinder
+	shoulderA.CFrame = CFrame.new(shoulderA.Position) * CFrame.Angles(0, 0, math.rad(90))
+	shoulderB.CFrame = CFrame.new(shoulderB.Position) * CFrame.Angles(0, 0, math.rad(90))
+	local plaque = part(prefix .. "Nameplate", Vector3.new(6.1, 0.8, 0.16), Vector3.new(x, 1.08, z - 2.68), shopTeal, Enum.Material.Metal, 0, false)
+	local face = Instance.new("SurfaceGui")
+	face.Face = Enum.NormalId.Front
+	face.CanvasSize = Vector2.new(500, 100)
+	face.LightInfluence = 0
+	face.Parent = plaque
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.Text = label
+	text.TextColor3 = colors.Trim
+	text.Font = Enum.Font.GothamBold
+	text.TextScaled = true
+	text.Parent = face
+end
+
+roundedMannequin("UniformWorker", 20, { Coat = Color3.fromRGB(61, 81, 87), Legs = Color3.fromRGB(37, 52, 61), Trim = Color3.fromRGB(223, 180, 92) }, "月台巡守")
+roundedMannequin("UniformConductor", 34, { Coat = Color3.fromRGB(42, 58, 78), Legs = Color3.fromRGB(29, 39, 55), Trim = Color3.fromRGB(235, 199, 122) }, "夜班列車長")
+roundedMannequin("UniformSignalman", 48, { Coat = Color3.fromRGB(112, 54, 45), Legs = Color3.fromRGB(49, 48, 46), Trim = Color3.fromRGB(214, 207, 183) }, "號誌技師")
+
+local spawn = Workspace:FindFirstChild("PlatformSpawn")
+if spawn then
+	spawn.CFrame = CFrame.new(0, 0.4, 78)
+	spawn.Neutral = true
+	spawn.Duration = 0
+end
+
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="12">
+        <Properties>
+          <string name="Name">Matchmaking</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Server-owned 1–4 player matchmaking. The public place stays a lobby;
+-- each completed group receives its own reserved round server.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+if Workspace:GetAttribute("LastTrainMode") ~= "Lobby" then return end
+
+local remotes = ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local request = remotes:WaitForChild("MatchmakingRequest")
+local update = remotes:WaitForChild("MatchmakingUpdate")
+local queue = {}
+local targetCount
+local phase = "Idle"
+local busy = false
+local launchRunning = false
+local queueGeneration = 0
+local lastRequest = {}
+
+local function queued(player)
+	return table.find(queue, player) ~= nil
+end
+
+local function broadcast(seconds, message)
+	local info = {
+		phase = phase,
+		count = #queue,
+		target = targetCount or 1,
+		seconds = seconds or 0,
+		message = message or "",
+	}
+	for _, player in ipairs(Players:GetPlayers()) do
+		update:FireClient(player, info, queued(player))
+	end
+end
+
+local function removeFromQueue(player)
+	local index = table.find(queue, player)
+	if index then table.remove(queue, index) end
+	if #queue == 0 and not busy then
+		targetCount = nil
+		phase = "Idle"
+		launchRunning = false
+		queueGeneration += 1
+	end
+end
+
+local function studioRound(party)
+	Workspace:SetAttribute("LastTrainMode", "Game")
+	local lobby = Workspace:FindFirstChild("LastTrainLobby")
+	if lobby then lobby:Destroy() end
+	local world = Workspace:WaitForChild("LastTrainWorld", 45)
+	if not world then error("Studio local round did not create LastTrainWorld") end
+	local deadline = os.clock() + 45
+	while not world:GetAttribute("Ready") and os.clock() < deadline do task.wait(0.1) end
+	if not world:GetAttribute("Ready") then error("Studio local round did not finish building") end
+	Players.CharacterAutoLoads = false
+	local config = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+	local function placeCharacter(player, character)
+		local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, #config.Stations)
+		character:PivotTo(CFrame.new((station - 1) * config.StationSpacing - 40, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+		if humanoid then
+			humanoid.Died:Once(function()
+				task.delay(3, function()
+					if not player.Parent then return end
+						pcall(function() player:LoadCharacterAsync() end)
+				end)
+			end)
+		end
+	end
+	for _, player in ipairs(party) do
+		player.CharacterAdded:Connect(function(character) placeCharacter(player, character) end)
+		if player.Character then placeCharacter(player, player.Character)
+		else
+			pcall(function() player:LoadCharacterAsync() end)
+		end
+	end
+end
+
+local function launchParty()
+	if launchRunning then return end
+	launchRunning = true
+	queueGeneration += 1
+	local myGeneration = queueGeneration
+	phase = "Waiting"
+	broadcast(10, "等候同車玩家；滿 10 秒會以目前人數出發。")
+	for remaining = 10, 1, -1 do
+		if myGeneration ~= queueGeneration then return end
+		if #queue == 0 then
+			launchRunning = false
+			phase = "Idle"
+			targetCount = nil
+			broadcast(0, "隊伍已取消。")
+			return
+		end
+		if #queue >= (targetCount or 1) then break end
+		broadcast(remaining, "等候同車玩家；滿 10 秒會以目前人數出發。")
+		task.wait(1)
+	end
+	if #queue == 0 then
+		launchRunning = false
+		phase = "Idle"
+		targetCount = nil
+		broadcast(0, "隊伍已取消。")
+		return
+	end
+
+	phase = "Boarding"
+	busy = true
+	local party = table.create(math.min(#queue, targetCount or 4))
+	for index = 1, math.min(#queue, targetCount or 4) do
+		party[index] = queue[index]
+	end
+	for remaining = 3, 1, -1 do
+		broadcast(remaining, "列車即將出發。")
+		task.wait(1)
+	end
+	for index = #party, 1, -1 do
+		if not party[index].Parent then table.remove(party, index) end
+	end
+	if #party == 0 then
+		queue = {}
+		targetCount = nil
+		phase = "Idle"
+		busy = false
+		launchRunning = false
+		broadcast(0, "隊伍已取消。")
+		return
+	end
+
+	if RunService:IsStudio() then
+		local ok, err = pcall(studioRound, party)
+		busy = false
+		launchRunning = false
+		if not ok then
+			phase = "Idle"
+			queue = {}
+			targetCount = nil
+			broadcast(0, "本機測試啟動失敗：" .. tostring(err))
+			return
+		end
+		phase = "Launched"
+		queue = {}
+		targetCount = nil
+		broadcast(0, "本機遊戲已啟動。")
+		return
+	end
+
+	local ok, err = pcall(function()
+		local accessCode = TeleportService:ReserveServerAsync(game.PlaceId)
+		local options = Instance.new("TeleportOptions")
+		options.ReservedServerAccessCode = accessCode
+		options:SetTeleportData({ LastTrainRound = true })
+		TeleportService:TeleportAsync(game.PlaceId, party, options)
+	end)
+	if ok then
+		queue = {}
+		targetCount = nil
+		phase = "Idle"
+		busy = false
+		launchRunning = false
+		broadcast(0, "末班車已發車。")
+	end
+	if not ok then
+		warn("LastTrain matchmaking teleport failed: " .. tostring(err))
+		phase = "Idle"
+		busy = false
+		launchRunning = false
+		for _, player in ipairs(party) do
+			update:FireClient(player, { phase = "Error", message = "傳送失敗，請按「重新配對」再試一次。" }, false)
+		end
+		queue = {}
+		targetCount = nil
+	end
+end
+
+TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+	update:FireClient(player, {
+		phase = "Error",
+		message = "傳送中斷（" .. tostring(teleportResult) .. "），請重新配對。 " .. tostring(errorMessage),
+	}, false)
+end)
+
+local function handleRequest(player, action, selectedCount)
+	if type(action) ~= "string" then return { ok = false, message = "無效的請求。" } end
+	local now = os.clock()
+	if now - (lastRequest[player.UserId] or 0) < 0.5 then
+		return { ok = false, message = "操作太快，請稍候。" }
+	end
+	lastRequest[player.UserId] = now
+
+	if action == "PortalJoin" then
+		if type(selectedCount) ~= "number" or selectedCount % 1 ~= 0 or selectedCount < 1 or selectedCount > 4 then
+			return { ok = false, message = "無效的隊伍入口。" }
+		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+		local lobby = Workspace:FindFirstChild("LastTrainLobby")
+		local gates = lobby and lobby:FindFirstChild("MatchmakingGates")
+		local promptAnchor = gates and gates:FindFirstChild("GatePrompt" .. selectedCount)
+		if not root or not humanoid or humanoid.Health <= 0 or not promptAnchor
+			or promptAnchor:GetAttribute("PartySize") ~= selectedCount
+			or (root.Position - promptAnchor.Position).Magnitude > 15 then
+			return { ok = false, message = "請走到隊伍入口旁再加入配對。" }
+		end
+		if targetCount and targetCount ~= selectedCount then
+			return { ok = false, message = string.format("目前等候的是 %d 人列車，請進入相同人數的光圈箱。", targetCount) }
+		end
+		action = "Join"
+	end
+
+	if action == "Status" then
+		return { ok = true, phase = phase, count = #queue, target = targetCount or 1, queued = queued(player) }
+	elseif action == "Leave" then
+		if busy and phase == "Boarding" then return { ok = false, message = "列車已開始登車，現在不能離隊。" } end
+		removeFromQueue(player)
+		broadcast(0, "已離開配對隊伍。")
+		return { ok = true, message = "已離開隊伍。" }
+	elseif action == "Join" then
+		if busy or phase == "Boarding" or phase == "Launched" then
+			return { ok = false, message = "這班列車已開始登車，請稍後再配對。" }
+		end
+		if queued(player) then return { ok = true, message = "你已在等候隊伍中。" } end
+		if targetCount and #queue >= targetCount then
+			return { ok = false, message = "這班列車的人數已滿，請等下一班。" }
+		end
+		if #queue >= 4 then return { ok = false, message = "這班列車最多 4 人，請稍後再加入。" } end
+		if not targetCount then
+			if type(selectedCount) ~= "number" or selectedCount % 1 ~= 0 or selectedCount < 1 or selectedCount > 4 then
+				return { ok = false, message = "請選擇 1 到 4 人。" }
+			end
+			targetCount = selectedCount
+		end
+		table.insert(queue, player)
+		phase = "Waiting"
+		broadcast(10, "等候同車玩家；滿 10 秒會以目前人數出發。")
+		if not busy then task.spawn(launchParty) end
+		return { ok = true, message = "已加入配對。" }
+	end
+	return { ok = false, message = "不支援的配對操作。" }
+end
+request.OnServerInvoke = handleRequest
+
+-- Entering a physical matchmaking pod queues the player directly; the server
+-- still checks that their character is alive and standing inside that pod.
+task.spawn(function()
+	local lobby = Workspace:WaitForChild("LastTrainLobby", 30)
+	local gates = lobby and lobby:WaitForChild("MatchmakingGates", 20)
+	if not gates then return end
+	local touchDebounce = {}
+	for partySize = 1, 4 do
+		local zone = gates:WaitForChild("GatePrompt" .. partySize, 10)
+		if zone then
+			zone.Touched:Connect(function(hit)
+				local character = hit:FindFirstAncestorOfClass("Model")
+				local player = character and Players:GetPlayerFromCharacter(character)
+				if not player or touchDebounce[player.UserId] then return end
+				touchDebounce[player.UserId] = true
+				task.delay(1.2, function() touchDebounce[player.UserId] = nil end)
+				handleRequest(player, "PortalJoin", partySize)
+			end)
+			zone.TouchEnded:Connect(function(hit)
+				local character = hit:FindFirstAncestorOfClass("Model")
+				local player = character and Players:GetPlayerFromCharacter(character)
+				if not player then return end
+				task.delay(0.6, function()
+					local current = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					if not current then return end
+					local delta = current.Position - zone.Position
+					local half = zone.Size * 0.5 + Vector3.new(2, 2, 2)
+					if math.abs(delta.X) <= half.X and math.abs(delta.Y) <= half.Y and math.abs(delta.Z) <= half.Z then return end
+					if targetCount == partySize and phase ~= "Boarding" then
+						removeFromQueue(player)
+						broadcast(0, "乘客離開了光圈箱。")
+					end
+				end)
+			end)
+		end
+	end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	update:FireClient(player, { phase = phase, count = #queue, target = targetCount or 1, seconds = 0 }, false)
+end)
+Players.PlayerRemoving:Connect(function(player)
+	removeFromQueue(player)
+	lastRequest[player.UserId] = nil
+	if not busy then broadcast(0, "") end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="13">
+        <Properties>
+          <string name="Name">PlayerSpawn</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Wait until the generated station spawn exists before assigning or loading characters.
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+if Workspace:GetAttribute("LastTrainMode") ~= "Game" then
+	Players.CharacterAutoLoads = true
+	return
+end
+Players.CharacterAutoLoads = false
+
+local function getStationSpawnCFrame()
+	Workspace:WaitForChild("LastTrainWorld")
+	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+	local x = (station - 1) * config.StationSpacing - 40
+	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
+end
+
+local function placeCharacter(player, character)
+	local spawnCFrame = getStationSpawnCFrame()
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	if root and character.Parent then
+		character:PivotTo(spawnCFrame * CFrame.new(0, 3, 0))
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+	end
+end
+
+local function loadAtStation(player)
+	if not player.Parent then return end
+	player.RespawnLocation = Workspace:WaitForChild("PlatformSpawn")
+	player:LoadCharacterAsync()
+	local character = player.Character
+	if character then
+		placeCharacter(player, character)
+	end
+end
+
+local function setupPlayer(player)
+	-- Connect before waiting for the generated map: Roblox can raise CharacterAdded
+	-- while this script is still waiting for WorldBuilder to finish.
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(placeCharacter, player, character)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if humanoid then
+			humanoid.Died:Once(function()
+				task.delay(3, loadAtStation, player)
+			end)
+		end
+	end)
+	loadAtStation(player)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(setupPlayer, player)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="14">
+        <Properties>
+          <string name="Name">ProfileLoader</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local Profiles = require(script.Parent:WaitForChild("ProfileService"))
+
+local function onPlayerAdded(player)
+    local ok = Profiles.Load(player)
+    if not ok and player.Parent then
+        player:Kick("無法載入遊戲資料，請重新加入。")
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+    task.spawn(onPlayerAdded, player)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">ProfileService</string>
+          <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
+local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local GameConfig = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+local isUnpublishedStudioTest = RunService:IsStudio() and game.PlaceId == 0
+local Store
+local storeOk, storeResult = pcall(function()
+    return DataStoreService:GetDataStore(GameConfig.DataStoreName)
+end)
+if storeOk then
+    Store = storeResult
+elseif isUnpublishedStudioTest then
+    warn("LastTrain: Studio test is using temporary in-memory player data; publish the experience to enable saving.")
+else
+    warn("LastTrain: DataStore is unavailable: " .. tostring(storeResult))
+end
+local Profiles = {}
+local cache = {}
+local locks = {}
+local characterHooks = {}
+
+local function normalize(raw)
+    raw = type(raw) == "table" and raw or {}
+    local result = {
+        Coins = math.max(0, math.floor(tonumber(raw.Coins) or 0)),
+        OwnedSkins = {},
+        EquippedSkin = "PlatformWorker",
+        ProcessedReceipts = {},
+    }
+    if type(raw.OwnedSkins) == "table" then
+        for key, owned in pairs(raw.OwnedSkins) do
+            if GameConfig.Skins[key] and owned == true then
+                result.OwnedSkins[key] = true
+            end
+        end
+    end
+    result.OwnedSkins.PlatformWorker = true
+    if type(raw.EquippedSkin) == "string" and GameConfig.Skins[raw.EquippedSkin] then
+        result.EquippedSkin = raw.EquippedSkin
+    end
+    if not result.OwnedSkins[result.EquippedSkin] then
+        result.EquippedSkin = "PlatformWorker"
+    end
+    if type(raw.ProcessedReceipts) == "table" then
+        for purchaseId, processed in pairs(raw.ProcessedReceipts) do
+            if processed == true and type(purchaseId) == "string" then
+                result.ProcessedReceipts[purchaseId] = true
+            end
+        end
+    end
+    return result
+end
+
+local function applySkin(player, skinKey)
+    local skin = GameConfig.Skins[skinKey]
+    local character = player.Character
+    if not skin or not character then return end
+
+    player:SetAttribute("FlashlightMultiplier", skin.FlashlightMultiplier or 1)
+    player:SetAttribute("MonsterDetectionMultiplier", skin.MonsterDetectionMultiplier or 1)
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+    if humanoid then humanoid.WalkSpeed = 16 * (skin.WalkSpeedMultiplier or 1) end
+
+    local bodyColors = character:FindFirstChildOfClass("BodyColors")
+    if not bodyColors then
+        bodyColors = Instance.new("BodyColors")
+        bodyColors.Parent = character
+    end
+    local main = skin.Colors.Main
+    local accent = skin.Colors.Accent
+    bodyColors.HeadColor3 = accent
+    bodyColors.LeftArmColor3 = main
+    bodyColors.RightArmColor3 = main
+    bodyColors.LeftLegColor3 = main
+    bodyColors.RightLegColor3 = main
+    bodyColors.TorsoColor3 = main
+
+    local oldVisuals = character:FindFirstChild("LastTrainSkinVisuals")
+    if oldVisuals then oldVisuals:Destroy() end
+    local visuals = Instance.new("Folder")
+    visuals.Name = "LastTrainSkinVisuals"
+    visuals.Parent = character
+    local head = character:FindFirstChild("Head")
+    local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+
+    local function weldedPart(name, parentPart, size, color, shape, offset, material)
+        if not parentPart then return end
+        local visual = Instance.new("Part")
+        visual.Name = name
+        visual.Size = size
+        visual.Color = color
+        visual.Material = material or Enum.Material.SmoothPlastic
+        visual.Shape = shape or Enum.PartType.Block
+        visual.Anchored = false
+        visual.Massless = true
+        visual.CanCollide = false
+        visual.CanTouch = false
+        visual.CanQuery = false
+        visual.CastShadow = true
+        visual.CFrame = parentPart.CFrame * offset
+        visual.Parent = visuals
+        local weld = Instance.new("WeldConstraint")
+        weld.Part0 = parentPart
+        weld.Part1 = visual
+        weld.Parent = visual
+        return visual
+    end
+
+    if skinKey == "PlatformWorker" then
+        weldedPart("ReflectiveVestStripe", torso, Vector3.new(1.9, 0.16, 0.07), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.25, -0.38), Enum.Material.Neon)
+    elseif skinKey == "Conductor" then
+        weldedPart("ConductorCap", head, Vector3.new(1.35, 0.22, 1.12), skin.Colors.Main, Enum.PartType.Cylinder, CFrame.new(0, 0.43, 0) * CFrame.Angles(0, 0, math.rad(90)))
+        weldedPart("CapVisor", head, Vector3.new(0.76, 0.1, 0.42), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.38, -0.47))
+    elseif skinKey == "Signalman" then
+        weldedPart("SignalHelmet", head, Vector3.new(1.25, 0.54, 1.12), skin.Colors.Main, Enum.PartType.Ball, CFrame.new(0, 0.43, 0))
+        weldedPart("HelmetBand", head, Vector3.new(1.18, 0.1, 0.12), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.47, -0.49), Enum.Material.Neon)
+    elseif skinKey == "NightGuard" then
+        weldedPart("NightCap", head, Vector3.new(1.18, 0.34, 1.02), skin.Colors.Main, Enum.PartType.Cylinder, CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.rad(90)))
+        weldedPart("RedNeckScarf", torso, Vector3.new(1.45, 0.25, 0.32), skin.Colors.Accent, Enum.PartType.Block, CFrame.new(0, 0.47, -0.37), Enum.Material.Fabric)
+    end
+
+    if skin.ShirtTemplate and skin.ShirtTemplate > 0 then
+        local shirt = character:FindFirstChildOfClass("Shirt") or Instance.new("Shirt")
+        shirt.ShirtTemplate = "rbxassetid://" .. tostring(skin.ShirtTemplate)
+        shirt.Parent = character
+    end
+    if skin.PantsTemplate and skin.PantsTemplate > 0 then
+        local pants = character:FindFirstChildOfClass("Pants") or Instance.new("Pants")
+        pants.PantsTemplate = "rbxassetid://" .. tostring(skin.PantsTemplate)
+        pants.Parent = character
+    end
+end
+
+local function syncPlayer(userId, profile)
+    local player = Players:GetPlayerByUserId(userId)
+    if not player then return end
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if not leaderstats then
+        leaderstats = Instance.new("Folder")
+        leaderstats.Name = "leaderstats"
+        leaderstats.Parent = player
+    end
+    local coins = leaderstats:FindFirstChild("車票幣")
+    if not coins then
+        coins = Instance.new("IntValue")
+        coins.Name = "車票幣"
+        coins.Parent = leaderstats
+    end
+    coins.Value = profile.Coins
+    player:SetAttribute("EquippedSkin", profile.EquippedSkin)
+    applySkin(player, profile.EquippedSkin)
+end
+
+local function update(userId, transform)
+    while locks[userId] do task.wait(0.05) end
+    locks[userId] = true
+    if isUnpublishedStudioTest then
+        local profile = normalize(cache[userId])
+        local ok, err = pcall(transform, profile)
+        locks[userId] = nil
+        if not ok then
+            warn("LastTrain local profile update failed for user " .. tostring(userId) .. ": " .. tostring(err))
+            return false, nil
+        end
+        cache[userId] = profile
+        syncPlayer(userId, profile)
+        return true, profile
+    end
+    if not Store then
+        locks[userId] = nil
+        warn("LastTrain profile update skipped because DataStore is unavailable.")
+        return false, nil
+    end
+    local ok, stored = pcall(function()
+        return Store:UpdateAsync("u_" .. tostring(userId), function(current)
+            local profile = normalize(current)
+            transform(profile) -- Must remain non-yielding.
+            return profile
+        end)
+    end)
+    locks[userId] = nil
+    if not ok then
+        warn("LastTrain profile update failed for user " .. tostring(userId) .. ": " .. tostring(stored))
+        return false, nil
+    end
+    local profile = normalize(stored)
+    cache[userId] = profile
+    syncPlayer(userId, profile)
+    return true, profile
+end
+
+function Profiles.Load(player)
+    if cache[player.UserId] then
+        syncPlayer(player.UserId, cache[player.UserId])
+        return true
+    end
+    local ok = update(player.UserId, function(_profile) end)
+    if ok and player.Parent then
+        if not characterHooks[player.UserId] then
+            characterHooks[player.UserId] = player.CharacterAdded:Connect(function()
+                task.wait(0.15)
+                local latest = cache[player.UserId]
+                if latest then applySkin(player, latest.EquippedSkin) end
+            end)
+        end
+        if player.Character then applySkin(player, cache[player.UserId].EquippedSkin) end
+    end
+    return ok
+end
+
+function Profiles.IsLoaded(player)
+    return cache[player.UserId] ~= nil
+end
+
+function Profiles.GetState(player)
+    local profile = cache[player.UserId]
+    if not profile then return nil end
+    local owned = {}
+    for key, value in pairs(profile.OwnedSkins) do owned[key] = value end
+    return { Coins = profile.Coins, OwnedSkins = owned, EquippedSkin = profile.EquippedSkin }
+end
+
+function Profiles.AwardCoins(player, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then return false end
+    local ok = update(player.UserId, function(profile)
+        profile.Coins += amount
+    end)
+    return ok
+end
+
+function Profiles.BuySkin(player, skinKey)
+    local skin = GameConfig.Skins[skinKey]
+    if not skin then return false, "找不到這個角色。" end
+    if skin.RequiresGamePass then
+        return false, "此角色需要使用 Robux 購買。"
+    end
+    local succeeded, message = false, "購買失敗，請稍後再試。"
+    local ok = update(player.UserId, function(profile)
+        if profile.OwnedSkins[skinKey] then
+            succeeded, message = false, "你已經擁有這個角色。"
+            return
+        end
+        local price = math.max(0, math.floor(skin.PriceCoins or 0))
+        if profile.Coins < price then
+            succeeded, message = false, "車票幣不足。"
+            return
+        end
+        profile.Coins -= price
+        profile.OwnedSkins[skinKey] = true
+        succeeded, message = true, "角色已解鎖。"
+    end)
+    if not ok then return false, "資料儲存失敗，請稍後再試。" end
+    return succeeded, message
+end
+
+function Profiles.EquipSkin(player, skinKey)
+    if not GameConfig.Skins[skinKey] then return false, "找不到這個角色。" end
+    local succeeded, message = false, "角色切換失敗。"
+    local ok = update(player.UserId, function(profile)
+        if not profile.OwnedSkins[skinKey] then
+            succeeded, message = false, "你尚未解鎖這個角色。"
+            return
+        end
+        profile.EquippedSkin = skinKey
+        succeeded, message = true, "已切換角色。"
+    end)
+    if not ok then return false, "資料儲存失敗，請稍後再試。" end
+    return succeeded, message
+end
+
+function Profiles.GrantSkin(player, skinKey)
+    if not GameConfig.Skins[skinKey] then return false end
+    local ok = update(player.UserId, function(profile)
+        profile.OwnedSkins[skinKey] = true
+    end)
+    return ok
+end
+
+function Profiles.GrantCoinsFromReceipt(userId, purchaseId, amount)
+    if type(purchaseId) ~= "string" or purchaseId == "" then return false end
+    amount = math.max(0, math.floor(tonumber(amount) or 0))
+    local granted = false
+    local ok = update(userId, function(profile)
+        if profile.ProcessedReceipts[purchaseId] then
+            granted = true -- Roblox may retry an already-completed receipt.
+            return
+        end
+        profile.Coins += amount
+        profile.ProcessedReceipts[purchaseId] = true
+        granted = true
+    end)
+    return ok and granted
+end
+
+Players.PlayerRemoving:Connect(function(player)
+    cache[player.UserId] = nil -- Every mutation is already committed through UpdateAsync.
+    if characterHooks[player.UserId] then
+        characterHooks[player.UserId]:Disconnect()
+        characterHooks[player.UserId] = nil
+    end
+end)
+
+return Profiles
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="16">
+        <Properties>
+          <string name="Name">RecoveryGuard</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Return players to the platform if they fall out of the station or get stranded.
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local GameConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+
+local lastRecovery = {}
+
+RunService.Heartbeat:Connect(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+		if root and humanoid and humanoid.Health > 0 then
+			local position = root.Position
+			local outsideStation = position.Y < -8
+				or position.X < -250 or position.X > GameConfig.StationSpacing * (#GameConfig.Stations - 1) + 250
+				or math.abs(position.Z) > 45
+			if outsideStation and (not lastRecovery[player] or os.clock() - lastRecovery[player] > 2) then
+				lastRecovery[player] = os.clock()
+				local stop = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+				local x = (stop - 1) * GameConfig.StationSpacing - 40
+				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
+				root.AssemblyLinearVelocity = Vector3.zero
+				root.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	lastRecovery[player] = nil
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="17">
+        <Properties>
+          <string name="Name">RoundController</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Server-owned story progression and carriage movement. Prompts are validated
+-- here, and only the server awards currency or advances the train.
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local TweenService=game:GetService("TweenService")
+local RunService=game:GetService("RunService")
+local Workspace=game:GetService("Workspace")
+local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+local Profiles=require(script.Parent:WaitForChild("ProfileService"))
+local objectiveEvent=ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Remotes"):WaitForChild("ObjectiveUpdate")
+while Workspace:GetAttribute("LastTrainMode") == nil do
+ Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
+ Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+local world=Workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
+local objectiveFolder=world:WaitForChild("Objectives")
+local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
+local stage,completed,choice,traveling=0,false,nil,false
+local station=1
+local spacing=GameConfig.StationSpacing
+
+local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
+local function broadcast(endingKey)
+ local data=GameConfig.Stations[station]
+ objectiveEvent:FireAllClients(stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",storyFor(station),endingKey)
+end
+local function setDoors(open)
+ for _,d in ipairs(train:GetDescendants()) do if d:IsA("BasePart") then
+  if d.Name=="SlidingDoor" then
+   -- Only the platform-facing doors open; track-side doors stay sealed.
+   local shouldOpen=open and d:GetAttribute("Side")==-1
+   local x=d:GetAttribute(shouldOpen and "OpenX" or "ClosedX") or d.Position.X
+   d.Position=Vector3.new(x,d.Position.Y,d.Position.Z); d.CanCollide=not shouldOpen
+  elseif d.Name=="BoardingBridge" then
+   local shouldOpen=open and d:GetAttribute("Side")==-1
+   d.Transparency=shouldOpen and 0 or 1; d.CanCollide=shouldOpen
+  end
+ end end
+end
+local function boardPlayer(player)
+ local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
+ if not character or not humanoid or humanoid.Health<=0 then return end
+ character:PivotTo(train:GetPivot()*CFrame.new(-10,-1,0)); player:SetAttribute("OnLastTrain",true)
+end
+-- Keep the ride state in sync with where the player is standing. This lets
+-- players walk through the open doors and remain at a station when the train leaves.
+RunService.Heartbeat:Connect(function()
+ local pivot=train:GetPivot()
+ for _,p in ipairs(Players:GetPlayers()) do
+  local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
+  if root then
+   local localPosition=pivot:PointToObjectSpace(root.Position)
+   local aboard=math.abs(localPosition.X)<=96 and localPosition.Y>=-5 and localPosition.Y<=9 and math.abs(localPosition.Z)<=5.8
+   p:SetAttribute("OnLastTrain",aboard)
+  else p:SetAttribute("OnLastTrain",false) end
+ end
+end)
+local function moveToNextStation()
+ traveling=true; setDoors(false)
+ local start=train:GetPivot(); local target=start+Vector3.new(spacing,0,0)
+ local value=Instance.new("CFrameValue"); value.Value=start
+ local previous=start
+ local connection=value:GetPropertyChangedSignal("Value"):Connect(function()
+  local current=value.Value; local delta=current*previous:Inverse(); train:PivotTo(current)
+  for _,p in ipairs(Players:GetPlayers()) do
+   if p:GetAttribute("OnLastTrain") then local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local h=character and character:FindFirstChildWhichIsA("Humanoid")
+    if root and h and h.Health>0 then character:PivotTo(delta*character:GetPivot()) end
+   end
+  end
+  previous=current
+ end)
+ local tween=TweenService:Create(value,TweenInfo.new(14,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Value=target})
+ tween:Play(); tween.Completed:Wait(); connection:Disconnect(); value:Destroy()
+ station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
+ Workspace:SetAttribute("LastTrainStation",station); traveling=false; setDoors(true); broadcast()
+end
+
+-- Initial carriage is already docked at NEW MOON with its doors open.
+setDoors(true); Workspace:SetAttribute("LastTrainStation",1); broadcast()
+ for _,anchor in ipairs(objectiveFolder:GetChildren()) do
+ local p=anchor:FindFirstChildOfClass("ProximityPrompt")
+ if p then p.Triggered:Connect(function(player)
+  if anchor.Name:match("^BoardTrain_") then
+   local requiredStation=anchor:GetAttribute("StationIndex")
+   local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+   if not traveling and requiredStation==station and root and (root.Position-anchor.Position).Magnitude<=p.MaxActivationDistance+4 then boardPlayer(player) end
+   return
+  end
+  if completed or traveling or anchor:GetAttribute("ObjectiveStage")~=stage then return end
+  local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
+  if not root or not humanoid or humanoid.Health<=0 or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+4 then return end
+  if stage==5 then choice=anchor:GetAttribute("Choice") end
+  if stage==6 then
+   local endingKey=anchor:GetAttribute("Ending")
+   if endingKey=="Station08" and choice~="Records" then objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station)); return end
+   completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
+   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey); return
+  end
+  stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
+  if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
+  broadcast()
+  task.spawn(moveToNextStation)
+ end) end
+end
+for _,anchor in ipairs(train:GetDescendants()) do
+ if anchor:GetAttribute("PromptType")=="Disembark" then
+  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
+  if p then p.Triggered:Connect(function(player)
+   if traveling or not player:GetAttribute("OnLastTrain") then return end
+   local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
+   if not character or not humanoid or humanoid.Health<=0 then return end
+   local platformCFrame=train:GetPivot()*CFrame.new(0,-2,-16)
+   character:PivotTo(platformCFrame); player:SetAttribute("OnLastTrain",false)
+  end) end
+ end
+end
+-- Carriage memories are optional, one-time story interactions per player.
+for _,item in ipairs(train:GetDescendants()) do
+ local promptObject=item:FindFirstChildOfClass("ProximityPrompt")
+ local key=item:GetAttribute("NarrativeKey")
+ if promptObject and key then promptObject.Triggered:Connect(function(player)
+  if traveling or not player:GetAttribute("OnLastTrain") then return end
+  local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
+  local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
+  if not root or not humanoid or humanoid.Health<=0 or (root.Position-item.Position).Magnitude>promptObject.MaxActivationDistance+4 then return end
+  local playerKey="Read_"..key
+  if player:GetAttribute(playerKey) then return end
+  player:SetAttribute(playerKey,true)
+  objectiveEvent:FireClient(player,stage,item:GetAttribute("NarrativeText") or "車廂裡留下了一段記憶。",false,"列車記憶",item:GetAttribute("NarrativeText") or "")
+ end) end
+end
+Players.PlayerAdded:Connect(function(player)
+ task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",storyFor(station)) end end)
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="18">
+        <Properties>
+          <string name="Name">StationmasterAI</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Pathfinding chase without a downloaded character asset. Replace the blockout model with a custom rig in the art pass.
+local PathfindingService = game:GetService("PathfindingService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local GameConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+
+while Workspace:GetAttribute("LastTrainMode") == nil do
+    Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
+    Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+
+local world = Workspace:WaitForChild("LastTrainWorld")
+local spawnPart = world:WaitForChild("MonsterSpawn")
+local spawnPosition = Vector3.new(spawnPart.Position.X, 0, spawnPart.Position.Z)
+local monster = Instance.new("Model")
+monster.Name = "Stationmaster"
+monster.Parent = world
+
+local root = Instance.new("Part")
+root.Name = "Root"
+root.Size = Vector3.new(1, 1, 1)
+root.Transparency = 1
+root.Anchored = true
+root.CanCollide = false
+root.CanTouch = false
+root.Position = spawnPosition + Vector3.new(0, 0.5, 0)
+root.Parent = monster
+monster.PrimaryPart = root
+
+local function piece(name, size, offset, color, material)
+    local part = Instance.new("Part")
+    part.Name = name
+    part.Size = size
+    part.Color = color
+    part.Material = material or Enum.Material.SmoothPlastic
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanTouch = false
+    part.CastShadow = true
+    part.CFrame = CFrame.new(spawnPosition + offset)
+    part.Parent = monster
+    return part
+end
+
+piece("LongCoat", Vector3.new(2.8, 4.4, 1.45), Vector3.new(0, 3.4, 0), Color3.fromRGB(15, 20, 24), Enum.Material.Fabric)
+piece("Collar", Vector3.new(1.8, 0.55, 1.2), Vector3.new(0, 5.6, 0), Color3.fromRGB(95, 35, 33), Enum.Material.Fabric)
+piece("BlankFace", Vector3.new(1.65, 1.9, 1.25), Vector3.new(0, 6.85, 0), Color3.fromRGB(172, 177, 167), Enum.Material.SmoothPlastic)
+piece("Cap", Vector3.new(2.5, 0.5, 2.2), Vector3.new(0, 7.95, 0), Color3.fromRGB(18, 23, 28), Enum.Material.Fabric)
+piece("CapBrim", Vector3.new(2.9, 0.15, 1), Vector3.new(0, 7.7, -0.75), Color3.fromRGB(18, 23, 28), Enum.Material.Fabric)
+for _, x in ipairs({-0.42, 0.42}) do
+    local eye = piece("RedEye", Vector3.new(0.22, 0.13, 0.08), Vector3.new(x, 6.95, -0.66), Color3.fromRGB(200, 39, 31), Enum.Material.Neon)
+    eye.CastShadow = false
+end
+for _, x in ipairs({-1.85, 1.85}) do
+    piece("Sleeve", Vector3.new(0.8, 3.9, 0.9), Vector3.new(x, 3.55, 0), Color3.fromRGB(18, 23, 27), Enum.Material.Fabric)
+end
+for _, x in ipairs({-0.78, 0.78}) do
+    piece("TrouserLeg", Vector3.new(0.9, 2.3, 1), Vector3.new(x, 1.05, 0), Color3.fromRGB(21, 25, 29), Enum.Material.Fabric)
+end
+
+local function setModelPosition(position, direction)
+    local look = Vector3.new(direction.X, 0, direction.Z)
+    if look.Magnitude < 0.01 then look = Vector3.new(0, 0, -1) end
+    local target = CFrame.lookAt(Vector3.new(position.X, 0.5, position.Z), Vector3.new(position.X, 0.5, position.Z) + look.Unit)
+    monster:PivotTo(target)
+end
+
+local active = false
+local speed = 10.5
+local function nearestPlayer()
+    local bestRoot, bestDistance, bestRange, bestScore
+    for _, player in ipairs(Players:GetPlayers()) do
+        local character = player.Character
+        local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+        local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
+        if humanoid and playerRoot and humanoid.Health > 0 then
+            local distance = (playerRoot.Position - root.Position).Magnitude
+            local range = 190 * (player:GetAttribute("MonsterDetectionMultiplier") or 1)
+            local score = distance / math.max(range, 1)
+            if distance <= range and (not bestScore or score < bestScore) then
+                bestRoot, bestDistance, bestRange, bestScore = playerRoot, distance, range, score
+            end
+        end
+    end
+    return bestRoot, bestDistance, bestRange
+end
+
+local function catchNearbyPlayer()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local character = player.Character
+        local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+        local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
+        if humanoid and playerRoot and humanoid.Health > 0 and (playerRoot.Position - root.Position).Magnitude < 4.2 then
+            humanoid.Health = 0
+        end
+    end
+end
+
+while true do
+    local stage = Workspace:GetAttribute("LastTrainRoundStage") or 0
+    local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, 0)
+    if (stationSpawn - spawnPosition).Magnitude > 1 then
+        spawnPosition = stationSpawn
+        setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
+    end
+    local shouldHunt = stage >= 1 and stage < 3 and station >= 2 and station <= 3
+    if shouldHunt and not active then
+        active = true
+        setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
+    elseif not shouldHunt and active then
+        active = false
+        setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
+    end
+
+    if active then
+        local target, distance, targetRange = nearestPlayer()
+        if target and distance and distance < targetRange then
+            local path = PathfindingService:CreatePath({
+                AgentRadius = 2,
+                AgentHeight = 8,
+                AgentCanJump = false,
+                WaypointSpacing = 5,
+            })
+            local success = pcall(function()
+                path:ComputeAsync(root.Position, target.Position)
+            end)
+            if success and path.Status == Enum.PathStatus.Success then
+                local waypoints = path:GetWaypoints()
+                for index = 2, #waypoints do
+                    if not active then break end
+                    local destination = Vector3.new(waypoints[index].Position.X, 0.5, waypoints[index].Position.Z)
+                    local start = root.Position
+                    local delta = Vector3.new(destination.X - start.X, 0, destination.Z - start.Z)
+                    local length = delta.Magnitude
+                    if length > 0.2 then
+                        local direction = delta.Unit
+                        local travelled = 0
+                        while travelled < length and active do
+                            local dt = RunService.Heartbeat:Wait()
+                            local step = math.min(speed * dt, length - travelled)
+                            travelled += step
+                            local position = start + direction * travelled
+                            setModelPosition(position, direction)
+                            catchNearbyPlayer()
+                            local currentTarget, currentDistance, currentRange = nearestPlayer()
+                            if not currentTarget or not currentDistance or currentDistance > currentRange + 20 then break end
+                            if currentDistance < 4.5 then catchNearbyPlayer() end
+                        end
+                    end
+                    local _, currentDistance, currentRange = nearestPlayer()
+                    if not currentDistance or currentDistance > currentRange + 20 then break end
+                end
+            end
+        end
+    end
+    task.wait(0.45)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="19">
+        <Properties>
+          <string name="Name">WorldBuilder</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Seven-stop, walkable horror route. All geometry is generated from this file so
+-- the map remains editable in Studio without external packages or asset IDs.
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GameConfig = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+
+-- This place also hosts the public lobby. Only reserved round servers build the route.
+while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+
+local old = Workspace:FindFirstChild("LastTrainWorld")
+if old then old:Destroy() end
+local world = Instance.new("Folder"); world.Name = "LastTrainWorld"; world.Parent = Workspace
+world:SetAttribute("Ready", false); world:SetAttribute("Station", 1)
+Workspace:SetAttribute("LastTrainRoundStage", 0)
+local function folder(name) local f=Instance.new("Folder"); f.Name=name; f.Parent=world; return f end
+local geometry, props, objectives = folder("Geometry"), folder("Props"), folder("Objectives")
+local C={ concrete=Color3.fromRGB(77,88,95), tile=Color3.fromRGB(105,117,122), dark=Color3.fromRGB(28,37,43), metal=Color3.fromRGB(128,141,145), gold=Color3.fromRGB(233,188,99), cyan=Color3.fromRGB(92,212,226), glass=Color3.fromRGB(31,63,76) }
+local function part(parent,name,size,pos,color,material,transparency,collide)
+ local p=Instance.new("Part"); p.Name=name; p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic; p.Transparency=transparency or 0; p.Anchored=true; p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=parent; return p
+end
+local function ellipsoid(parent,name,pos,scale,color,material,transparency,collide)
+ local p=part(parent,name,Vector3.one,pos,color,material,transparency,collide)
+ local mesh=Instance.new("SpecialMesh"); mesh.MeshType=Enum.MeshType.Sphere; mesh.Scale=scale; mesh.Parent=p
+ return p
+end
+local function pointLight(host,color,brightness,range)
+ local l=Instance.new("PointLight"); l.Color=color; l.Brightness=brightness; l.Range=range; l.Shadows=false; l.Parent=host; return l
+end
+local function label(host,text,color,width,height)
+ local gui=Instance.new("SurfaceGui"); gui.Face=Enum.NormalId.Front; gui.CanvasSize=Vector2.new(1000,260); gui.LightInfluence=0; gui.Parent=host
+ local t=Instance.new("TextLabel"); t.Size=UDim2.fromScale(1,1); t.BackgroundTransparency=1; t.Text=text; t.TextColor3=color; t.TextStrokeTransparency=.72; t.Font=Enum.Font.GothamBlack; t.TextScaled=true; t.Parent=gui; return gui
+end
+local function prompt(name,stage,pos,action,objectText,extra)
+ local a=part(objectives,name,Vector3.new(2,3,2),pos,C.cyan,Enum.Material.Neon,1,false); a:SetAttribute("ObjectiveStage",stage)
+ if extra then for k,v in pairs(extra) do a:SetAttribute(k,v) end end
+ local pr=Instance.new("ProximityPrompt"); pr.ActionText=action; pr.ObjectText=objectText; pr.HoldDuration=.65; pr.MaxActivationDistance=11; pr.RequiresLineOfSight=false; pr.Parent=a; return a
+end
+-- Surface-following trim and glazing sit directly on the compound rounded shell.
+local function shellSurface(x,y,side,offset)
+ local nx=(x-35)/33; local ny=(y-4.25)/5.9
+ local inside=math.max(.015,1-nx*nx-ny*ny); local root=math.sqrt(inside)
+ local z=6.2*root+(offset or .035)
+ local dzdx=-6.2*(x-35)/(33*33*root)
+ local dzdy=-6.2*(y-4.25)/(5.9*5.9*root)
+ local sx,sy=side*dzdx,side*dzdy
+ local right=Vector3.new(1,0,sx).Unit; if side<0 then right=-right end
+ local up=Vector3.new(0,1,sy).Unit
+ local normal=right:Cross(up).Unit
+ return Vector3.new(x,y,side*z),right,up,normal
+end
+local function surfacePanel(parent,name,size,x,y,side,color,material,transparency)
+ local pos,right,up,normal=shellSurface(x,y,side,.055)
+ local p=part(parent,name,size,pos,color,material,transparency or 0,false)
+ p.CFrame=CFrame.fromMatrix(pos,right,up,normal); return p
+end
+local function curvedWindowBand(parent,name,centerX,side)
+ local columns,rows=5,2; local span,height=17,2.7
+ for column=1,columns do for row=1,rows do
+  local x=centerX-span/2+(column-.5)*span/columns
+  local y=3.8+(row-.5)*height/rows
+  local pane=surfacePanel(parent,name,Vector3.new(span/columns-.055,height/rows-.055,.1),x,y,side,Color3.fromRGB(18,42,52),Enum.Material.Glass,.035)
+  pane.Reflectance=.14
+ end end
+end
+local function curvedStripe(parent,name,side,y,color,thickness)
+ local segments=18; local xStart,xEnd=8,62
+ for i=1,segments do
+  local x=xStart+(i-.5)*(xEnd-xStart)/segments
+  local p=surfacePanel(parent,name,Vector3.new((xEnd-xStart)/segments+.03,thickness,.12),x,y,side,color,Enum.Material.Neon,0)
+  p:SetAttribute("SurfaceStripe",true)
+ end
+end
+
+-- A long route with a 600-stud run between each of the seven stations.
+local spacing=GameConfig.StationSpacing
+local routeLength=spacing*(#GameConfig.Stations-1)+480
+local routeCenter=spacing*(#GameConfig.Stations-1)/2
+local routeStart=routeCenter-routeLength/2
+local routeEnd=routeCenter+routeLength/2
+part(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-2,0),C.concrete,Enum.Material.Concrete)
+part(geometry,"ContinuousTrackBed",Vector3.new(routeLength-24,1,22),Vector3.new(routeCenter,-1.1,0),C.dark,Enum.Material.Asphalt)
+part(geometry,"ContinuousCeiling",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,18,0),C.dark,Enum.Material.Metal)
+for _,side in ipairs({-1,1}) do
+ part(geometry,"ContinuousBackWall",Vector3.new(routeLength,18,2),Vector3.new(routeCenter,8,side*33),C.tile,Enum.Material.Concrete)
+ part(geometry,"WallLowerTrim",Vector3.new(routeLength,1.3,.24),Vector3.new(routeCenter,2.25,side*31.85),C.dark,Enum.Material.Metal)
+end
+-- Close the route at both ends; the long side walls and ceiling enclose all seven stops.
+for _,x in ipairs({routeStart+1,routeEnd-1}) do
+ part(geometry,"TunnelEndWall",Vector3.new(2,18,66),Vector3.new(x,8,0),C.tile,Enum.Material.Concrete)
+ part(geometry,"EndWallServiceDoor",Vector3.new(.18,8,5),Vector3.new(x-1.08,4,0),C.dark,Enum.Material.Metal)
+ part(geometry,"EndWallExitGlow",Vector3.new(.12,.2,3.5),Vector3.new(x-1.2,7.55,0),C.cyan,Enum.Material.Neon,0,false)
+end
+for _,z in ipairs({-4.6,4.6}) do part(geometry,"ContinuousRail",Vector3.new(routeLength-25,.3,.3),Vector3.new(routeCenter,-.35,z),C.metal,Enum.Material.Metal) end
+for x=routeStart+10,routeEnd-10,5 do part(geometry,"TrackSleeper",Vector3.new(.8,.25,13),Vector3.new(x,-.55,0),C.dark,Enum.Material.WoodPlanks) end
+
+-- A silver high-speed style carriage with tapered noses, broad dark glazing,
+-- a curved roof, and a bright cyan beltline rather than a box shell.
+local train=Instance.new("Model"); train.Name="LastTrainCar"; train.Parent=props
+part(train,"CarFloor",Vector3.new(60,.6,11.4),Vector3.new(35,-.2,0),Color3.fromRGB(41,52,59),Enum.Material.Metal)
+-- One continuous rounded body/roof shell blends the cab nose into the passenger
+-- body; adjacent shells overlap at the gangway instead of leaving ceiling gaps.
+local shell=ellipsoid(train,"CarBodyShell",Vector3.new(35,4.25,0),Vector3.new(66,11.8,12),Color3.fromRGB(174,190,194),Enum.Material.Metal,0,false)
+shell.Reflectance=.12
+local rearNose=ellipsoid(train,"TaperedNose_Rear",Vector3.new(18,4.25,0),Vector3.new(32,7,8.3),Color3.fromRGB(174,190,194),Enum.Material.Metal,0,false)
+local frontNose=ellipsoid(train,"TaperedNose_Front",Vector3.new(52,4.25,0),Vector3.new(38,6.5,7.7),Color3.fromRGB(174,190,194),Enum.Material.Metal,0,false)
+rearNose.Reflectance=.12; frontNose.Reflectance=.12
+for _,side in ipairs({-1,1}) do
+ part(train,"ContinuousLowerSkirt",Vector3.new(46,1.15,.26),Vector3.new(35,1.45,side*5.5),Color3.fromRGB(65,83,92),Enum.Material.Metal,0,false)
+ part(train,"BeltlineAccent",Vector3.new(47,.24,.2),Vector3.new(35,2.25,side*5.75),Color3.fromRGB(19,109,145),Enum.Material.Metal,0,false)
+ part(train,"LowerSidePanel_Front",Vector3.new(22,1.2,.16),Vector3.new(20,1.65,side*4.7),Color3.fromRGB(220,227,224),Enum.Material.SmoothPlastic,0,false)
+ part(train,"LowerSidePanel_Rear",Vector3.new(22,1.2,.16),Vector3.new(50,1.65,side*4.7),Color3.fromRGB(220,227,224),Enum.Material.SmoothPlastic,0,false)
+ part(train,"SideHeader",Vector3.new(38,.42,.16),Vector3.new(35,7.5,side*3.95),Color3.fromRGB(196,209,208),Enum.Material.SmoothPlastic,0,false)
+ for _,x in ipairs({32,38}) do
+  part(train,"DoorFrame",Vector3.new(.24,6.35,.26),Vector3.new(x,3.25,side*5.95),C.metal,Enum.Material.SmoothPlastic,0,false)
+ end
+ for _,x in ipairs({33.55,36.45}) do
+  local d=part(train,"SlidingDoor",Vector3.new(2.9,6.1,.32),Vector3.new(x,2.65,side*5.96),Color3.fromRGB(133,171,178),Enum.Material.Glass,.12,false)
+  d:SetAttribute("ClosedX",x); d:SetAttribute("OpenX",x+(x<35 and -3.05 or 3.05)); d:SetAttribute("Side",side)
+ end
+ curvedWindowBand(train,"PanoramicWindowBand",20,side)
+ curvedWindowBand(train,"PanoramicWindowBand",50,side)
+end
+local noseMask=part(train,"CabNoseMask",Vector3.new(.22,2.05,7.4),Vector3.new(70.7,5.1,0),Color3.fromRGB(17,97,129),Enum.Material.Metal,0,false)
+noseMask.CFrame=CFrame.new(noseMask.Position)*CFrame.Angles(0,0,math.rad(8))
+part(train,"LowerCabApron",Vector3.new(.24,.7,5.4),Vector3.new(70.7,2.8,0),Color3.fromRGB(41,58,68),Enum.Material.Metal,0,false)
+for _,z in ipairs({-2.35,2.35}) do
+ local lamp=part(train,"CabHeadlamp",Vector3.new(.28,.42,1.15),Vector3.new(70.9,4.2,z),Color3.fromRGB(255,239,194),Enum.Material.Neon,0,false)
+ pointLight(lamp,Color3.fromRGB(255,225,164),1.4,18)
+end
+for _,side in ipairs({-1,1}) do
+ curvedStripe(train,"CyanBeltline",side,7.05,C.cyan,.16)
+ curvedStripe(train,"GoldBeltline",side,1.72,C.gold,.12)
+ local signPosition,signRight,signUp,signNormal=shellSurface(25,7.35,side,.08)
+ local routeSign=part(train,"DestinationDisplay",Vector3.new(7,1.05,.16),signPosition,Color3.fromRGB(5,17,22),Enum.Material.Glass,.04,false)
+ routeSign.CFrame=CFrame.fromMatrix(signPosition,signRight,signUp,signNormal); label(routeSign,"LAST TRAIN   •   07 STOPS",C.cyan)
+end
+-- Slanted end glazing and paired lamps make the tapered ends read as a cab.
+for _,x in ipairs({3,67}) do
+ local isFront=x>35
+ local screen=part(train,"SlopedCabWindshield",Vector3.new(.12,1.35,2.8),Vector3.new(x,5.05,0),Color3.fromRGB(13,34,45),Enum.Material.Glass,.025,false)
+ screen.CFrame=CFrame.new(screen.Position)*CFrame.Angles(0,0,math.rad(isFront and 13 or -13)); screen.Reflectance=.32
+ for _,z in ipairs({-1.35,1.35}) do
+  local h=part(train,"StreamlinedHeadlamp",Vector3.new(.18,.32,.52),Vector3.new(x+(isFront and .15 or -.15),3.55,z),Color3.fromRGB(255,241,207),Enum.Material.Neon,0,false)
+  h.CFrame=CFrame.new(h.Position)*CFrame.Angles(0,0,math.rad(isFront and 13 or -13)); pointLight(h,Color3.fromRGB(255,228,176),1.8,22)
+ end
+end
+for _,x in ipairs({20,50}) do
+ local strip=part(train,"WarmCabinLight",Vector3.new(13,.18,1.25),Vector3.new(x,8.85,0),Color3.fromRGB(255,225,176),Enum.Material.Neon,0,false); pointLight(strip,Color3.fromRGB(255,216,158),1.1,23)
+ local pole=part(train,"GrabPole",Vector3.new(.16,5.1,.16),Vector3.new(x,2.5,0),C.gold,Enum.Material.Metal); pole.Shape=Enum.PartType.Cylinder
+end
+for _,x in ipairs({14,24,46,56}) do for _,side in ipairs({-1,1}) do
+ part(train,"UpholsteredSeat",Vector3.new(5,.5,2.05),Vector3.new(x,.62,side*3.3),Color3.fromRGB(40,106,112),Enum.Material.Fabric)
+ part(train,"SeatBack",Vector3.new(5,2,.45),Vector3.new(x,1.8,side*2.25),Color3.fromRGB(40,106,112),Enum.Material.Fabric)
+end end
+local recorder=part(train,"ConductorRecorder",Vector3.new(1.3,.5,.9),Vector3.new(24,1.4,-1.8),C.gold,Enum.Material.Metal)
+local recLight=part(train,"RecorderStatus",Vector3.new(.18,.16,.1),Vector3.new(24,1.65,-2.3),Color3.fromRGB(250,73,65),Enum.Material.Neon,0,false); pointLight(recLight,recLight.Color,.3,4)
+
+-- Extend the high-speed train to three connected cars. The original carriage is
+-- the center car; outer cars retain only the matching cab nose at the train ends.
+local originalParts={}
+for _,child in ipairs(train:GetChildren()) do if child:IsA("BasePart") then table.insert(originalParts,child) end end
+local function makeCarriage(name,offset,keepCab)
+ local car=Instance.new("Model"); car.Name=name; car.Parent=train
+ local omit={ConductorRecorder=true,RecorderStatus=true}
+ for _,source in ipairs(originalParts) do
+  local isRear=source.Name=="TaperedNose_Rear" or (source.Name=="SlopedCabWindshield" and source.Position.X<35) or (source.Name=="StreamlinedHeadlamp" and source.Position.X<35)
+  local isFront=source.Name=="TaperedNose_Front" or (source.Name=="SlopedCabWindshield" and source.Position.X>35) or (source.Name=="StreamlinedHeadlamp" and source.Position.X>35) or source.Name=="CabNoseMask" or source.Name=="LowerCabApron" or source.Name=="CabHeadlamp"
+  if source.Name=="TaperedNose_Rear" or source.Name=="TaperedNose_Front" or source.Name=="SlopedCabWindshield" or source.Name=="StreamlinedHeadlamp" or source.Name=="CabNoseMask" or source.Name=="LowerCabApron" or source.Name=="CabHeadlamp" then
+   if (keepCab=="Rear" and isRear) or (keepCab=="Front" and isFront) then
+    local clone=source:Clone(); clone.Position=clone.Position+Vector3.new(offset,0,0); clone.Parent=car
+   end
+  elseif not omit[source.Name] then
+   local clone=source:Clone(); clone.Position=clone.Position+Vector3.new(offset,0,0)
+   for _,attribute in ipairs({"ClosedX","OpenX"}) do local value=clone:GetAttribute(attribute); if value then clone:SetAttribute(attribute,value+offset) end end
+   clone.Parent=car
+  end
+ end
+ -- Flexible, dark gangways bridge the one-stud body seams while keeping a
+ -- clear interior passage between the cars.
+ local jointX=offset<0 and 65 or 5
+ if offset== -60 or offset==60 then
+  ellipsoid(car,"ArticulatedGangway",Vector3.new(jointX+offset,4.1,0),Vector3.new(4.2,6.9,9.2),Color3.fromRGB(32,43,48),Enum.Material.Rubber,0,false)
+  ellipsoid(car,"ConnectedCeiling",Vector3.new(jointX+offset,7.2,0),Vector3.new(5.4,1.35,8.4),Color3.fromRGB(190,202,202),Enum.Material.SmoothPlastic,0,false)
+ end
+ return car
+end
+local rearCar=makeCarriage("RearCarriage",-60,"Rear")
+local frontCar=makeCarriage("FrontCarriage",60,"Front")
+-- Hide the center carriage's cab ends: it is an intermediate passenger car.
+for _,name in ipairs({"TaperedNose_Rear","TaperedNose_Front","SlopedCabWindshield","StreamlinedHeadlamp","CabNoseMask","LowerCabApron","CabHeadlamp"}) do
+ for _,child in ipairs(train:GetChildren()) do if child.Name==name and child:IsA("BasePart") then child.Transparency=1; child.CanCollide=false end end
+end
+-- Recessed walk plates meet the platform edge when the platform-side doors open.
+for _,car in ipairs({train,rearCar,frontCar}) do
+ local offset=car==rearCar and -60 or (car==frontCar and 60 or 0)
+ local bridge=part(car,"BoardingBridge",Vector3.new(6.2,.18,.72),Vector3.new(35+offset,-.02,-5.86),C.metal,Enum.Material.Metal,1,false)
+ bridge:SetAttribute("Side",-1); bridge.CanCollide=false
+end
+-- Two discoverable onboard story beats, each housed in one added carriage.
+local function carriageMemory(parent,name,pos,title,story,color)
+ local artifact=part(parent,name,Vector3.new(1.6,.7,1.1),pos,color,Enum.Material.Metal)
+ artifact:SetAttribute("NarrativeKey",name); artifact:SetAttribute("NarrativeText",story)
+ local glow=part(parent,name.."Glow",Vector3.new(1.1,.08,.08),pos+Vector3.new(0,.39,-.57),color,Enum.Material.Neon,0,false); pointLight(glow,color,.45,7)
+ local pr=Instance.new("ProximityPrompt"); pr.ActionText=title; pr.ObjectText="列車上的記憶"; pr.HoldDuration=.5; pr.MaxActivationDistance=9; pr.RequiresLineOfSight=false; pr.Parent=artifact
+ return artifact
+end
+carriageMemory(rearCar,"LostBroadcast",Vector3.new(-36,1.2,-1.2),"播放失蹤廣播","錄音裡的列車長急促地說：『新月站不要下車。這段錄音是三天前留下的。』背景裡，卻傳來你剛剛才說過的話。",C.cyan)
+carriageMemory(frontCar,"ReturnTicket",Vector3.new(84,1.2,-1.2),"翻看舊車票","車票的日期是二十年前。目的地欄寫著你的名字。翻到背面，有人用鉛筆補上一句：『第七次抵達時，請別再上車。』",C.gold)
+-- A simple prompt offers a reliable way to get off at every stop; walking
+-- through the open platform-side doors works as well.
+local function addDisembarkPrompt(parent,x)
+ local anchor=part(parent,"DisembarkPrompt",Vector3.new(1,1,1),Vector3.new(x,2.1,-4.4),C.cyan,Enum.Material.Neon,1,false)
+ anchor:SetAttribute("PromptType","Disembark")
+ local p=Instance.new("ProximityPrompt"); p.ActionText="下車到月台"; p.ObjectText="列車已到站"; p.HoldDuration=.35; p.MaxActivationDistance=9; p.RequiresLineOfSight=false; p.Parent=anchor
+end
+addDisembarkPrompt(train,35)
+addDisembarkPrompt(rearCar,-25)
+addDisembarkPrompt(frontCar,95)
+-- Align the negative-side doors within arm's reach of the platform edge.
+for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,-6.35) end end
+
+for i,station in ipairs(GameConfig.Stations) do
+ local center=(i-1)*spacing; local accent=station.Accent
+ for _,side in ipairs({-1,1}) do
+  -- Finished wall cladding, inset light panels, and service access doors make the
+  -- full tunnel enclosure read as a designed station instead of a bare corridor.
+  part(geometry,"StationWallCladding",Vector3.new(380,11,.18),Vector3.new(center,8,side*31.82),i%2==0 and C.concrete or Color3.fromRGB(91,103,108),Enum.Material.SmoothPlastic,0,false)
+  for _,panelX in ipairs({-90,-45,0,45,90}) do
+   part(geometry,"WallRecessPanel",Vector3.new(24,5,.22),Vector3.new(center+panelX,8,side*31.68),C.tile,Enum.Material.Metal,0,false)
+   part(geometry,"WallPanelLight",Vector3.new(18,.12,.08),Vector3.new(center+panelX,10.35,side*31.52),accent,Enum.Material.Neon,0,false)
+  end
+  part(geometry,"Platform_"..i,Vector3.new(420,1,21),Vector3.new(center,-.5,side*22.5),i%2==0 and Color3.fromRGB(92,103,108) or Color3.fromRGB(99,108,112),Enum.Material.Concrete)
+  -- Fine stone joints, direction bands and inset edge lighting make the long
+  -- platforms read as finished public architecture at walking distance.
+  for xoff=-180,180,30 do
+   part(geometry,"PlatformTileJoint",Vector3.new(.055,.025,20.5),Vector3.new(center+xoff,.012,side*22.5),Color3.fromRGB(137,148,148),Enum.Material.Metal,0,false)
+  end
+  for _,zoff in ipairs({-8.5,-2.5,3.5,8.5}) do
+   part(geometry,"PlatformStoneBand",Vector3.new(412,.035,.12),Vector3.new(center,.025,side*22.5+zoff),Color3.fromRGB(133,144,145),Enum.Material.SmoothPlastic,0,false)
+  end
+  part(geometry,"PlatformWayfindingStripe",Vector3.new(396,.045,.28),Vector3.new(center,.035,side*28.4),accent,Enum.Material.Neon,.12,false)
+  part(geometry,"TactileSafetyStrip_"..i,Vector3.new(416,.09,.8),Vector3.new(center,.06,side*11.55),C.gold,Enum.Material.DiamondPlate,0,false)
+  part(geometry,"PlatformEdge_"..i,Vector3.new(418,.13,.22),Vector3.new(center,.08,side*12.3),accent,Enum.Material.Neon,0,false)
+  for _,xoff in ipairs({-100,-40,40,100}) do
+   local col=part(geometry,"RoundArchitecturalColumn",Vector3.new(1.45,13.3,1.45),Vector3.new(center+xoff,6.85,side*12.8),Color3.fromRGB(153,167,168),Enum.Material.SmoothPlastic); col.Shape=Enum.PartType.Cylinder
+   local foot=part(geometry,"ColumnSocket",Vector3.new(2,.42,2),Vector3.new(center+xoff,.21,side*12.8),C.dark,Enum.Material.Metal); foot.Shape=Enum.PartType.Cylinder
+  end
+  ellipsoid(geometry,"SweptPlatformCanopy",Vector3.new(center,15.5,side*22.5),Vector3.new(360,2.8,18.2),Color3.fromRGB(51,69,76),Enum.Material.Metal,0,false)
+  part(geometry,"CanopyUndersideLight",Vector3.new(350,.14,.8),Vector3.new(center,14.02,side*22.5),Color3.fromRGB(255,231,190),Enum.Material.Neon,.01,false)
+  for _,xoff in ipairs({-105,-50,5,60,110}) do
+   local lamp=part(geometry,"StationLight",Vector3.new(15,.18,.85),Vector3.new(center+xoff,13.92,side*22),Color3.fromRGB(255,230,191),Enum.Material.Neon,.01,false); pointLight(lamp,Color3.fromRGB(255,219,163),2.15,38)
+  end
+  -- Overhead platform number plates and discreet wall wash lights unify each
+  -- stop's accent color and create readable visual landmarks.
+  local pylon=part(props,"PlatformNumberPylon",Vector3.new(1.25,7.5,1.25),Vector3.new(center+145,3.75,side*15.4),C.dark,Enum.Material.Metal)
+  local pylonFace=part(props,"PlatformNumberFace",Vector3.new(.08,4.4,.86),pylon.Position+Vector3.new(side*.67,.6,0),accent,Enum.Material.Neon,.08,false)
+  local pylonGui=Instance.new("SurfaceGui"); pylonGui.Face=side==1 and Enum.NormalId.Right or Enum.NormalId.Left; pylonGui.CanvasSize=Vector2.new(180,480); pylonGui.LightInfluence=0; pylonGui.Parent=pylonFace
+  local pylonText=Instance.new("TextLabel"); pylonText.Size=UDim2.fromScale(1,1); pylonText.BackgroundTransparency=1; pylonText.Text=string.format("%02d\n月台",i); pylonText.TextColor3=Color3.fromRGB(245,249,239); pylonText.Font=Enum.Font.GothamBlack; pylonText.TextScaled=true; pylonText.Parent=pylonGui
+  for _,xoff in ipairs({-80,0,80}) do for step=1,4 do
+   local z=side*(12.25-step*.58); local y=.05-step*.38
+   part(geometry,"TrackAccessStep",Vector3.new(8,.5,.72),Vector3.new(center+xoff,y,z),C.metal,Enum.Material.Metal)
+  end end
+ end
+ local sign=part(props,"StationSign_"..i,Vector3.new(32,3.7,.45),Vector3.new(center,12.1,-31.55),Color3.fromRGB(18,29,35),Enum.Material.Metal)
+ part(props,"SignGlow_"..i,Vector3.new(31.5,.12,.12),Vector3.new(center,10.15,-31.25),accent,Enum.Material.Neon,0,false); label(sign,station.Name.."   /   "..station.English,accent)
+ local kiosk=part(props,"StoryTotem_"..i,Vector3.new(2.4,4.5,1.15),Vector3.new(center-88,2.25,-28),Color3.fromRGB(24,35,41),Enum.Material.Metal)
+ local screen=part(props,"StoryScreen_"..i,Vector3.new(1.75,2.1,.08),Vector3.new(center-88,2.95,-27.37),accent,Enum.Material.Neon,.14,false); pointLight(screen,accent,.4,8)
+ local boardAnchor=part(objectives,"BoardTrain_"..i,Vector3.new(1,3,1),Vector3.new(center+35,2,-15.5),accent,Enum.Material.Neon,1,false)
+ boardAnchor:SetAttribute("StationIndex",i)
+ local boardPrompt=Instance.new("ProximityPrompt"); boardPrompt.ActionText="登上列車"; boardPrompt.ObjectText=station.Name.."：末班車"; boardPrompt.HoldDuration=.35; boardPrompt.MaxActivationDistance=11; boardPrompt.RequiresLineOfSight=false; boardPrompt.Parent=boardAnchor
+ -- A distinctive visual landmark palette for each stop.
+ if i==2 then
+  for n=1,4 do local gate=part(props,"SilentTurnstile",Vector3.new(.4,2.6,4),Vector3.new(center-20+n*7,1.3,-20),Color3.fromRGB(79,119,100),Enum.Material.Metal); part(props,"TurnstileGlow",Vector3.new(.3,.12,3.7),gate.Position+Vector3.new(0,1.2,0),accent,Enum.Material.Neon,0,false) end
+  -- Wordless passengers stare at the tiled wall; the child holds the warning photo.
+  for n=1,5 do
+   local px=center-48+n*17; local clothing=Color3.fromRGB(27+n*3,39+n*2,43+n*2)
+   part(props,"SilentPassengerBody",Vector3.new(1.15,2.1,.65),Vector3.new(px,2.15,-25.8),clothing,Enum.Material.Fabric)
+   part(props,"SilentPassengerHead",Vector3.new(.78,.86,.78),Vector3.new(px,3.63,-25.8),Color3.fromRGB(130,137,132),Enum.Material.SmoothPlastic)
+   part(props,"SilentPassengerLeftArm",Vector3.new(.32,1.65,.38),Vector3.new(px-.78,2.25,-25.8),clothing,Enum.Material.Fabric)
+   part(props,"SilentPassengerRightArm",Vector3.new(.32,1.65,.38),Vector3.new(px+.78,2.25,-25.8),clothing,Enum.Material.Fabric)
+   for _,dx in ipairs({-.28,.28}) do part(props,"SilentPassengerLeg",Vector3.new(.42,1.12,.48),Vector3.new(px+dx,.56,-25.8),C.dark,Enum.Material.Fabric) end
+  end
+  local girl=part(props,"WarningGirlCoat",Vector3.new(.8,1.65,.55),Vector3.new(center-67,1.9,-24.6),Color3.fromRGB(119,49,52),Enum.Material.Fabric)
+  part(props,"WarningGirlHead",Vector3.new(.65,.72,.65),girl.Position+Vector3.new(0,1.25,0),Color3.fromRGB(211,184,158),Enum.Material.SmoothPlastic)
+ elseif i==3 then
+  for n=1,3 do local speaker=part(props,"EchoSpeaker",Vector3.new(2.4,5,.7),Vector3.new(center-20+n*20,2.5,-31),C.dark,Enum.Material.Metal); part(props,"SpeakerRing",Vector3.new(.12,2.2,.08),speaker.Position+Vector3.new(0,0,-.4),accent,Enum.Material.Neon,0,false) end
+ elseif i==4 then
+  part(props,"MirrorLakeGlass",Vector3.new(82,9,.35),Vector3.new(center,5,-31.25),Color3.fromRGB(49,111,142),Enum.Material.Glass,.32,false)
+  for n=-3,3 do part(props,"MirrorFrame",Vector3.new(.18,9,.5),Vector3.new(center+n*11,5,-30.95),accent,Enum.Material.Neon,.25,false) end
+ elseif i==5 then
+  for n=1,4 do local crt=part(props,"ForgottenMonitor",Vector3.new(5,3.3,.55),Vector3.new(center-30+n*15,4.1,-31),Color3.fromRGB(13,25,31),Enum.Material.Metal); part(props,"CCTVImage",Vector3.new(4.55,2.45,.08),crt.Position+Vector3.new(0,0,-.34),Color3.fromRGB(91,129,119),Enum.Material.Neon,.26,false) end
+ elseif i==6 then
+  for n=1,5 do local hazard=part(props,"RepairBayColumn",Vector3.new(1.5,8,1.5),Vector3.new(center-28+n*14,4,-28),C.metal,Enum.Material.Metal); part(props,"HazardBand",Vector3.new(1.55,.5,1.55),hazard.Position+Vector3.new(0,-1,0),accent,Enum.Material.Neon,0,false) end
+  for _,offset in ipairs({-104,104}) do
+   local parked=part(props,"GhostTrainBody",Vector3.new(54,7.5,8),Vector3.new(center+offset,4.1,offset<0 and 25 or -25),Color3.fromRGB(41,54,61),Enum.Material.Metal)
+   part(props,"GhostTrainWindowBand",Vector3.new(46,2.5,.15),parked.Position+Vector3.new(0,1.2,offset<0 and -4.1 or 4.1),Color3.fromRGB(74,127,136),Enum.Material.Glass,.18,false)
+   part(props,"GhostTrainRouteGlow",Vector3.new(48,.15,.12),parked.Position+Vector3.new(0,-2.3,offset<0 and -4.12 or 4.12),accent,Enum.Material.Neon,0,false)
+  end
+ elseif i==7 then
+  for n=1,3 do local arch=part(props,"HomeTerminalArch",Vector3.new(.7,14,.8),Vector3.new(center+30+n*13,7,-29),accent,Enum.Material.Neon,.14,false); pointLight(arch,accent,.55,14) end
+ end
+end
+
+-- Station 01 notices and entry signage.
+local notice=part(props,"OpeningNotice",Vector3.new(7,4,.55),Vector3.new(-82,4,-31.5),C.dark,Enum.Material.Metal)
+local noticeFace=part(props,"OpeningNoticeGlow",Vector3.new(6.5,2.8,.08),Vector3.new(-82,4,-31.17),C.cyan,Enum.Material.Neon,.22,false); label(noticeFace,"NIGHT SERVICE  /  PLATFORM 01",Color3.fromRGB(234,248,244))
+for _,x in ipairs({-94,-43,11,98}) do for _,side in ipairs({-1,1}) do
+ local z=side*26; part(props,"BenchSeat",Vector3.new(8,.5,2),Vector3.new(x,1.1,z),C.dark,Enum.Material.Metal); part(props,"BenchBack",Vector3.new(8,2,.35),Vector3.new(x,2.1,z+side*.85),C.metal,Enum.Material.Metal)
+ for dx=-3,3,6 do part(props,"BenchLeg",Vector3.new(.35,1.1,1.4),Vector3.new(x+dx,.35,z),C.metal,Enum.Material.Metal) end
+end end
+
+-- One clear prompt per story beat. Branches at stops six and seven are deliberate.
+prompt("TicketClue",0,Vector3.new(24,2.2,-6.35),"檢查車票","新月站：無目的地車票")
+prompt("PassengerLedger",1,Vector3.new(spacing-82,2.2,-27),"翻閱乘客簿","失語站：空白離站紀錄")
+prompt("TrueRecording",2,Vector3.new(spacing*2-80,2.2,-27),"播放真正的錄音","回聲站：第三次循環")
+prompt("MirrorReport",3,Vector3.new(spacing*3-82,2.2,-27),"拍下倒影並取回報告","鏡湖站：異常倒影")
+prompt("CCTVEvidence",4,Vector3.new(spacing*4-45,2.2,-27),"調閱監視器","遺忘站：三天前的影像")
+prompt("TrustConductor",5,Vector3.new(spacing*5-40,2.2,-27),"相信站務員","終寂站：跟隨列車長",{Choice="Conductor"})
+prompt("ReadAccidentLog",5,Vector3.new(spacing*5+40,2.2,-27),"讀取事故紀錄","終寂站：查明真相",{Choice="Records"})
+prompt("LeaveEnding",6,Vector3.new(spacing*6-50,2.2,-27),"相信列車長，離開","結局：回到城市",{Ending="Conductor"})
+prompt("TruthEnding",6,Vector3.new(spacing*6,2.2,-27),"關閉核心，終止循環","真相結局：讓列車停下",{Ending="Truth"})
+prompt("SecretEnding",6,Vector3.new(spacing*6+50,2.2,-27),"啟動封存系統","隱藏結局：STATION 08",{Ending="Station08"})
+local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(spacing+118,0.15,0),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
+local ambience=Instance.new("Sound"); ambience.Name="StationAmbience"; ambience.SoundId=""; ambience.Looped=true; ambience.Volume=.12; ambience.RollOffMaxDistance=200; ambience.Parent=world
+world:SetAttribute("Ready",true)
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="20">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="21">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="22">
+        <Properties>
+          <string name="Name">LastTrainClient</string>
+          <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+while Workspace:GetAttribute("LastTrainMode") == nil do
+    Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+local inGame = Workspace:GetAttribute("LastTrainMode") == "Game"
+player.CameraMode = inGame and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
+
+local root = ReplicatedStorage:WaitForChild("LastTrain")
+local remotes = root:WaitForChild("Remotes")
+local objectiveEvent = remotes:WaitForChild("ObjectiveUpdate")
+local shopRequest = remotes:WaitForChild("ShopRequest")
+local GameConfig = require(root:WaitForChild("Shared"):WaitForChild("GameConfig"))
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "LastTrainHUD"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 8
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local function rounded(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 10)
+    corner.Parent = instance
+end
+
+local function stroke(instance, color, transparency)
+    local line = Instance.new("UIStroke")
+    line.Color = color
+    line.Transparency = transparency or 0.3
+    line.Thickness = 1
+    line.Parent = instance
+end
+
+local objectiveCard = Instance.new("Frame")
+objectiveCard.Size = UDim2.fromOffset(410, 118)
+-- Leave room for Roblox's built-in chat panel so the mission stays readable.
+objectiveCard.Position = UDim2.new(0, 24, 0, 154)
+objectiveCard.BackgroundColor3 = Color3.fromRGB(12, 18, 24)
+objectiveCard.BackgroundTransparency = 0.18
+objectiveCard.Parent = gui
+objectiveCard.Visible = inGame
+rounded(objectiveCard, 12)
+stroke(objectiveCard, Color3.fromRGB(89, 152, 166), 0.35)
+local eyebrow = Instance.new("TextLabel")
+eyebrow.BackgroundTransparency = 1
+eyebrow.Position = UDim2.fromOffset(17, 11)
+eyebrow.Size = UDim2.new(1, -34, 0, 22)
+eyebrow.Font = Enum.Font.GothamBold
+eyebrow.Text = "末班車  /  夜間維修任務"
+eyebrow.TextColor3 = Color3.fromRGB(107, 201, 211)
+eyebrow.TextSize = 13
+eyebrow.TextXAlignment = Enum.TextXAlignment.Left
+eyebrow.Parent = objectiveCard
+local objectiveLabel = Instance.new("TextLabel")
+objectiveLabel.BackgroundTransparency = 1
+objectiveLabel.Position = UDim2.fromOffset(17, 39)
+objectiveLabel.Size = UDim2.new(1, -34, 0, 65)
+objectiveLabel.Font = Enum.Font.GothamMedium
+objectiveLabel.Text = "等待站內廣播…"
+objectiveLabel.TextColor3 = Color3.fromRGB(235, 239, 241)
+objectiveLabel.TextSize = 17
+objectiveLabel.TextWrapped = true
+objectiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+objectiveLabel.TextYAlignment = Enum.TextYAlignment.Top
+objectiveLabel.Parent = objectiveCard
+
+local shopButton = Instance.new("TextButton")
+shopButton.Size = UDim2.fromOffset(150, 44)
+shopButton.Position = UDim2.new(1, -174, 0, 24)
+shopButton.BackgroundColor3 = Color3.fromRGB(22, 36, 43)
+shopButton.Text = "角色與補給  [M]"
+shopButton.TextColor3 = Color3.fromRGB(224, 239, 239)
+shopButton.TextSize = 14
+shopButton.Font = Enum.Font.GothamBold
+shopButton.Parent = gui
+shopButton.Visible = inGame
+rounded(shopButton, 10)
+stroke(shopButton, Color3.fromRGB(91, 171, 181), 0.25)
+
+local crosshair = Instance.new("Frame")
+crosshair.Size = UDim2.fromOffset(5, 5)
+crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+crosshair.Position = UDim2.fromScale(0.5, 0.5)
+crosshair.BackgroundColor3 = Color3.fromRGB(223, 232, 229)
+crosshair.BackgroundTransparency = 0.15
+crosshair.Parent = gui
+rounded(crosshair, 5)
+crosshair.Visible = inGame
+
+local controlsHint = Instance.new("TextLabel")
+controlsHint.Size = UDim2.fromOffset(340, 30)
+controlsHint.Position = UDim2.new(0, 24, 0, 136)
+controlsHint.BackgroundColor3 = Color3.fromRGB(12, 18, 24)
+controlsHint.BackgroundTransparency = 0.28
+controlsHint.Text = "WASD 移動  •  E 互動  •  F 手電筒  •  M 商店"
+controlsHint.TextColor3 = Color3.fromRGB(205, 218, 220)
+controlsHint.TextSize = 12
+controlsHint.Font = Enum.Font.GothamMedium
+controlsHint.Parent = gui
+rounded(controlsHint, 8)
+-- Keep the first-person view clear; the controls are explained at the lobby entrance.
+controlsHint.Visible = false
+
+-- A local camera-mounted flashlight keeps the station readable in first person.
+local flashlightPart = Instance.new("Part")
+flashlightPart.Name = "LastTrainFlashlight"
+flashlightPart.Size = Vector3.new(0.15, 0.15, 0.15)
+flashlightPart.Transparency = 1
+flashlightPart.Anchored = true
+flashlightPart.CanCollide = false
+flashlightPart.CanTouch = false
+flashlightPart.CanQuery = false
+flashlightPart.CastShadow = false
+flashlightPart.Parent = Workspace.CurrentCamera
+
+local flashlight = Instance.new("SpotLight")
+flashlight.Name = "LastTrainBeam"
+flashlight.Face = Enum.NormalId.Front
+flashlight.Angle = 62
+flashlight.Brightness = 3.4
+flashlight.Range = 58
+flashlight.Shadows = false
+flashlight.Enabled = inGame
+flashlight.Parent = flashlightPart
+
+local function attachFlashlightToCamera()
+    local camera = Workspace.CurrentCamera
+    if camera then
+        flashlightPart.Parent = camera
+        flashlightPart.CFrame = camera.CFrame
+    end
+end
+attachFlashlightToCamera()
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(attachFlashlightToCamera)
+RunService:BindToRenderStep("LastTrainFlashlight", Enum.RenderPriority.Camera.Value + 1, attachFlashlightToCamera)
+
+local shop = Instance.new("Frame")
+shop.Size = UDim2.new(0.82, 0, 0.78, 0)
+shop.Position = UDim2.fromScale(0.5, 0.5)
+shop.AnchorPoint = Vector2.new(0.5, 0.5)
+shop.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
+shop.BackgroundTransparency = 0.04
+shop.Visible = false
+shop.Parent = gui
+rounded(shop, 16)
+stroke(shop, Color3.fromRGB(78, 146, 159), 0.2)
+local sizeLimit = Instance.new("UISizeConstraint")
+sizeLimit.MinSize = Vector2.new(310, 310)
+sizeLimit.MaxSize = Vector2.new(900, 620)
+sizeLimit.Parent = shop
+
+local title = Instance.new("TextLabel")
+title.BackgroundTransparency = 1
+title.Position = UDim2.fromOffset(25, 18)
+title.Size = UDim2.new(1, -100, 0, 34)
+title.Font = Enum.Font.GothamBold
+title.Text = "月台小舖"
+title.TextColor3 = Color3.fromRGB(238, 241, 239)
+title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = shop
+local balance = Instance.new("TextLabel")
+balance.BackgroundTransparency = 1
+balance.Position = UDim2.new(0, 25, 0, 56)
+balance.Size = UDim2.new(1, -50, 0, 25)
+balance.Font = Enum.Font.GothamMedium
+balance.Text = "車票幣：…"
+balance.TextColor3 = Color3.fromRGB(224, 183, 93)
+balance.TextSize = 15
+balance.TextXAlignment = Enum.TextXAlignment.Left
+balance.Parent = shop
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.fromOffset(40, 36)
+closeButton.Position = UDim2.new(1, -58, 0, 18)
+closeButton.BackgroundColor3 = Color3.fromRGB(34, 43, 48)
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.fromRGB(232, 236, 235)
+closeButton.TextSize = 24
+closeButton.Font = Enum.Font.Gotham
+closeButton.Parent = shop
+rounded(closeButton, 8)
+
+local sectionLabel = Instance.new("TextLabel")
+sectionLabel.BackgroundTransparency = 1
+sectionLabel.Position = UDim2.fromOffset(25, 91)
+sectionLabel.Size = UDim2.new(0.43, -24, 0, 23)
+sectionLabel.Font = Enum.Font.GothamBold
+sectionLabel.Text = "今晚值班"
+sectionLabel.TextColor3 = Color3.fromRGB(151, 194, 196)
+sectionLabel.TextSize = 13
+sectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+sectionLabel.Parent = shop
+
+local cards = Instance.new("ScrollingFrame")
+cards.BackgroundTransparency = 1
+cards.BorderSizePixel = 0
+cards.Position = UDim2.fromOffset(24, 118)
+cards.Size = UDim2.new(0.44, -20, 1, -212)
+cards.CanvasSize = UDim2.new(0, 0, 0, 0)
+cards.AutomaticCanvasSize = Enum.AutomaticSize.Y
+cards.ScrollBarThickness = 3
+cards.ScrollBarImageColor3 = Color3.fromRGB(108, 151, 152)
+cards.Parent = shop
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 9)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Parent = cards
+local cardButtons, cardFrames = {}, {}
+local selectedKey
+local details = Instance.new("Frame")
+details.Position = UDim2.new(0.46, 0, 0, 100)
+details.Size = UDim2.new(0.5, -25, 1, -202)
+details.BackgroundColor3 = Color3.fromRGB(19, 29, 33)
+details.Parent = shop
+rounded(details, 13)
+local detailAccent = Instance.new("Frame")
+detailAccent.Size = UDim2.new(1, 0, 0, 5)
+detailAccent.BackgroundColor3 = Color3.fromRGB(226, 181, 91)
+detailAccent.Parent = details
+rounded(detailAccent, 4)
+local portrait = Instance.new("Frame")
+portrait.Size = UDim2.new(1, -28, 0.42, 0)
+portrait.Position = UDim2.fromOffset(14, 18)
+portrait.BackgroundColor3 = Color3.fromRGB(32, 47, 52)
+portrait.Parent = details
+rounded(portrait, 11)
+local portraitIcon = Instance.new("TextLabel")
+portraitIcon.Size = UDim2.fromScale(1, 1)
+portraitIcon.BackgroundTransparency = 1
+portraitIcon.Text = ""
+portraitIcon.Parent = portrait
+local silhouetteBody = Instance.new("Frame")
+silhouetteBody.AnchorPoint = Vector2.new(0.5, 1)
+silhouetteBody.Position = UDim2.new(0.5, 0, 1, 8)
+silhouetteBody.Size = UDim2.new(0.34, 0, 0.56, 0)
+silhouetteBody.BackgroundColor3 = Color3.fromRGB(39, 58, 65)
+silhouetteBody.Parent = portraitIcon
+rounded(silhouetteBody, 22)
+local silhouetteHead = Instance.new("Frame")
+silhouetteHead.AnchorPoint = Vector2.new(0.5, 0.5)
+silhouetteHead.Position = UDim2.new(0.5, 0, 0.37, 0)
+silhouetteHead.Size = UDim2.new(0, 56, 0, 56)
+silhouetteHead.BackgroundColor3 = Color3.fromRGB(223, 211, 184)
+silhouetteHead.Parent = portraitIcon
+rounded(silhouetteHead, 28)
+local silhouetteCap = Instance.new("Frame")
+silhouetteCap.AnchorPoint = Vector2.new(0.5, 1)
+silhouetteCap.Position = UDim2.new(0.5, 0, 0.34, 0)
+silhouetteCap.Size = UDim2.new(0, 68, 0, 14)
+silhouetteCap.BackgroundColor3 = Color3.fromRGB(226, 181, 91)
+silhouetteCap.Parent = portraitIcon
+rounded(silhouetteCap, 7)
+local selectedName = Instance.new("TextLabel")
+selectedName.BackgroundTransparency = 1
+selectedName.Position = UDim2.new(0, 18, 0.48, 0)
+selectedName.Size = UDim2.new(1, -36, 0, 31)
+selectedName.Font = Enum.Font.GothamBlack
+selectedName.TextSize = 20
+selectedName.TextColor3 = Color3.fromRGB(240, 239, 227)
+selectedName.TextXAlignment = Enum.TextXAlignment.Left
+selectedName.Parent = details
+local flavorLine = Instance.new("TextLabel")
+flavorLine.BackgroundTransparency = 1
+flavorLine.Position = UDim2.new(0, 18, 0.48, 34)
+flavorLine.Size = UDim2.new(1, -36, 0, 32)
+flavorLine.Font = Enum.Font.GothamMedium
+flavorLine.TextSize = 12
+flavorLine.TextWrapped = true
+flavorLine.TextColor3 = Color3.fromRGB(171, 190, 187)
+flavorLine.TextXAlignment = Enum.TextXAlignment.Left
+flavorLine.Parent = details
+local abilityLine = Instance.new("TextLabel")
+abilityLine.BackgroundTransparency = 1
+abilityLine.Position = UDim2.new(0, 18, 0.68, 0)
+abilityLine.Size = UDim2.new(1, -36, 0, 44)
+abilityLine.Font = Enum.Font.GothamBold
+abilityLine.TextSize = 13
+abilityLine.TextWrapped = true
+abilityLine.TextColor3 = Color3.fromRGB(228, 203, 142)
+abilityLine.TextXAlignment = Enum.TextXAlignment.Left
+abilityLine.Parent = details
+local actionButton = Instance.new("TextButton")
+actionButton.Name = "SelectedAction"
+actionButton.Size = UDim2.new(1, -36, 0, 40)
+actionButton.Position = UDim2.new(0, 18, 1, -54)
+actionButton.BackgroundColor3 = Color3.fromRGB(43, 91, 98)
+actionButton.TextColor3 = Color3.fromRGB(245, 247, 245)
+actionButton.TextSize = 14
+actionButton.Font = Enum.Font.GothamBold
+actionButton.Parent = details
+rounded(actionButton, 8)
+
+local shopFlavor = {
+    PlatformWorker = { Icon = "✦", Line = "第一晚先熟悉路線。", Ability = "無特殊能力・免費上車", Tag = "新手" },
+    Conductor = { Icon = "↗", Line = "鞋底沾著月台的白漆。", Ability = "跑得更快・移動速度 +15%", Tag = "快腳" },
+    Signalman = { Icon = "◉", Line = "他修好的燈，總會多亮一站。", Ability = "照得更遠・手電筒 +40%", Tag = "探照" },
+    NightGuard = { Icon = "☾", Line = "監視器拍不到他的正臉。", Ability = "比較不容易被發現・感知 -25%", Tag = "隱匿" },
+}
+
+local function makeSkinCard(key, info, order)
+    local flavor = shopFlavor[key] or { Icon = "✦", Line = "夜班還有空位。", Ability = info.Ability or "一般調查員", Tag = "服裝" }
+    local button = Instance.new("TextButton")
+    button.Name = key
+    button.LayoutOrder = order
+    button.Size = UDim2.new(1, -6, 0, 66)
+    button.BackgroundColor3 = Color3.fromRGB(25, 37, 41)
+    button.Text = ""
+    button.AutoButtonColor = true
+    button.Parent = cards
+    rounded(button, 10)
+    stroke(button, info.Colors.Accent, 0.78)
+    local swatch = Instance.new("Frame")
+    swatch.Size = UDim2.new(0, 46, 0, 46)
+    swatch.Position = UDim2.fromOffset(10, 10)
+    swatch.BackgroundColor3 = info.Colors.Main
+    swatch.Parent = button
+    rounded(swatch, 10)
+    local swatchMark = Instance.new("Frame")
+    swatchMark.AnchorPoint = Vector2.new(0.5, 0.5)
+    swatchMark.Position = UDim2.fromScale(0.5, 0.5)
+    swatchMark.Size = UDim2.new(0, 9, 0, 30)
+    swatchMark.BackgroundColor3 = info.Colors.Accent
+    swatchMark.Parent = swatch
+    rounded(swatchMark, 5)
+    local name = Instance.new("TextLabel")
+    name.BackgroundTransparency = 1
+    name.Position = UDim2.fromOffset(67, 11)
+    name.Size = UDim2.new(1, -137, 0, 23)
+    name.Font = Enum.Font.GothamBold
+    name.Text = info.DisplayName
+    name.TextColor3 = Color3.fromRGB(232, 237, 236)
+    name.TextSize = 15
+    name.TextXAlignment = Enum.TextXAlignment.Left
+    name.Parent = button
+    local tag = Instance.new("TextLabel")
+    tag.BackgroundTransparency = 1
+    tag.Position = UDim2.fromOffset(67, 35)
+    tag.Size = UDim2.new(1, -137, 0, 18)
+    tag.Font = Enum.Font.GothamMedium
+    tag.Text = flavor.Tag
+    tag.TextColor3 = info.Colors.Accent
+    tag.TextSize = 11
+    tag.TextXAlignment = Enum.TextXAlignment.Left
+    tag.Parent = button
+    local price = Instance.new("TextLabel")
+    price.Name = "Price"
+    price.BackgroundTransparency = 1
+    price.AnchorPoint = Vector2.new(1, 0.5)
+    price.Position = UDim2.new(1, -12, 0.5, 0)
+    price.Size = UDim2.fromOffset(86, 36)
+    price.Font = Enum.Font.GothamBold
+    price.Text = info.RequiresGamePass and "R$" or (info.PriceCoins == 0 and "免費" or ("票 " .. tostring(info.PriceCoins)))
+    price.TextColor3 = Color3.fromRGB(224, 198, 134)
+    price.TextSize = 12
+    price.TextXAlignment = Enum.TextXAlignment.Right
+    price.Parent = button
+    cardButtons[key] = { Button = button, Info = info }
+    cardFrames[key] = { Button = button, Icon = flavor.Icon, Flavor = flavor, Info = info }
+    button.Activated:Connect(function() selectedKey = key end)
+end
+
+local skinKeys = {}
+for key in pairs(GameConfig.Skins) do table.insert(skinKeys, key) end
+table.sort(skinKeys, function(a, b)
+    local rank = { PlatformWorker = 1, Conductor = 2, Signalman = 3, NightGuard = 4 }
+    return (rank[a] or 99) < (rank[b] or 99)
+end)
+for index, key in ipairs(skinKeys) do makeSkinCard(key, GameConfig.Skins[key], index) end
+
+local exchangeLabel = Instance.new("TextLabel")
+exchangeLabel.BackgroundTransparency = 1
+exchangeLabel.Position = UDim2.new(0, 24, 1, -82)
+exchangeLabel.Size = UDim2.new(1, -48, 0, 20)
+exchangeLabel.Font = Enum.Font.GothamBold
+exchangeLabel.Text = "補給票"
+exchangeLabel.TextColor3 = Color3.fromRGB(233, 203, 128)
+exchangeLabel.TextSize = 12
+exchangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+exchangeLabel.Parent = shop
+local productRow = Instance.new("Frame")
+productRow.BackgroundTransparency = 1
+productRow.Position = UDim2.new(0, 24, 1, -56)
+productRow.Size = UDim2.new(1, -48, 0, 36)
+productRow.Parent = shop
+local productButtons = {}
+local productKeys = {}
+for key in pairs(GameConfig.Products) do table.insert(productKeys, key) end
+table.sort(productKeys, function(a, b)
+    local order = { CoinPouch = 1, CoinCrate = 2 }
+    return (order[a] or 99) < (order[b] or 99)
+end)
+for productIndex, key in ipairs(productKeys) do
+    local product = GameConfig.Products[key]
+    local button = Instance.new("TextButton")
+    button.Name = key
+    button.Size = UDim2.new(1 / #productKeys, -8, 1, 0)
+    button.Position = UDim2.new((productIndex - 1) / #productKeys, (productIndex - 1) * 8, 0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(57, 57, 43)
+    button.Text = product.DisplayName .. "  ·  Robux"
+    button.TextColor3 = Color3.fromRGB(241, 222, 166)
+    button.TextSize = 12
+    button.Font = Enum.Font.GothamBold
+    button.Parent = productRow
+    rounded(button, 8)
+    productButtons[key] = button
+end
+
+local currentState
+local function renderSelection()
+    local entry = cardFrames[selectedKey]
+    if not entry then return end
+    local info, flavor = entry.Info, entry.Flavor
+    selectedName.Text = info.DisplayName
+    flavorLine.Text = flavor.Line
+    abilityLine.Text = flavor.Ability
+    portrait.BackgroundColor3 = info.Colors.Main
+    detailAccent.BackgroundColor3 = info.Colors.Accent
+    silhouetteBody.BackgroundColor3 = info.Colors.Main
+    silhouetteCap.BackgroundColor3 = info.Colors.Accent
+    for key, card in pairs(cardFrames) do
+        card.Button.BackgroundColor3 = key == selectedKey and Color3.fromRGB(39, 54, 56) or Color3.fromRGB(25, 37, 41)
+    end
+    if not currentState then
+        actionButton.Text = info.RequiresGamePass and "Robux 解鎖" or (info.PriceCoins == 0 and "免費解鎖" or "使用車票幣")
+        return
+    end
+    local owned = currentState.OwnedSkins[selectedKey] == true
+    local equipped = currentState.EquippedSkin == selectedKey
+    if equipped then
+        actionButton.Text = "已穿上"
+        actionButton.BackgroundColor3 = Color3.fromRGB(49, 73, 69)
+    elseif owned then
+        actionButton.Text = "穿上這套"
+        actionButton.BackgroundColor3 = Color3.fromRGB(43, 91, 98)
+    elseif info.RequiresGamePass then
+        actionButton.Text = info.GamePassId > 0 and "Robux 解鎖" or "尚未開放"
+        actionButton.BackgroundColor3 = info.GamePassId > 0 and Color3.fromRGB(103, 73, 36) or Color3.fromRGB(57, 62, 64)
+    elseif info.PriceCoins > 0 then
+        actionButton.Text = "購買・" .. tostring(info.PriceCoins) .. " 票"
+        actionButton.BackgroundColor3 = Color3.fromRGB(43, 91, 98)
+    else
+        actionButton.Text = "免費解鎖"
+        actionButton.BackgroundColor3 = Color3.fromRGB(43, 91, 98)
+    end
+end
+selectedKey = skinKeys[1]
+renderSelection()
+
+local toast = Instance.new("TextLabel")
+toast.Size = UDim2.new(0, 620, 0, 70)
+toast.Position = UDim2.new(0.5, 0, 1, -96)
+toast.AnchorPoint = Vector2.new(0.5, 0.5)
+toast.BackgroundColor3 = Color3.fromRGB(12, 18, 22)
+toast.BackgroundTransparency = 0.12
+toast.Text = ""
+toast.TextColor3 = Color3.fromRGB(236, 239, 234)
+toast.TextSize = 14
+toast.TextWrapped = true
+toast.Font = Enum.Font.GothamMedium
+toast.Visible = false
+toast.Parent = gui
+rounded(toast, 9)
+
+local toastId = 0
+local function showToast(message, duration)
+    toastId += 1
+    local thisToast = toastId
+    toast.Text = tostring(message or "")
+    toast.Visible = true
+    task.delay(duration or 4.5, function() if toastId == thisToast then toast.Visible = false end end)
+end
+
+local function refreshShop()
+    local ok, response = pcall(function()
+        return shopRequest:InvokeServer("GetState")
+    end)
+    if not ok or not response or not response.state then return end
+    currentState = response.state
+    balance.Text = "車票幣：" .. tostring(currentState.Coins)
+    for key, entry in pairs(cardButtons) do
+        local owned = currentState.OwnedSkins[key] == true
+        local equipped = currentState.EquippedSkin == key
+        local price = entry.Button:FindFirstChild("Price")
+        if price then
+            if equipped then price.Text = "使用中"
+            elseif owned then price.Text = "已擁有"
+            elseif entry.Info.RequiresGamePass then price.Text = entry.Info.GamePassId > 0 and "R$" or "未開放"
+            elseif entry.Info.PriceCoins == 0 then price.Text = "免費"
+            else price.Text = "票 " .. tostring(entry.Info.PriceCoins) end
+        end
+    end
+    renderSelection()
+end
+
+local function doRequest(action, key)
+    local ok, response = pcall(function()
+        return shopRequest:InvokeServer(action, key)
+    end)
+    if not ok or not response then
+        showToast("連線忙碌，請稍後再試。")
+        return
+    end
+    if response.promptType == "GamePass" and response.id > 0 then
+        MarketplaceService:PromptGamePassPurchase(player, response.id)
+    elseif response.promptType == "Product" and response.id > 0 then
+        MarketplaceService:PromptProductPurchase(player, response.id)
+    else
+        showToast(response.message or "完成。")
+        refreshShop()
+    end
+end
+
+actionButton.Activated:Connect(function()
+    local entry = cardButtons[selectedKey]
+    if not entry then return end
+    if currentState and currentState.OwnedSkins[selectedKey] then
+        doRequest("Equip", selectedKey)
+    elseif entry.Info.RequiresGamePass then
+        doRequest("PromptPass", selectedKey)
+    else
+        doRequest("BuyCoins", selectedKey)
+    end
+end)
+for key, entry in pairs(cardButtons) do
+    entry.Button.Activated:Connect(function()
+        selectedKey = key
+        renderSelection()
+    end)
+end
+for key, button in pairs(productButtons) do
+    button.Activated:Connect(function() doRequest("PromptProduct", key) end)
+end
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(purchaser, _passId, wasPurchased)
+    if purchaser == player and wasPurchased then
+        task.delay(1.5, refreshShop) -- UI refresh only; the server verifies and grants ownership.
+    end
+end)
+
+local function setShopVisible(value)
+    shop.Visible = value
+    player:WaitForChild("PlayerGui"):SetAttribute("OpenLastTrainShop", value)
+    if value then refreshShop() end
+end
+player:WaitForChild("PlayerGui"):GetAttributeChangedSignal("OpenLastTrainShop"):Connect(function()
+    if player.PlayerGui:GetAttribute("OpenLastTrainShop") and not shop.Visible then
+        setShopVisible(true)
+    end
+end)
+shopButton.Activated:Connect(function() setShopVisible(not shop.Visible) end)
+closeButton.Activated:Connect(function() setShopVisible(false) end)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.M then setShopVisible(not shop.Visible) end
+    if input.KeyCode == Enum.KeyCode.F and inGame then flashlight.Enabled = not flashlight.Enabled end
+    if input.KeyCode == Enum.KeyCode.Escape and shop.Visible then setShopVisible(false) end
+end)
+
+local function applyMode()
+    inGame = Workspace:GetAttribute("LastTrainMode") == "Game"
+    player.CameraMode = inGame and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
+    objectiveCard.Visible = inGame
+    controlsHint.Visible = false
+    crosshair.Visible = inGame
+    flashlight.Enabled = inGame
+    shopButton.Visible = inGame
+end
+Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(applyMode)
+local function applyFlashlightAbility()
+    flashlight.Range = 58 * (player:GetAttribute("FlashlightMultiplier") or 1)
+end
+player:GetAttributeChangedSignal("FlashlightMultiplier"):Connect(applyFlashlightAbility)
+applyFlashlightAbility()
+
+objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationName, storyText, endingKey)
+    local stopNumber = math.clamp(tonumber(stage) or 0, 0, #GameConfig.Stations - 1) + 1
+    eyebrow.Text = string.format("第 %d / 7 站   /   %s", stopNumber, tostring(stationName or "末班車"))
+    if completed then
+        objectiveLabel.Text = tostring(text or "旅程結束。")
+        showToast(tostring(text or "旅程結束。"), 9)
+    else
+        local objectiveNo = math.clamp((tonumber(stage) or 0) + 1, 1, #GameConfig.Objectives)
+        objectiveLabel.Text = string.format("任務 %d / 7\n%s", objectiveNo, tostring(text or "等待下一個指示"))
+        if storyText and storyText ~= "" then showToast(tostring(storyText), 6)
+        elseif stage and stage > 0 then showToast("車門緩緩關上。列車正駛向下一站……", 4) end
+    end
+    if shop.Visible then refreshShop() end
+end)
+
+local function updateCoins()
+    if shop.Visible then refreshShop() end
+end
+local leaderstats = player:WaitForChild("leaderstats", 20)
+if leaderstats then
+    local coins = leaderstats:WaitForChild("車票幣", 10)
+    if coins then coins.Changed:Connect(updateCoins) end
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="23">
+        <Properties>
+          <string name="Name">LobbyClient</string>
+          <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+while Workspace:GetAttribute("LastTrainMode") == nil do
+	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
+end
+if Workspace:GetAttribute("LastTrainMode") ~= "Lobby" then return end
+
+local player = Players.LocalPlayer
+player.CameraMode = Enum.CameraMode.Classic
+local remotes = ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local request = remotes:WaitForChild("MatchmakingRequest")
+local update = remotes:WaitForChild("MatchmakingUpdate")
+local gui = Instance.new("ScreenGui")
+gui.Name = "LastTrainLobbyUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 20
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local overlay = Instance.new("Frame")
+overlay.Size = UDim2.fromScale(1, 1)
+overlay.BackgroundColor3 = Color3.fromRGB(5, 10, 15)
+overlay.BackgroundTransparency = 0.15
+overlay.Parent = gui
+
+local panel = Instance.new("Frame")
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
+panel.Size = UDim2.new(0.86, 0, 0, 430)
+panel.BackgroundColor3 = Color3.fromRGB(12, 22, 29)
+panel.BackgroundTransparency = 0.06
+panel.Parent = overlay
+local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 20); corner.Parent = panel
+local border = Instance.new("UIStroke"); border.Color = Color3.fromRGB(79, 194, 207); border.Transparency = 0.4; border.Parent = panel
+local size = Instance.new("UISizeConstraint"); size.MinSize = Vector2.new(330, 430); size.MaxSize = Vector2.new(690, 430); size.Parent = panel
+
+local title = Instance.new("TextLabel")
+title.BackgroundTransparency = 1
+title.Position = UDim2.new(0, 28, 0, 22)
+title.Size = UDim2.new(1, -220, 0, 42)
+title.Font = Enum.Font.GothamBlack
+title.Text = "末班車  /  LAST TRAIN"
+title.TextColor3 = Color3.fromRGB(224, 242, 238)
+title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = panel
+
+local subtitle = Instance.new("TextLabel")
+subtitle.BackgroundTransparency = 1
+subtitle.Position = UDim2.new(0, 30, 0, 66)
+subtitle.Size = UDim2.new(1, -60, 0, 24)
+subtitle.Font = Enum.Font.GothamBold
+subtitle.Text = "七站之後，列車將不再回頭。"
+subtitle.TextColor3 = Color3.fromRGB(98, 211, 218)
+subtitle.TextSize = 15
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = panel
+local store = Instance.new("TextButton")
+store.Size = UDim2.fromOffset(126, 34)
+store.Position = UDim2.new(1, -202, 0, 26)
+store.BackgroundColor3 = Color3.fromRGB(79, 71, 48)
+store.Text = "角色商店"
+store.TextColor3 = Color3.fromRGB(245, 226, 174)
+store.TextSize = 13
+store.Font = Enum.Font.GothamBold
+store.Parent = panel
+local storeCorner = Instance.new("UICorner"); storeCorner.CornerRadius = UDim.new(0, 8); storeCorner.Parent = store
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseLobbyPage"
+closeButton.Size = UDim2.fromOffset(36, 36)
+closeButton.Position = UDim2.new(1, -52, 0, 24)
+closeButton.BackgroundColor3 = Color3.fromRGB(39, 52, 58)
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.fromRGB(236, 242, 239)
+closeButton.TextSize = 25
+closeButton.Font = Enum.Font.Gotham
+closeButton.AutoButtonColor = true
+closeButton.Parent = panel
+local closeCorner = Instance.new("UICorner"); closeCorner.CornerRadius = UDim.new(0, 9); closeCorner.Parent = closeButton
+local reopenButton = Instance.new("TextButton")
+reopenButton.Name = "OpenLobbyPage"
+reopenButton.AnchorPoint = Vector2.new(1, 0)
+reopenButton.Position = UDim2.new(1, -22, 0, 22)
+reopenButton.Size = UDim2.fromOffset(156, 42)
+reopenButton.BackgroundColor3 = Color3.fromRGB(20, 43, 51)
+reopenButton.Text = "大廳選單"
+reopenButton.TextColor3 = Color3.fromRGB(221, 241, 237)
+reopenButton.TextSize = 14
+reopenButton.Font = Enum.Font.GothamBold
+reopenButton.Visible = false
+reopenButton.Parent = gui
+local reopenCorner = Instance.new("UICorner"); reopenCorner.CornerRadius = UDim.new(0, 10); reopenCorner.Parent = reopenButton
+local reopenStroke = Instance.new("UIStroke"); reopenStroke.Color = Color3.fromRGB(79, 194, 207); reopenStroke.Transparency = 0.3; reopenStroke.Parent = reopenButton
+closeButton.Activated:Connect(function()
+	overlay.Visible = false
+	reopenButton.Visible = true
+end)
+reopenButton.Activated:Connect(function()
+	overlay.Visible = true
+	reopenButton.Visible = false
+end)
+local playerGui = player:WaitForChild("PlayerGui")
+store.Activated:Connect(function()
+	gui.Enabled = false
+	playerGui:SetAttribute("OpenLastTrainShop", true)
+end)
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Parent and prompt.Parent.Name == "CharacterShopKioskBody" then
+		gui.Enabled = false
+		playerGui:SetAttribute("OpenLastTrainShop", true)
+	elseif prompt.Parent and prompt.Parent.Name == "StoryKioskBody" then
+		gui.Enabled = true
+		overlay.Visible = true
+		reopenButton.Visible = false
+	end
+end)
+
+playerGui:GetAttributeChangedSignal("OpenLastTrainShop"):Connect(function()
+	if playerGui:GetAttribute("OpenLastTrainShop") == false and Workspace:GetAttribute("LastTrainMode") == "Lobby" then
+		gui.Enabled = true
+	end
+end)
+
+local story = Instance.new("TextLabel")
+story.BackgroundColor3 = Color3.fromRGB(21, 35, 42)
+story.BackgroundTransparency = 0.12
+story.Position = UDim2.new(0, 28, 0, 104)
+story.Size = UDim2.new(1, -56, 0, 116)
+story.Font = Enum.Font.GothamMedium
+story.Text = ""
+story.TextColor3 = Color3.fromRGB(216, 226, 226)
+story.TextSize = 16
+story.TextWrapped = true
+story.TextXAlignment = Enum.TextXAlignment.Left
+story.TextYAlignment = Enum.TextYAlignment.Center
+story.Parent = panel
+local storyCorner = Instance.new("UICorner"); storyCorner.CornerRadius = UDim.new(0, 12); storyCorner.Parent = story
+
+local choose = Instance.new("TextLabel")
+choose.BackgroundTransparency = 1
+choose.Position = UDim2.new(0, 30, 0, 235)
+choose.Size = UDim2.new(1, -60, 0, 25)
+choose.Font = Enum.Font.GothamBold
+choose.Text = "選擇本班人數（最多 4 人）"
+choose.TextColor3 = Color3.fromRGB(228, 233, 229)
+choose.TextSize = 14
+choose.TextXAlignment = Enum.TextXAlignment.Left
+choose.Parent = panel
+
+local selected = 1
+local countButtons = {}
+for count = 1, 4 do
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.22, 0, 0, 42)
+	button.Position = UDim2.new(0.04 + (count - 1) * 0.24, 0, 0, 267)
+	button.BackgroundColor3 = count == selected and Color3.fromRGB(35, 125, 137) or Color3.fromRGB(34, 49, 56)
+	button.Text = tostring(count) .. " 人"
+	button.TextColor3 = Color3.fromRGB(238, 242, 238)
+	button.TextSize = 14
+	button.Font = Enum.Font.GothamBold
+	button.Parent = panel
+	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 9); c.Parent = button
+	countButtons[count] = button
+	button.Activated:Connect(function()
+		selected = count
+		for n, item in pairs(countButtons) do
+			item.BackgroundColor3 = n == selected and Color3.fromRGB(35, 125, 137) or Color3.fromRGB(34, 49, 56)
+		end
+	end)
+end
+
+local status = Instance.new("TextLabel")
+status.BackgroundTransparency = 1
+status.Position = UDim2.new(0, 30, 0, 317)
+status.Size = UDim2.new(1, -60, 0, 24)
+status.Font = Enum.Font.GothamMedium
+status.Text = "走進 1–4 人光圈箱加入配對；等待 10 秒，隊伍到齊後倒數 3 秒發車。"
+status.TextColor3 = Color3.fromRGB(169, 183, 185)
+status.TextSize = 13
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = panel
+
+local start = Instance.new("TextButton")
+start.Size = UDim2.new(1, -56, 0, 48)
+start.Position = UDim2.new(0, 28, 1, -70)
+start.BackgroundColor3 = Color3.fromRGB(38, 119, 129)
+start.Text = "從選單加入隊伍"
+start.TextColor3 = Color3.fromRGB(245, 247, 242)
+start.TextSize = 15
+start.Font = Enum.Font.GothamBold
+start.Parent = panel
+local startCorner = Instance.new("UICorner"); startCorner.CornerRadius = UDim.new(0, 10); startCorner.Parent = start
+
+local busy = false
+local isQueued = false
+local transitioning = false
+local transitionFrame
+local portalLabels = {}
+local portalCounters = {}
+local function setSelectedCount(count)
+	selected = count
+	for n, item in pairs(countButtons) do
+		item.BackgroundColor3 = n == selected and Color3.fromRGB(35, 125, 137) or Color3.fromRGB(34, 49, 56)
+	end
+end
+local function submitQueueAction(action, count)
+	if busy then return end
+	busy = true
+	local ok, result = pcall(function() return request:InvokeServer(action, count or selected) end)
+	if not ok then
+		status.Text = "連線忙碌，請再試一次。"
+	elseif result and not result.ok then
+		status.Text = result.message or "無法加入隊伍。"
+	else
+		if action == "Join" or action == "PortalJoin" then isQueued = true end
+		if action == "Leave" then isQueued = false end
+		start.Text = isQueued and "已加入隊伍  /  點此離隊" or "從選單加入隊伍"
+	end
+	busy = false
+end
+start.Activated:Connect(function()
+	submitQueueAction(isQueued and "Leave" or "Join", selected)
+end)
+
+local function renderPortalLabels(info)
+	local count = math.clamp(tonumber(info.count) or 0, 0, 4)
+	local target = math.clamp(tonumber(info.target) or 1, 1, 4)
+	for partySize, label in pairs(portalLabels) do
+		local counter = portalCounters[partySize]
+		local counterLabel = counter and counter:FindFirstChildWhichIsA("SurfaceGui") and counter.SurfaceGui:FindFirstChild("QueueCounter")
+		local active = partySize == target and info.phase ~= "Idle"
+		local shownCount = active and count or 0
+		local seconds = active and (tonumber(info.seconds) or 0) or 10
+		if info.phase == "Boarding" and active then
+			label.Text = string.format("%d 人列車\n已滿員・登車中", partySize)
+		elseif active and info.phase == "Waiting" then
+			label.Text = string.format("%d 人列車\n等待乘客…\n走進光圈加入", partySize)
+		else
+			label.Text = string.format("%d 人列車\n走進光圈加入\n等待乘客…", partySize)
+		end
+		if counterLabel then counterLabel.Text = string.format("%d / %d   •   %02d", shownCount, partySize, seconds) end
+	end
+end
+
+task.spawn(function()
+	local lobby = Workspace:WaitForChild("LastTrainLobby", 30)
+	local gates = lobby and lobby:WaitForChild("MatchmakingGates", 20)
+	if not gates then return end
+	for partySize = 1, 4 do
+		local sign = gates:WaitForChild("GateSign" .. partySize, 10)
+		local label = sign and sign:FindFirstChild("GateDisplay") and sign.GateDisplay:FindFirstChild("PortalStatus")
+		if label then portalLabels[partySize] = label end
+		local counter = gates:FindFirstChild("GateCounter" .. partySize)
+		if counter then portalCounters[partySize] = counter end
+	end
+	local initial = request:InvokeServer("Status")
+	if type(initial) == "table" then
+		isQueued = initial.queued == true
+		start.Text = isQueued and "已加入隊伍  /  點此離隊" or "從選單加入隊伍"
+		renderPortalLabels(initial)
+	end
+end)
+
+local intro = "凌晨 00:17，你收到一張沒有目的地的車票。末班車廣播忽然中斷，只剩一句低語：「如果你看見站務員，請不要下車。」車門正在打開——七個站點的旅程，現在開始。"
+task.spawn(function()
+	local characters = {}
+	for first, last in utf8.graphemes(intro) do
+		table.insert(characters, string.sub(intro, first, last))
+	end
+	for index = 1, #characters do
+		if Workspace:GetAttribute("LastTrainMode") ~= "Lobby" then return end
+		story.Text = table.concat(characters, "", 1, index)
+		task.wait(0.035)
+	end
+end)
+
+update.OnClientEvent:Connect(function(info, playerQueued)
+	if type(info) ~= "table" then return end
+	if playerQueued ~= nil then isQueued = playerQueued end
+	renderPortalLabels(info)
+	if info.phase == "Error" then
+		transitioning = false
+		if transitionFrame then transitionFrame:Destroy(); transitionFrame = nil end
+		status.Text = info.message or "配對失敗，請再試一次。"
+		start.Text = "重新配對"
+		start.Active = true
+	elseif info.phase == "Waiting" then
+		status.Text = string.format("等待玩家　%d / %d　｜　倒數 %d 秒", info.count or 0, info.target or selected, info.seconds or 10)
+		start.Text = isQueued and "已加入隊伍  /  點此離隊" or "加入這班列車"
+	elseif info.phase == "Boarding" then
+		if isQueued and not transitioning then
+			transitioning = true
+			status.Text = string.format("列車即將出發　%d 秒後進入遊戲", info.seconds or 3)
+			start.Text = "登車中…"
+			start.Active = false
+			local fade = Instance.new("Frame")
+			transitionFrame = fade
+			fade.Size = UDim2.fromScale(1, 1)
+			fade.BackgroundColor3 = Color3.fromRGB(3, 7, 10)
+			fade.BackgroundTransparency = 1
+			fade.ZIndex = 20
+			fade.Parent = gui
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.Size = UDim2.fromScale(1, 1)
+			label.Text = "末班車正在進站……"
+			label.TextColor3 = Color3.fromRGB(211, 239, 234)
+			label.Font = Enum.Font.GothamBlack
+			label.TextSize = 26
+			label.ZIndex = 21
+			label.Parent = fade
+			TweenService:Create(fade, TweenInfo.new(2.7), {BackgroundTransparency = 0.08}):Play()
+		elseif not isQueued then
+			status.Text = "另一班末班車正在發車。"
+		end
+	elseif info.phase == "Idle" then
+		if info.message and info.message ~= "" then status.Text = info.message end
+		start.Text = "從選單加入隊伍"
+		start.Active = true
+	elseif info.phase == "Launched" then
+		status.Text = info.message or "本機遊戲已啟動。"
+	end
+end)
+
+Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(function()
+	if Workspace:GetAttribute("LastTrainMode") == "Game" then
+		player.CameraMode = Enum.CameraMode.LockFirstPerson
+		TweenService:Create(overlay, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+		task.delay(0.55, function()
+			gui.Enabled = false
+		end)
+	end
+end)
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="24">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
+    <Item class="SpawnLocation" referent="25">
+      <Properties>
+        <string name="Name">PlatformSpawn</string>
+        <bool name="Anchored">true</bool>
+        <CoordinateFrame name="CFrame">
+          <X>0</X>
+          <Y>0.4</Y>
+          <Z>42</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <bool name="CanCollide">true</bool>
+        <int name="Duration">0</int>
+        <bool name="Neutral">true</bool>
+        <Vector3 name="size">
+          <X>8</X>
+          <Y>1</Y>
+          <Z>8</Z>
+        </Vector3>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>
