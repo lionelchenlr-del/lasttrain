@@ -2,7 +2,13 @@
 local GameConfig = {}
 
 GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
-GameConfig.StationSpacing = 600
+-- Shared geometry and timing: wheel contact, doors and safety use one layout.
+GameConfig.StationSpacing = 2800
+GameConfig.TravelDuration = 42
+GameConfig.TrainCenterZ = -6.35
+GameConfig.TrackHalfGauge = 4.05
+GameConfig.RailTop = -1.55
+GameConfig.PlatformHalfLength = 210
 GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
 GameConfig.Objectives = {
 	"登上列車，檢查沒有目的地的車票",

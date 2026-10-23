@@ -16,7 +16,7 @@ bloom.Parent = Lighting
 local function applyLighting(isLobby)
 	Lighting.ClockTime = isLobby and 20.4 or 20.15
 	Lighting.Brightness = isLobby and 3.1 or 2.05
-	Lighting.ExposureCompensation = isLobby and 0.18 or -0.12
+	Lighting.ExposureCompensation = isLobby and 0.18 or 0.04
 	Lighting.GlobalShadows = true
 	Lighting.Ambient = isLobby and Color3.fromRGB(158, 171, 180) or Color3.fromRGB(68, 82, 95)
 	Lighting.OutdoorAmbient = isLobby and Color3.fromRGB(121, 136, 148) or Color3.fromRGB(47, 62, 78)
@@ -27,9 +27,9 @@ local function applyLighting(isLobby)
 	Lighting.FogEnd = isLobby and 3000 or 620
 	atmosphere.Color = Color3.fromRGB(151, 174, 193)
 	atmosphere.Decay = Color3.fromRGB(39, 53, 70)
-	atmosphere.Density = isLobby and 0 or 0.07
+	atmosphere.Density = isLobby and 0 or 0.035
 	atmosphere.Glare = isLobby and 0.03 or 0.06
-	atmosphere.Haze = isLobby and 0 or 0.36
+	atmosphere.Haze = isLobby and 0 or 0.16
 	atmosphere.Offset = 0.1
 	color.Brightness = 0.015
 	color.Contrast = isLobby and 0.035 or 0.1

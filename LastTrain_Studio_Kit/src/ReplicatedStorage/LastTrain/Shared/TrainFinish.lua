@@ -26,7 +26,11 @@ function Finish.Apply(model)
    elseif blackNames[p.Name] then
     p.Color=Finish.Graphite; p.Material=Enum.Material.Metal; p.Reflectance=0.1
    elseif p.Name=="PanoramicWindowBand" or p.Name=="DisplayWindowBand" then
-    p.Color=Color3.fromRGB(15,21,28); p.Reflectance=0.16; p.Transparency=0.12
+    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.Glass
+    p.Reflectance=0.04; p.Transparency=0.72
+   elseif p.Name=="SlidingDoor" then
+    p.Color=Color3.fromRGB(174,197,204); p.Material=Enum.Material.Glass
+    p.Reflectance=0.04; p.Transparency=0.58
    end
   end
  end

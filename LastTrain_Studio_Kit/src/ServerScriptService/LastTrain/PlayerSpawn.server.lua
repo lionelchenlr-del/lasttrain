@@ -11,7 +11,8 @@ end
 Players.CharacterAutoLoads = false
 
 local function getStationSpawnCFrame()
-	Workspace:WaitForChild("LastTrainWorld")
+	local world=Workspace:WaitForChild("LastTrainWorld")
+	while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
 	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
 	-- Respawns use the same clear approach point as a new round, away from the

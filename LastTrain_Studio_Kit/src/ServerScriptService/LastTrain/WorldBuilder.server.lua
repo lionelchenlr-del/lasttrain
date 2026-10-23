@@ -89,14 +89,14 @@ local function beam(parent,name,a,b,width,color,material)
  return p
 end
 
--- A long route with a 600-stud run between each of the seven stations.
+-- Long, enclosed runs separate all seven stations; boarding is mandatory.
 local spacing=GameConfig.StationSpacing
 local routeLength=spacing*(#GameConfig.Stations-1)+480
 local routeCenter=spacing*(#GameConfig.Stations-1)/2
 local routeStart=routeCenter-routeLength/2
 local routeEnd=routeCenter+routeLength/2
-routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-2,0),C.concrete,Enum.Material.Concrete)
-routePart(geometry,"ContinuousTrackBed",Vector3.new(routeLength-24,1,22),Vector3.new(routeCenter,-1.1,0),C.dark,Enum.Material.Asphalt)
+routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-3.5,0),C.concrete,Enum.Material.Concrete)
+routePart(geometry,"ContinuousTrackBed",Vector3.new(routeLength-24,.6,15),Vector3.new(routeCenter,-2.3,GameConfig.TrainCenterZ),C.dark,Enum.Material.Asphalt)
 routePart(geometry,"ContinuousCeiling",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,18,0),C.dark,Enum.Material.Metal)
 for _,side in ipairs({-1,1}) do
  routePart(geometry,"ContinuousBackWall",Vector3.new(routeLength,18,2),Vector3.new(routeCenter,8,side*33),C.tile,Enum.Material.Concrete)
@@ -108,13 +108,30 @@ for _,x in ipairs({routeStart+1,routeEnd-1}) do
  part(geometry,"EndWallServiceDoor",Vector3.new(.18,8,5),Vector3.new(x-1.08,4,0),C.dark,Enum.Material.Metal)
  part(geometry,"EndWallExitGlow",Vector3.new(.12,.2,3.5),Vector3.new(x-1.2,7.55,0),C.cyan,Enum.Material.Neon,0,false)
 end
-for _,z in ipairs({-4.6,4.6}) do routePart(geometry,"ContinuousRail",Vector3.new(routeLength-25,.3,.3),Vector3.new(routeCenter,-.35,z),C.metal,Enum.Material.Metal) end
-for x=routeStart+10,routeEnd-10,5 do part(geometry,"TrackSleeper",Vector3.new(.8,.25,13),Vector3.new(x,-.55,0),C.dark,Enum.Material.WoodPlanks) end
+for _,side in ipairs({-1,1}) do
+ local z=GameConfig.TrainCenterZ+side*GameConfig.TrackHalfGauge
+ routePart(geometry,"ContinuousRail",Vector3.new(routeLength-25,.3,.3),Vector3.new(routeCenter,GameConfig.RailTop-.15,z),Color3.fromRGB(169,177,182),Enum.Material.Metal)
+ routePart(geometry,"RailFoot",Vector3.new(routeLength-25,.10,.65),Vector3.new(routeCenter,GameConfig.RailTop-.28,z),C.metal,Enum.Material.Metal)
+end
+for x=routeStart+10,routeEnd-10,8 do
+ part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete)
+end
+routePart(geometry,"OverheadContactWire",Vector3.new(routeLength-25,.07,.07),Vector3.new(routeCenter,11.64,GameConfig.TrainCenterZ),Color3.fromRGB(112,108,96),Enum.Material.Metal,0,false)
+for x=routeStart+30,routeEnd-30,128 do
+ local stopDistance=math.abs(x-math.floor(x/spacing+.5)*spacing)
+ if stopDistance>230 then
+  for _,side in ipairs({-1,1}) do
+   local lamp=part(geometry,"TunnelServiceLight",Vector3.new(4,.3,.16),Vector3.new(x,6,side*31.7),Color3.fromRGB(207,223,233),Enum.Material.Neon,0,false)
+   pointLight(lamp,Color3.fromRGB(187,207,225),.7,27)
+   part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false)
+  end
+ end
+end
 
 -- A silver high-speed style carriage with tapered noses, broad dark glazing,
 -- a curved roof, and a bright cyan beltline rather than a box shell.
 local train=Instance.new("Model"); train.Name="LastTrainCar"; train.Parent=props
-part(train,"CarFloor",Vector3.new(60,.6,11.4),Vector3.new(35,-.2,0),Color3.fromRGB(41,52,59),Enum.Material.Metal)
+part(train,"CarFloor",Vector3.new(60,.6,11.4),Vector3.new(35,-.2,0),Color3.fromRGB(41,52,59),Enum.Material.SmoothPlastic)
 part(train,"CarInteriorCeiling",Vector3.new(60,.16,11),Vector3.new(35,7.45,0),Color3.fromRGB(157,171,171),Enum.Material.Metal)
 train.CarInteriorCeiling.Transparency=1; train.CarInteriorCeiling.CastShadow=false; train.CarInteriorCeiling.CanQuery=false
 -- Use a roof crown and separate lower/header skins instead of a solid oval
@@ -130,7 +147,7 @@ for _,side in ipairs({-1,1}) do
 end
 for _,side in ipairs({-1,1}) do
  for _,x in ipairs({18,52}) do
-  part(train,"CoachLowerSideSkin",Vector3.new(21,2.05,.55),Vector3.new(x,1.4,side*5.3),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
+  part(train,"CoachLowerSideSkin",Vector3.new(21,2.6,.55),Vector3.new(x,1.35,side*5.3),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
   part(train,"CoachUpperSideSkin",Vector3.new(21,2.95,.58),Vector3.new(x,6.75,side*5.25),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
  end
  for _,x in ipairs({8.25,61.75}) do
@@ -197,13 +214,20 @@ end
 -- headrest covers keep the upholstery smooth without stretching fabric UVs.
 for rowIndex,x in ipairs({14,24,46,56}) do
  for _,side in ipairs({-1,1}) do
-  for column,zOffset in ipairs({2.65,4.25}) do
+  for column,zOffset in ipairs({2.2,4.1}) do
    local z=side*zOffset
-   ellipsoid(train,"UpholsteredSeat",Vector3.new(x,.88,z),Vector3.new(1.9,.55,1.43),Color3.fromRGB(39,62,81),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatBack",Vector3.new(x-.78,1.93,z),Vector3.new(.48,2.45,1.48),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatLumbarPanel",Vector3.new(x-.48,1.68,z),Vector3.new(.08,.8,1.08),Color3.fromRGB(65,94,114),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatHeadrest",Vector3.new(x-.78,3.04,z),Vector3.new(.55,.6,1.2),Color3.fromRGB(72,97,118),Enum.Material.SmoothPlastic,0,false)
-   part(train,"HeadrestCover",Vector3.new(.075,.42,.84),Vector3.new(x-.47,3.01,z),Color3.fromRGB(222,224,220),Enum.Material.Fabric,0,false)
+   part(train,"UpholsteredSeat",Vector3.new(1.65,.26,1.34),Vector3.new(x,.88,z),Color3.fromRGB(39,62,81),Enum.Material.SmoothPlastic,0,false)
+   local roll=part(train,"SeatFrontBolster",Vector3.new(1.34,.26,.26),Vector3.new(x+.79,.88,z),Color3.fromRGB(45,68,89),Enum.Material.SmoothPlastic,0,false)
+   roll.Shape=Enum.PartType.Cylinder; roll.CFrame=CFrame.new(roll.Position)*CFrame.Angles(0,math.pi/2,0)
+   part(train,"SeatBack",Vector3.new(.48,1.95,1.38),Vector3.new(x-.78,1.91,z),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+   part(train,"SeatTopRail",Vector3.new(.48,.42,.96),Vector3.new(x-.78,2.9,z),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+   for _,edge in ipairs({-.48,.48}) do
+    local corner=part(train,"SeatTopCorner",Vector3.new(.48,.42,.42),Vector3.new(x-.78,2.9,z+edge),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+    corner.Shape=Enum.PartType.Cylinder
+   end
+   part(train,"SeatLumbarPanel",Vector3.new(.08,.64,1.13),Vector3.new(x-.51,1.68,z),Color3.fromRGB(58,84,105),Enum.Material.SmoothPlastic,0,false)
+   part(train,"SeatHeadrest",Vector3.new(.55,.5,1.2),Vector3.new(x-.74,2.94,z),Color3.fromRGB(72,97,118),Enum.Material.SmoothPlastic,0,false)
+   part(train,"HeadrestCover",Vector3.new(.075,.42,.84),Vector3.new(x-.43,2.98,z),Color3.fromRGB(222,224,220),Enum.Material.SmoothPlastic,0,false)
    part(train,"SeatPedestal",Vector3.new(.8,.52,.9),Vector3.new(x-.12,.35,z),Color3.fromRGB(76,88,101),Enum.Material.Metal,0,false)
    for _,edge in ipairs({-.69,.69}) do
     local arm=part(train,"SeatArmrest",Vector3.new(1.48,.16,.16),Vector3.new(x-.04,1.35,z+edge),Color3.fromRGB(154,163,173),Enum.Material.Metal,0,false)
@@ -211,14 +235,25 @@ for rowIndex,x in ipairs({14,24,46,56}) do
    end
    local badge=part(train,"SeatNumberBadge",Vector3.new(.05,.22,.33),Vector3.new(x-1.05,2.72,z),C.gold,Enum.Material.Metal,0,false)
    label(badge,string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")),Color3.fromRGB(23,30,40),nil,nil,Enum.NormalId.Left)
-   local collider=part(train,"SeatCollider",Vector3.new(1.95,2.9,1.45),Vector3.new(x-.1,1.55,z),C.dark,Enum.Material.SmoothPlastic,1,true)
+   local seat=Instance.new("Seat"); seat.Name="PassengerSeat"; seat.Size=Vector3.new(1.3,.18,1.55)
+   seat.CFrame=CFrame.new(x,1.03,z)*CFrame.Angles(0,-math.pi/2,0)
+   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CastShadow=false
+   seat:SetAttribute("SeatNumber",string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")))
+   seat.Parent=train
+   local sit=Instance.new("ProximityPrompt"); sit.ActionText="坐下"; sit.ObjectText="座位 "..seat:GetAttribute("SeatNumber")
+   sit.MaxActivationDistance=6; sit.HoldDuration=.2; sit.RequiresLineOfSight=true; sit.Parent=seat
+   -- Keep the collision behind the passenger rather than filling the chair.
+   local collider=part(train,"SeatBackCollider",Vector3.new(.3,2.25,1.4),Vector3.new(x-.86,1.95,z),C.dark,Enum.Material.SmoothPlastic,1,true)
+   part(train,"FoldedTrayTable",Vector3.new(.10,.68,1.04),Vector3.new(x-1.06,1.94,z),Color3.fromRGB(175,183,188),Enum.Material.SmoothPlastic,0,false)
+   part(train,"TrayLatch",Vector3.new(.06,.09,.24),Vector3.new(x-1.13,2.3,z),Color3.fromRGB(96,108,118),Enum.Material.Metal,0,false)
+   part(train,"SeatBackPocket",Vector3.new(.11,.42,.92),Vector3.new(x-1.06,1.2,z),Color3.fromRGB(29,45,62),Enum.Material.Fabric,0,false)
    collider.CastShadow=false
   end
  end
 end
 -- A quiet center aisle, recessed service panels and luggage rails complete the
 -- interior without blocking the continuous walk path between coaches.
-part(train,"AisleRunner",Vector3.new(58,.035,1.72),Vector3.new(35,.115,0),Color3.fromRGB(53,68,72),Enum.Material.Fabric,0,false)
+part(train,"AisleRunner",Vector3.new(58,.035,1.72),Vector3.new(35,.115,0),Color3.fromRGB(53,62,74),Enum.Material.SmoothPlastic,0,false)
 for _,x in ipairs({11,29,41,59}) do
  for _,side in ipairs({-1,1}) do
   local rack=part(train,"LuggageShelf",Vector3.new(7.2,.18,1.5),Vector3.new(x,6.2,side*3.82),Color3.fromRGB(145,161,162),Enum.Material.Metal,0,false)
@@ -228,19 +263,35 @@ end
 -- Distinct roof equipment, passenger information panels and threshold lights
 -- make all three coaches read as working high-speed rolling stock.
 for _,x in ipairs({19,51}) do
- local pod=ellipsoid(train,"RoofHVACPod",Vector3.new(x,10.08,0),Vector3.new(12,.5,3.8),Color3.fromRGB(142,157,160),Enum.Material.Metal,0,false)
+ local pod=ellipsoid(train,"RoofHVACPod",Vector3.new(x,8.48,0),Vector3.new(12,.5,3.8),Color3.fromRGB(142,157,160),Enum.Material.Metal,0,false)
  for _,z in ipairs({-1.05,1.05}) do
-  part(train,"HVACVent",Vector3.new(8,.08,.22),Vector3.new(x,10.31,z),Color3.fromRGB(73,91,96),Enum.Material.Metal,0,false)
+  part(train,"HVACVent",Vector3.new(8,.08,.22),Vector3.new(x,8.71,z),Color3.fromRGB(73,91,96),Enum.Material.Metal,0,false)
+ end
+end
+for _,side in ipairs({-1,1}) do
+ for _,x in ipairs({20,50}) do
+  part(train,"WindowSill",Vector3.new(17.1,.14,.42),Vector3.new(x,2.59,side*5.34),Color3.fromRGB(191,197,196),Enum.Material.SmoothPlastic,0,false)
+  part(train,"WindowTopFrame",Vector3.new(17.1,.09,.14),Vector3.new(x,5.4,side*5.58),Color3.fromRGB(154,166,177),Enum.Material.Metal,0,false)
+ end
+ local warm=part(train,"IndirectCeilingStrip",Vector3.new(58,.06,.12),Vector3.new(35,7.2,side*4.8),Color3.fromRGB(255,231,200),Enum.Material.Neon,0,false)
+ pointLight(warm,Color3.fromRGB(255,234,209),.3,15)
+end
+for _,x in ipairs({29,41}) do
+ for _,side in ipairs({-1,1}) do
+  local bag=part(train,"OverheadCarryOn",Vector3.new(2.1,.94,.9),Vector3.new(x,6.76,side*3.9),side<0 and Color3.fromRGB(74,92,110) or Color3.fromRGB(139,107,83),Enum.Material.Fabric,0,false)
+  for _,strap in ipairs({-.64,.64}) do
+   part(train,"LuggageStrap",Vector3.new(.08,.96,.92),bag.Position+Vector3.new(strap,0,0),Color3.fromRGB(28,34,41),Enum.Material.SmoothPlastic,0,false)
+  end
  end
 end
 for _,x in ipairs({11,29,41,59}) do
- local box=part(train,"InteriorRouteDisplay",Vector3.new(3.8,.54,.12),Vector3.new(x,7.12,0),Color3.fromRGB(5,20,26),Enum.Material.Glass,.02,false)
+ local box=part(train,"InteriorRouteDisplay",Vector3.new(3.8,.54,.12),Vector3.new(x,7.12,0),Color3.fromRGB(5,20,26),Enum.Material.SmoothPlastic,0,false)
  label(box,"末班車  •  下一站",C.cyan)
 end
 -- A low articulated pantograph gives the electrical roofline a recognizable
 -- high-speed train detail while staying clear of the station ceiling.
 for _,z in ipairs({-.72,.72}) do
- local a=Vector3.new(35,10.28,z); local b=Vector3.new(39,10.28,z)
+ local a=Vector3.new(35,8.55,z); local b=Vector3.new(39,8.55,z)
  local c=Vector3.new(37.3,11.55,z)
  part(train,"PantographInsulator",Vector3.new(.55,.22,.55),a,Color3.fromRGB(46,65,72),Enum.Material.Metal,0,false)
  part(train,"PantographInsulator",Vector3.new(.55,.22,.55),b,Color3.fromRGB(46,65,72),Enum.Material.Metal,0,false)
@@ -387,10 +438,22 @@ addDisembarkPrompt(frontCar,95)
 part(rearCar,"RearCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(-32,4.1,0),C.dark,Enum.Material.Metal)
 part(frontCar,"FrontCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(99,4.1,0),C.dark,Enum.Material.Metal)
 -- Align the negative-side doors within arm's reach of the platform edge.
-for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,-6.35) end end
+for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,GameConfig.TrainCenterZ) end end
+
+-- Freeze a stable pivot; seat occupancy and wheel animation must not change it.
+train:PivotTo(train:GetPivot())
+train:SetAttribute("PassengerFrameOffset",train:GetPivot():ToObjectSpace(CFrame.new(35,0,GameConfig.TrainCenterZ)))
 
 for i,station in ipairs(GameConfig.Stations) do
  local center=(i-1)*spacing; local accent=station.Accent
+ -- End screens close each platform while leaving the train clearance open.
+ for _,endSign in ipairs({-1,1}) do
+  for _,side in ipairs({-1,1}) do
+   local gate=part(geometry,"PlatformEndScreen",Vector3.new(.26,9,20.5),Vector3.new(center+endSign*205,4.5,side*22.5),Color3.fromRGB(109,127,141),Enum.Material.Metal)
+   local sign=part(geometry,"TunnelAccessNotice",Vector3.new(.12,1.45,9),gate.Position+Vector3.new(-endSign*.20,1.6,0),Color3.fromRGB(25,35,48),Enum.Material.SmoothPlastic,0,false)
+   label(sign,"隧道封閉 · 請搭乘列車",Color3.fromRGB(243,220,163),nil,nil,endSign<0 and Enum.NormalId.Right or Enum.NormalId.Left)
+  end
+ end
  for _,side in ipairs({-1,1}) do
   -- Finished wall cladding, inset light panels, and service access doors make the
   -- full tunnel enclosure read as a designed station instead of a bare corridor.

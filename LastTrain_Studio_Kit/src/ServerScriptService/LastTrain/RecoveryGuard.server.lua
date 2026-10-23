@@ -11,6 +11,11 @@ while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
 	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
 end
 
+local Safety=require(script.Parent:WaitForChild("RouteSafety"))
+local Operations=require(script.Parent:WaitForChild("TrainOperations"))
+local world=Workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
+local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
 local lastRecovery = {}
 
 RunService.Heartbeat:Connect(function()
@@ -20,12 +25,12 @@ RunService.Heartbeat:Connect(function()
 		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
 		if root and humanoid and humanoid.Health > 0 then
 			local position = root.Position
-			local outsideStation = position.Y < -8
-				or position.X < -250 or position.X > GameConfig.StationSpacing * (#GameConfig.Stations - 1) + 250
-				or math.abs(position.Z) > 45
+			local currentStop=math.clamp(Workspace:GetAttribute("LastTrainStation") or 1,1,#GameConfig.Stations)
+   local aboard=Operations.Contains(train,character)
+   local outsideStation=Safety.ShouldRecover(position,aboard,currentStop,GameConfig)
 			if outsideStation and (not lastRecovery[player] or os.clock() - lastRecovery[player] > 2) then
 				lastRecovery[player] = os.clock()
-				local stop = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+				local stop = currentStop
 				local x = (stop - 1) * GameConfig.StationSpacing - 80
 				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
 				root.AssemblyLinearVelocity = Vector3.zero

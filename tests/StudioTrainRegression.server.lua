@@ -1,0 +1,112 @@
+-- Run only in a temporary Studio test place, never installed in the shipped game.
+local RunService=game:GetService("RunService")
+assert(RunService:IsStudio(),"Studio-only regression fixture")
+local W=workspace:WaitForChild("LastTrainWorld")
+while not W:GetAttribute("Ready") do task.wait(.1) end
+local Config=require(game.ReplicatedStorage.LastTrain.Shared.GameConfig)
+local Operations=require(game.ServerScriptService.LastTrain.TrainOperations)
+local train=W.Props.LastTrainCar
+local op=Operations.new(train)
+local Safety=require(game.ServerScriptService.LastTrain.RouteSafety)
+local tests=0
+local function check(ok,message)
+ assert(ok,message); tests+=1
+end
+local function rig(name,position,anchored)
+ local model=Instance.new("Model"); model.Name=name
+ local root=Instance.new("Part"); root.Name="HumanoidRootPart"; root.Size=Vector3.new(2,2,1)
+ root.CFrame=CFrame.new(position); root.Anchored=anchored; root.CanCollide=false; root.Parent=model
+ local torso=root:Clone(); torso.Name="Torso"; torso.Anchored=false; torso.Parent=model
+ local head=root:Clone(); head.Name="Head"; head.Size=Vector3.new(2,1,1); head.Anchored=false; head.CFrame=root.CFrame*CFrame.new(0,1.5,0); head.Parent=model
+ local neck=Instance.new("Motor6D"); neck.Name="Neck"; neck.Part0=torso; neck.Part1=head; neck.C0=CFrame.new(0,1.5,0); neck.Parent=torso
+ local joint=Instance.new("Motor6D"); joint.Name="RootJoint"; joint.Part0=root; joint.Part1=torso; joint.Parent=root
+ local h=Instance.new("Humanoid"); h.RequiresNeck=false; h.Parent=model
+ model.PrimaryPart=root; model.Parent=workspace
+ return model,h
+end
+for station=1,#Config.Stations do
+ local x=(station-1)*Config.StationSpacing
+ check(not Safety.ShouldRecover(Vector3.new(x,3,-22),false,station,Config),"Valid platform rejected")
+ check(Safety.ShouldRecover(Vector3.new(x+230,3,-22),false,station,Config),"Walking past platform allowed")
+ check(Safety.ShouldRecover(Vector3.new(x+500,3,Config.TrainCenterZ),false,station,Config),"Tunnel traversal allowed")
+ check(Safety.ShouldRecover(Vector3.new(x,-10,-22),false,station,Config),"Falling not recovered")
+ if station<#Config.Stations then
+  check(not Safety.ShouldRecover(Vector3.new(x+500,3,Config.TrainCenterZ),true,station,Config),"Valid moving rider rejected")
+  check(Safety.ShouldRecover(Vector3.new(x+Config.StationSpacing,3,-22),false,station,Config),"Skipping station allowed")
+ end
+end
+local seats={}
+for _,part in ipairs(train:GetDescendants()) do
+ if part:IsA("Seat") then table.insert(seats,part) end
+ if part.Name=="PanoramicWindowBand" then check(part.Transparency>=.65,"Opaque passenger glass") end
+ if part.Name=="BogieWheel" then
+  local z=part.Position.Z
+  check(math.abs(math.abs(z-Config.TrainCenterZ)-Config.TrackHalfGauge)<.001,"Wheel gauge mismatch")
+  check(math.abs(part.Position.Y-.675-Config.RailTop)<.001,"Wheel not resting on rail")
+ end
+end
+check(#seats>=32,"Missing usable seats")
+check(Config.StationSpacing>=2800 and Config.TravelDuration>=40,"Route too short")
+local params=RaycastParams.new(); params.FilterType=Enum.RaycastFilterType.Include
+params.FilterDescendantsInstances={train}; params.RespectCanCollide=true
+check(not workspace:Raycast(Vector3.new(-25,3.5,Config.TrainCenterZ),Vector3.new(120,0,0),params),"Aisle obstruction")
+for _,x in ipairs({4.9,5.1,64.9,65.1}) do
+ check(workspace:Raycast(Vector3.new(x,2,Config.TrainCenterZ),Vector3.new(0,-5,0),params)~=nil,"Missing seam floor")
+ check(workspace:Raycast(Vector3.new(x,3,Config.TrainCenterZ),Vector3.new(0,10,0),params)~=nil,"Missing seam ceiling")
+end
+for _,rail in ipairs(W.Geometry:GetChildren()) do
+ if rail.Name=="ContinuousRail" then
+  check(math.abs(math.abs(rail.Position.Z-Config.TrainCenterZ)-Config.TrackHalfGauge)<.001,"Rail gauge mismatch")
+  check(math.abs(rail.Position.Y+rail.Size.Y/2-Config.RailTop)<.001,"Rail height mismatch")
+ end
+ if rail:IsA("BasePart") then check(rail.Size.X<=512.01,"Route segment truncated") end
+end
+local standing=rig("StandingPassenger",Vector3.new(35,3.2,Config.TrainCenterZ),true)
+local seated,h=rig("SeatedPassenger",seats[1].Position+Vector3.new(0,2,0),false)
+seats[1]:Sit(h); task.wait(.4)
+check(h.SeatPart==seats[1],"Seat did not attach humanoid")
+check(Operations.Contains(train,seated),"Seated rider not aboard")
+local initial=train:GetPivot()
+-- Six stops, return, then repeat the full route: doors must remain local each time.
+for cycle=1,2 do
+ for stop=1,6 do
+  op:SetDoors(false)
+  local before=standing:GetPivot().Position
+  op:Move(Config.StationSpacing,.7,{standing,seated})
+  task.wait(.15)
+  check(math.abs(standing:GetPivot().Position.X-before.X-Config.StationSpacing)<.05,"Standing rider slipped")
+  check(h.SeatPart==seats[1],"Seat detached during motion")
+  check((seated.HumanoidRootPart.Position-seats[1].Position).Magnitude<5,"Seated rider did not move")
+  op:SetDoors(true)
+  for _,door in ipairs(op.Doors) do
+   local expected=train:GetPivot()*(door.Part:GetAttribute("Side")==-1 and door.Open or door.Closed)
+   check((door.Part.Position-expected.Position).Magnitude<.02,"Door detached after arrival")
+  end
+  print("LASTTRAIN_REGRESSION_STOP_PASS",cycle,stop)
+ end
+ op:SetDoors(false)
+ op:Move(-Config.StationSpacing*6,1,{standing,seated})
+ check((train:GetPivot().Position-initial.Position).Magnitude<.02,"Return drift")
+end
+op:SetDoors(true)
+h.Sit=false
+local weld=seats[1]:FindFirstChild("SeatWeld"); if weld then weld:Destroy() end
+seated:PivotTo(Operations.Frame(train)*CFrame.new(0,3.2,0)); task.wait(.15)
+check(h.SeatPart==nil,"Cannot leave seat")
+check(not Operations.Contains(train,rig("RoofIntruder",Operations.Frame(train).Position+Vector3.new(0,12,0),true)),"Roof counted as carriage")
+standing:Destroy(); seated:Destroy()
+print("LASTTRAIN_REGRESSION_ALL_PASS",tests,"assertions; two full routes; seated and standing riders; 12 arrivals")
+
+-- Optional visual review: 12 seconds per view after all checks finish.
+local camera=workspace.CurrentCamera
+if camera then
+ for _,view in ipairs({
+  {"Exterior",Vector3.new(-92,7.6,-25),Vector3.new(-20,4,-6.35)},
+  {"Interior",Vector3.new(7,4.5,-6.35),Vector3.new(58,4.5,-6.35)},
+  {"Rail contact",Vector3.new(-4,2.5,1.9),Vector3.new(14,-.8,-6.35)},
+ }) do
+  camera.CFrame=CFrame.lookAt(view[2],view[3])
+  print("LASTTRAIN_VISUAL_VIEW",view[1]); task.wait(12)
+ end
+ camera.CFrame=CFrame.lookAt(Vector3.new(-92,7.6,-25),Vector3.new(-20,4,-6.35))
+end

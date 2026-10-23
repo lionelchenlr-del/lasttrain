@@ -13,6 +13,7 @@ while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
 end
 
 local world = Workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 local spawnPart = world:WaitForChild("MonsterSpawn")
 local spawnPosition = Vector3.new(spawnPart.Position.X, 0, spawnPart.Position.Z)
 local monster = Instance.new("Model")
@@ -102,7 +103,7 @@ end
 while true do
     local stage = Workspace:GetAttribute("LastTrainRoundStage") or 0
     local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
-    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, 0)
+    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, -22)
     if (stationSpawn - spawnPosition).Magnitude > 1 then
         spawnPosition = stationSpawn
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))

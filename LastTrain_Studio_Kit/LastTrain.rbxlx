@@ -213,7 +213,13 @@ return Appearance
 local GameConfig = {}
 
 GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
-GameConfig.StationSpacing = 600
+-- Shared geometry and timing: wheel contact, doors and safety use one layout.
+GameConfig.StationSpacing = 2800
+GameConfig.TravelDuration = 42
+GameConfig.TrainCenterZ = -6.35
+GameConfig.TrackHalfGauge = 4.05
+GameConfig.RailTop = -1.55
+GameConfig.PlatformHalfLength = 210
 GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
 GameConfig.Objectives = {
 	"登上列車，檢查沒有目的地的車票",
@@ -336,7 +342,11 @@ function Finish.Apply(model)
    elseif blackNames[p.Name] then
     p.Color=Finish.Graphite; p.Material=Enum.Material.Metal; p.Reflectance=0.1
    elseif p.Name=="PanoramicWindowBand" or p.Name=="DisplayWindowBand" then
-    p.Color=Color3.fromRGB(15,21,28); p.Reflectance=0.16; p.Transparency=0.12
+    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.Glass
+    p.Reflectance=0.04; p.Transparency=0.72
+   elseif p.Name=="SlidingDoor" then
+    p.Color=Color3.fromRGB(174,197,204); p.Material=Enum.Material.Glass
+    p.Reflectance=0.04; p.Transparency=0.58
    end
   end
  end
@@ -453,7 +463,7 @@ bloom.Parent = Lighting
 local function applyLighting(isLobby)
 	Lighting.ClockTime = isLobby and 20.4 or 20.15
 	Lighting.Brightness = isLobby and 3.1 or 2.05
-	Lighting.ExposureCompensation = isLobby and 0.18 or -0.12
+	Lighting.ExposureCompensation = isLobby and 0.18 or 0.04
 	Lighting.GlobalShadows = true
 	Lighting.Ambient = isLobby and Color3.fromRGB(158, 171, 180) or Color3.fromRGB(68, 82, 95)
 	Lighting.OutdoorAmbient = isLobby and Color3.fromRGB(121, 136, 148) or Color3.fromRGB(47, 62, 78)
@@ -464,9 +474,9 @@ local function applyLighting(isLobby)
 	Lighting.FogEnd = isLobby and 3000 or 620
 	atmosphere.Color = Color3.fromRGB(151, 174, 193)
 	atmosphere.Decay = Color3.fromRGB(39, 53, 70)
-	atmosphere.Density = isLobby and 0 or 0.07
+	atmosphere.Density = isLobby and 0 or 0.035
 	atmosphere.Glare = isLobby and 0.03 or 0.06
-	atmosphere.Haze = isLobby and 0 or 0.36
+	atmosphere.Haze = isLobby and 0 or 0.16
 	atmosphere.Offset = 0.1
 	color.Brightness = 0.015
 	color.Contrast = isLobby and 0.035 or 0.1
@@ -1454,7 +1464,8 @@ end
 Players.CharacterAutoLoads = false
 
 local function getStationSpawnCFrame()
-	Workspace:WaitForChild("LastTrainWorld")
+	local world=Workspace:WaitForChild("LastTrainWorld")
+	while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
 	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
 	-- Respawns use the same clear approach point as a new round, away from the
@@ -1801,6 +1812,11 @@ while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
 	Workspace:GetAttributeChangedSignal("LastTrainMode"):Wait()
 end
 
+local Safety=require(script.Parent:WaitForChild("RouteSafety"))
+local Operations=require(script.Parent:WaitForChild("TrainOperations"))
+local world=Workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
+local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
 local lastRecovery = {}
 
 RunService.Heartbeat:Connect(function()
@@ -1810,12 +1826,12 @@ RunService.Heartbeat:Connect(function()
 		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
 		if root and humanoid and humanoid.Health > 0 then
 			local position = root.Position
-			local outsideStation = position.Y < -8
-				or position.X < -250 or position.X > GameConfig.StationSpacing * (#GameConfig.Stations - 1) + 250
-				or math.abs(position.Z) > 45
+			local currentStop=math.clamp(Workspace:GetAttribute("LastTrainStation") or 1,1,#GameConfig.Stations)
+   local aboard=Operations.Contains(train,character)
+   local outsideStation=Safety.ShouldRecover(position,aboard,currentStop,GameConfig)
 			if outsideStation and (not lastRecovery[player] or os.clock() - lastRecovery[player] > 2) then
 				lastRecovery[player] = os.clock()
-				local stop = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
+				local stop = currentStop
 				local x = (stop - 1) * GameConfig.StationSpacing - 80
 				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
 				root.AssemblyLinearVelocity = Vector3.zero
@@ -1839,7 +1855,7 @@ end)
 -- here, and only the server awards currency or advances the train.
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
-local TweenService=game:GetService("TweenService")
+local Operations=require(script.Parent:WaitForChild("TrainOperations"))
 local RunService=game:GetService("RunService")
 local Workspace=game:GetService("Workspace")
 local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -1858,65 +1874,55 @@ local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
 local stage,completed,choice,traveling=0,false,nil,false
 local station=1
 local spacing=GameConfig.StationSpacing
+local operations=Operations.new(train)
 
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
 local function broadcast(endingKey)
  local data=GameConfig.Stations[station]
  objectiveEvent:FireAllClients(stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",storyFor(station),endingKey)
 end
-local function setDoors(open)
- for _,d in ipairs(train:GetDescendants()) do if d:IsA("BasePart") then
-  if d.Name=="SlidingDoor" then
-   -- Only the platform-facing doors open; track-side doors stay sealed.
-   local shouldOpen=open and d:GetAttribute("Side")==-1
-   local x=d:GetAttribute(shouldOpen and "OpenX" or "ClosedX") or d.Position.X
-   d.Position=Vector3.new(x,d.Position.Y,d.Position.Z); d.CanCollide=not shouldOpen
-  elseif d.Name=="BoardingBridge" then
-   local shouldOpen=open and d:GetAttribute("Side")==-1
-   d.Transparency=shouldOpen and 0 or 1; d.CanCollide=shouldOpen
+local function setDoors(open,instant) operations:SetDoors(open,instant) end
+local function updateDisplays(moving)
+ local destination=GameConfig.Stations[math.min(station+(moving and 1 or 0),#GameConfig.Stations)]
+ for _,part in ipairs(train:GetDescendants()) do
+  if part.Name=="InteriorRouteDisplay" then
+   for _,text in ipairs(part:GetDescendants()) do
+    if text:IsA("TextLabel") then text.Text=(moving and "開往 " or "停靠 ")..destination.Name.."  •  "..destination.English end
+   end
   end
- end end
+ end
 end
 local function boardPlayer(player)
  local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
  if not character or not humanoid or humanoid.Health<=0 then return end
- character:PivotTo(train:GetPivot()*CFrame.new(-10,-1,0)); player:SetAttribute("OnLastTrain",true)
+ character:PivotTo(Operations.Frame(train)*CFrame.new(-10,3.2,0)*CFrame.Angles(0,-math.pi/2,0)); player:SetAttribute("OnLastTrain",true)
 end
 -- Keep the ride state in sync with where the player is standing. This lets
 -- players walk through the open doors and remain at a station when the train leaves.
 RunService.Heartbeat:Connect(function()
- local pivot=train:GetPivot()
  for _,p in ipairs(Players:GetPlayers()) do
   local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
   if root then
-   local localPosition=pivot:PointToObjectSpace(root.Position)
-   local aboard=math.abs(localPosition.X)<=96 and localPosition.Y>=-5 and localPosition.Y<=9 and math.abs(localPosition.Z)<=5.8
+   local aboard=Operations.Contains(train,character)
    p:SetAttribute("OnLastTrain",aboard)
   else p:SetAttribute("OnLastTrain",false) end
  end
 end)
 local function moveToNextStation()
- traveling=true; setDoors(false)
- local start=train:GetPivot(); local target=start+Vector3.new(spacing,0,0)
- local value=Instance.new("CFrameValue"); value.Value=start
- local previous=start
- local connection=value:GetPropertyChangedSignal("Value"):Connect(function()
-  local current=value.Value; local delta=current*previous:Inverse(); train:PivotTo(current)
-  for _,p in ipairs(Players:GetPlayers()) do
-   if p:GetAttribute("OnLastTrain") then local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local h=character and character:FindFirstChildWhichIsA("Humanoid")
-    if root and h and h.Health>0 then character:PivotTo(delta*character:GetPivot()) end
-   end
-  end
-  previous=current
- end)
- local tween=TweenService:Create(value,TweenInfo.new(14,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Value=target})
- tween:Play(); tween.Completed:Wait(); connection:Disconnect(); value:Destroy()
+ Workspace:SetAttribute("LastTrainTraveling",true)
+ updateDisplays(true)
+ objectiveEvent:FireAllClients(stage,"車門即將關閉，請遠離車門。",false,GameConfig.Stations[station].Name,storyFor(station))
+ task.wait(2)
+ setDoors(false)
+ operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
- Workspace:SetAttribute("LastTrainStation",station); traveling=false; setDoors(true); broadcast()
+ Workspace:SetAttribute("LastTrainStation",station)
+ Workspace:SetAttribute("LastTrainTraveling",false)
+ updateDisplays(false); setDoors(true); traveling=false; broadcast()
 end
 
 -- Initial carriage is already docked at NEW MOON with its doors open.
-setDoors(true); Workspace:SetAttribute("LastTrainStation",1); broadcast()
+setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:SetAttribute("LastTrainTraveling",false); updateDisplays(false); broadcast()
  for _,anchor in ipairs(objectiveFolder:GetChildren()) do
  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
  if p then p.Triggered:Connect(function(player)
@@ -1936,6 +1942,7 @@ setDoors(true); Workspace:SetAttribute("LastTrainStation",1); broadcast()
    completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
    objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey); return
   end
+  traveling=true -- Lock before currency persistence or any other yielding work.
   stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
   if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
   broadcast()
@@ -1946,10 +1953,15 @@ for _,anchor in ipairs(train:GetDescendants()) do
  if anchor:GetAttribute("PromptType")=="Disembark" then
   local p=anchor:FindFirstChildOfClass("ProximityPrompt")
   if p then p.Triggered:Connect(function(player)
-   if traveling or not player:GetAttribute("OnLastTrain") then return end
+   if traveling or not Operations.Contains(train,player.Character) then return end
+   local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+   if not root or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+2 then return end
    local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
    if not character or not humanoid or humanoid.Health<=0 then return end
-   local platformCFrame=train:GetPivot()*CFrame.new(0,-2,-16)
+   local seat=humanoid.SeatPart
+   humanoid.Sit=false
+   local weld=seat and seat:FindFirstChild("SeatWeld"); if weld then weld:Destroy() end
+   local platformCFrame=Operations.Frame(train)*CFrame.new(0,3.2,-16)
    character:PivotTo(platformCFrame); player:SetAttribute("OnLastTrain",false)
   end) end
  end
@@ -1959,7 +1971,7 @@ for _,item in ipairs(train:GetDescendants()) do
  local promptObject=item:FindFirstChildOfClass("ProximityPrompt")
  local key=item:GetAttribute("NarrativeKey")
  if promptObject and key then promptObject.Triggered:Connect(function(player)
-  if traveling or not player:GetAttribute("OnLastTrain") then return end
+  if not Operations.Contains(train,player.Character) then return end
   local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
   local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
   if not root or not humanoid or humanoid.Health<=0 or (root.Position-item.Position).Magnitude>promptObject.MaxActivationDistance+4 then return end
@@ -1972,10 +1984,43 @@ end
 Players.PlayerAdded:Connect(function(player)
  task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",storyFor(station)) end end)
 end)
+
+for _,seat in ipairs(train:GetDescendants()) do
+ if seat:IsA("Seat") and seat.Name=="PassengerSeat" then
+  local prompt=seat:FindFirstChildOfClass("ProximityPrompt")
+  if prompt then
+   seat:GetPropertyChangedSignal("Occupant"):Connect(function() prompt.Enabled=seat.Occupant==nil end)
+   prompt.Triggered:Connect(function(player)
+    local character=player.Character
+    local root=character and character:FindFirstChild("HumanoidRootPart")
+    local h=character and character:FindFirstChildWhichIsA("Humanoid")
+    if not root or not h or h.Health<=0 or seat.Occupant or not Operations.Contains(train,character) then return end
+    if (root.Position-seat.Position).Magnitude>prompt.MaxActivationDistance+1 then return end
+    seat:Sit(h)
+   end)
+  end
+ end
+end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="21">
+      <Item class="ModuleScript" referent="21">
+        <Properties>
+          <string name="Name">RouteSafety</string>
+          <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
+-- never a client-supplied attribute, when deciding whether someone is aboard.
+local Safety={}
+function Safety.ShouldRecover(position,aboard,station,config)
+ local stationX=(station-1)*config.StationSpacing
+ local inTunnel=not aboard and (math.abs(position.X-stationX)>config.PlatformHalfLength+5 or position.Y < -2.4)
+ return inTunnel or position.Y < -8 or math.abs(position.Z)>45
+  or position.X < -250 or position.X > config.StationSpacing*(#config.Stations-1)+250
+end
+return Safety
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="22">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -1994,6 +2039,7 @@ while Workspace:GetAttribute("LastTrainMode") ~= "Game" do
 end
 
 local world = Workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 local spawnPart = world:WaitForChild("MonsterSpawn")
 local spawnPosition = Vector3.new(spawnPart.Position.X, 0, spawnPart.Position.Z)
 local monster = Instance.new("Model")
@@ -2083,7 +2129,7 @@ end
 while true do
     local stage = Workspace:GetAttribute("LastTrainRoundStage") or 0
     local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
-    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, 0)
+    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, -22)
     if (stationSpawn - spawnPosition).Magnitude > 1 then
         spawnPosition = stationSpawn
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
@@ -2143,7 +2189,115 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="22">
+      <Item class="ModuleScript" referent="23">
+        <Properties>
+          <string name="Name">TrainOperations</string>
+          <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
+local Players=game:GetService("Players")
+local TweenService=game:GetService("TweenService")
+local Operations={}
+Operations.__index=Operations
+
+function Operations.new(train)
+ local self=setmetatable({Train=train,Doors={},Wheels={},Moving=false},Operations)
+ local pivot=train:GetPivot()
+ for _,p in ipairs(train:GetDescendants()) do
+  if p:IsA("BasePart") then
+   if p.Name=="SlidingDoor" then
+    local closed=pivot:ToObjectSpace(p.CFrame)
+    local shift=(p:GetAttribute("OpenX") or p.Position.X)-(p:GetAttribute("ClosedX") or p.Position.X)
+    table.insert(self.Doors,{Part=p,Closed=closed,Open=closed+Vector3.new(shift,0,0)})
+   elseif p.Name=="BogieWheel" or p.Name=="WheelHub" then
+    table.insert(self.Wheels,{Part=p,Relative=pivot:ToObjectSpace(p.CFrame)})
+   end
+  end
+ end
+ return self
+end
+
+function Operations.Frame(train)
+ return train:GetPivot()*(train:GetAttribute("PassengerFrameOffset") or CFrame.identity)
+end
+function Operations.Contains(train,character)
+ local h=character and character:FindFirstChildWhichIsA("Humanoid")
+ local root=character and character:FindFirstChild("HumanoidRootPart")
+ if not h or h.Health<=0 or not root then return false end
+ if h.SeatPart and h.SeatPart:IsDescendantOf(train) then return true end
+ local p=Operations.Frame(train):PointToObjectSpace(root.Position)
+ -- Passenger floors stop at the sealed cab bulkheads. Roofs are never ride areas.
+ return p.X>=-66.4 and p.X<=63.5 and p.Y>=.25 and p.Y<=8.5 and math.abs(p.Z)<=5.5
+end
+
+function Operations:SetDoors(open,instant)
+ assert(not self.Moving,"Cannot open doors while moving")
+ self.Train:SetAttribute("DoorsOpen",false)
+ local animations={}
+ for _,door in ipairs(self.Doors) do
+  local p=door.Part
+  local shouldOpen=open and p:GetAttribute("Side")==-1
+  -- Local coordinates keep doors attached at every station, including return trips.
+  local target=self.Train:GetPivot()*(shouldOpen and door.Open or door.Closed)
+  p.CanCollide=not shouldOpen
+  if instant then p.CFrame=target else
+   local t=TweenService:Create(p,TweenInfo.new(.85,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{CFrame=target})
+   table.insert(animations,t); t:Play()
+  end
+ end
+ if #animations>0 then animations[#animations].Completed:Wait() end
+ for _,p in ipairs(self.Train:GetDescendants()) do
+  if p:IsA("BasePart") then
+   if p.Name=="BoardingBridge" then
+    local active=open and p:GetAttribute("Side")==-1
+    p.Transparency=active and 0 or 1; p.CanCollide=active
+   elseif p.Name=="DoorThresholdGlow" then
+    p.Color=open and Color3.fromRGB(98,225,211) or Color3.fromRGB(244,159,72)
+   end
+  end
+ end
+ self.Train:SetAttribute("DoorsOpen",open)
+end
+
+function Operations:Move(distance,duration,extraRiders)
+ assert(not self.Moving,"Train already moving")
+ assert(not self.Train:GetAttribute("DoorsOpen"),"Close doors before departure")
+ self.Moving=true
+ local start=self.Train:GetPivot()
+ local value=Instance.new("CFrameValue"); value.Value=start
+ local previous=start
+ local function update()
+  local current=value.Value
+  local delta=current*previous:Inverse()
+  local riders={}
+  for _,player in ipairs(Players:GetPlayers()) do
+   if Operations.Contains(self.Train,player.Character) then table.insert(riders,player.Character) end
+  end
+  -- Regression fixtures may supply server-owned NPCs; no client can call this module.
+  for _,character in ipairs(extraRiders or {}) do
+   if Operations.Contains(self.Train,character) then table.insert(riders,character) end
+  end
+  local standing={}
+  for _,character in ipairs(riders) do
+   local h=character:FindFirstChildWhichIsA("Humanoid")
+   if not (h.SeatPart and h.SeatPart:IsDescendantOf(self.Train)) then
+    table.insert(standing,{Character=character,Target=delta*character:GetPivot()})
+   end
+  end
+  self.Train:PivotTo(current)
+  for _,rider in ipairs(standing) do rider.Character:PivotTo(rider.Target) end
+  local rotation=-(current.Position-start.Position).X/.675
+  for _,wheel in ipairs(self.Wheels) do wheel.Part.CFrame=current*wheel.Relative*CFrame.Angles(rotation,0,0) end
+  previous=current
+ end
+ local connection=value:GetPropertyChangedSignal("Value"):Connect(update)
+ local tween=TweenService:Create(value,TweenInfo.new(duration,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Value=start+Vector3.new(distance,0,0)})
+ tween:Play(); tween.Completed:Wait()
+ connection:Disconnect(); value:Destroy(); self.Moving=false
+end
+return Operations
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="24">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -2238,14 +2392,14 @@ local function beam(parent,name,a,b,width,color,material)
  return p
 end
 
--- A long route with a 600-stud run between each of the seven stations.
+-- Long, enclosed runs separate all seven stations; boarding is mandatory.
 local spacing=GameConfig.StationSpacing
 local routeLength=spacing*(#GameConfig.Stations-1)+480
 local routeCenter=spacing*(#GameConfig.Stations-1)/2
 local routeStart=routeCenter-routeLength/2
 local routeEnd=routeCenter+routeLength/2
-routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-2,0),C.concrete,Enum.Material.Concrete)
-routePart(geometry,"ContinuousTrackBed",Vector3.new(routeLength-24,1,22),Vector3.new(routeCenter,-1.1,0),C.dark,Enum.Material.Asphalt)
+routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-3.5,0),C.concrete,Enum.Material.Concrete)
+routePart(geometry,"ContinuousTrackBed",Vector3.new(routeLength-24,.6,15),Vector3.new(routeCenter,-2.3,GameConfig.TrainCenterZ),C.dark,Enum.Material.Asphalt)
 routePart(geometry,"ContinuousCeiling",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,18,0),C.dark,Enum.Material.Metal)
 for _,side in ipairs({-1,1}) do
  routePart(geometry,"ContinuousBackWall",Vector3.new(routeLength,18,2),Vector3.new(routeCenter,8,side*33),C.tile,Enum.Material.Concrete)
@@ -2257,13 +2411,30 @@ for _,x in ipairs({routeStart+1,routeEnd-1}) do
  part(geometry,"EndWallServiceDoor",Vector3.new(.18,8,5),Vector3.new(x-1.08,4,0),C.dark,Enum.Material.Metal)
  part(geometry,"EndWallExitGlow",Vector3.new(.12,.2,3.5),Vector3.new(x-1.2,7.55,0),C.cyan,Enum.Material.Neon,0,false)
 end
-for _,z in ipairs({-4.6,4.6}) do routePart(geometry,"ContinuousRail",Vector3.new(routeLength-25,.3,.3),Vector3.new(routeCenter,-.35,z),C.metal,Enum.Material.Metal) end
-for x=routeStart+10,routeEnd-10,5 do part(geometry,"TrackSleeper",Vector3.new(.8,.25,13),Vector3.new(x,-.55,0),C.dark,Enum.Material.WoodPlanks) end
+for _,side in ipairs({-1,1}) do
+ local z=GameConfig.TrainCenterZ+side*GameConfig.TrackHalfGauge
+ routePart(geometry,"ContinuousRail",Vector3.new(routeLength-25,.3,.3),Vector3.new(routeCenter,GameConfig.RailTop-.15,z),Color3.fromRGB(169,177,182),Enum.Material.Metal)
+ routePart(geometry,"RailFoot",Vector3.new(routeLength-25,.10,.65),Vector3.new(routeCenter,GameConfig.RailTop-.28,z),C.metal,Enum.Material.Metal)
+end
+for x=routeStart+10,routeEnd-10,8 do
+ part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete)
+end
+routePart(geometry,"OverheadContactWire",Vector3.new(routeLength-25,.07,.07),Vector3.new(routeCenter,11.64,GameConfig.TrainCenterZ),Color3.fromRGB(112,108,96),Enum.Material.Metal,0,false)
+for x=routeStart+30,routeEnd-30,128 do
+ local stopDistance=math.abs(x-math.floor(x/spacing+.5)*spacing)
+ if stopDistance>230 then
+  for _,side in ipairs({-1,1}) do
+   local lamp=part(geometry,"TunnelServiceLight",Vector3.new(4,.3,.16),Vector3.new(x,6,side*31.7),Color3.fromRGB(207,223,233),Enum.Material.Neon,0,false)
+   pointLight(lamp,Color3.fromRGB(187,207,225),.7,27)
+   part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false)
+  end
+ end
+end
 
 -- A silver high-speed style carriage with tapered noses, broad dark glazing,
 -- a curved roof, and a bright cyan beltline rather than a box shell.
 local train=Instance.new("Model"); train.Name="LastTrainCar"; train.Parent=props
-part(train,"CarFloor",Vector3.new(60,.6,11.4),Vector3.new(35,-.2,0),Color3.fromRGB(41,52,59),Enum.Material.Metal)
+part(train,"CarFloor",Vector3.new(60,.6,11.4),Vector3.new(35,-.2,0),Color3.fromRGB(41,52,59),Enum.Material.SmoothPlastic)
 part(train,"CarInteriorCeiling",Vector3.new(60,.16,11),Vector3.new(35,7.45,0),Color3.fromRGB(157,171,171),Enum.Material.Metal)
 train.CarInteriorCeiling.Transparency=1; train.CarInteriorCeiling.CastShadow=false; train.CarInteriorCeiling.CanQuery=false
 -- Use a roof crown and separate lower/header skins instead of a solid oval
@@ -2279,7 +2450,7 @@ for _,side in ipairs({-1,1}) do
 end
 for _,side in ipairs({-1,1}) do
  for _,x in ipairs({18,52}) do
-  part(train,"CoachLowerSideSkin",Vector3.new(21,2.05,.55),Vector3.new(x,1.4,side*5.3),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
+  part(train,"CoachLowerSideSkin",Vector3.new(21,2.6,.55),Vector3.new(x,1.35,side*5.3),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
   part(train,"CoachUpperSideSkin",Vector3.new(21,2.95,.58),Vector3.new(x,6.75,side*5.25),Color3.fromRGB(193,204,205),Enum.Material.Metal,0,true)
  end
  for _,x in ipairs({8.25,61.75}) do
@@ -2346,13 +2517,20 @@ end
 -- headrest covers keep the upholstery smooth without stretching fabric UVs.
 for rowIndex,x in ipairs({14,24,46,56}) do
  for _,side in ipairs({-1,1}) do
-  for column,zOffset in ipairs({2.65,4.25}) do
+  for column,zOffset in ipairs({2.2,4.1}) do
    local z=side*zOffset
-   ellipsoid(train,"UpholsteredSeat",Vector3.new(x,.88,z),Vector3.new(1.9,.55,1.43),Color3.fromRGB(39,62,81),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatBack",Vector3.new(x-.78,1.93,z),Vector3.new(.48,2.45,1.48),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatLumbarPanel",Vector3.new(x-.48,1.68,z),Vector3.new(.08,.8,1.08),Color3.fromRGB(65,94,114),Enum.Material.SmoothPlastic,0,false)
-   ellipsoid(train,"SeatHeadrest",Vector3.new(x-.78,3.04,z),Vector3.new(.55,.6,1.2),Color3.fromRGB(72,97,118),Enum.Material.SmoothPlastic,0,false)
-   part(train,"HeadrestCover",Vector3.new(.075,.42,.84),Vector3.new(x-.47,3.01,z),Color3.fromRGB(222,224,220),Enum.Material.Fabric,0,false)
+   part(train,"UpholsteredSeat",Vector3.new(1.65,.26,1.34),Vector3.new(x,.88,z),Color3.fromRGB(39,62,81),Enum.Material.SmoothPlastic,0,false)
+   local roll=part(train,"SeatFrontBolster",Vector3.new(1.34,.26,.26),Vector3.new(x+.79,.88,z),Color3.fromRGB(45,68,89),Enum.Material.SmoothPlastic,0,false)
+   roll.Shape=Enum.PartType.Cylinder; roll.CFrame=CFrame.new(roll.Position)*CFrame.Angles(0,math.pi/2,0)
+   part(train,"SeatBack",Vector3.new(.48,1.95,1.38),Vector3.new(x-.78,1.91,z),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+   part(train,"SeatTopRail",Vector3.new(.48,.42,.96),Vector3.new(x-.78,2.9,z),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+   for _,edge in ipairs({-.48,.48}) do
+    local corner=part(train,"SeatTopCorner",Vector3.new(.48,.42,.42),Vector3.new(x-.78,2.9,z+edge),Color3.fromRGB(51,78,98),Enum.Material.SmoothPlastic,0,false)
+    corner.Shape=Enum.PartType.Cylinder
+   end
+   part(train,"SeatLumbarPanel",Vector3.new(.08,.64,1.13),Vector3.new(x-.51,1.68,z),Color3.fromRGB(58,84,105),Enum.Material.SmoothPlastic,0,false)
+   part(train,"SeatHeadrest",Vector3.new(.55,.5,1.2),Vector3.new(x-.74,2.94,z),Color3.fromRGB(72,97,118),Enum.Material.SmoothPlastic,0,false)
+   part(train,"HeadrestCover",Vector3.new(.075,.42,.84),Vector3.new(x-.43,2.98,z),Color3.fromRGB(222,224,220),Enum.Material.SmoothPlastic,0,false)
    part(train,"SeatPedestal",Vector3.new(.8,.52,.9),Vector3.new(x-.12,.35,z),Color3.fromRGB(76,88,101),Enum.Material.Metal,0,false)
    for _,edge in ipairs({-.69,.69}) do
     local arm=part(train,"SeatArmrest",Vector3.new(1.48,.16,.16),Vector3.new(x-.04,1.35,z+edge),Color3.fromRGB(154,163,173),Enum.Material.Metal,0,false)
@@ -2360,14 +2538,25 @@ for rowIndex,x in ipairs({14,24,46,56}) do
    end
    local badge=part(train,"SeatNumberBadge",Vector3.new(.05,.22,.33),Vector3.new(x-1.05,2.72,z),C.gold,Enum.Material.Metal,0,false)
    label(badge,string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")),Color3.fromRGB(23,30,40),nil,nil,Enum.NormalId.Left)
-   local collider=part(train,"SeatCollider",Vector3.new(1.95,2.9,1.45),Vector3.new(x-.1,1.55,z),C.dark,Enum.Material.SmoothPlastic,1,true)
+   local seat=Instance.new("Seat"); seat.Name="PassengerSeat"; seat.Size=Vector3.new(1.3,.18,1.55)
+   seat.CFrame=CFrame.new(x,1.03,z)*CFrame.Angles(0,-math.pi/2,0)
+   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CastShadow=false
+   seat:SetAttribute("SeatNumber",string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")))
+   seat.Parent=train
+   local sit=Instance.new("ProximityPrompt"); sit.ActionText="坐下"; sit.ObjectText="座位 "..seat:GetAttribute("SeatNumber")
+   sit.MaxActivationDistance=6; sit.HoldDuration=.2; sit.RequiresLineOfSight=true; sit.Parent=seat
+   -- Keep the collision behind the passenger rather than filling the chair.
+   local collider=part(train,"SeatBackCollider",Vector3.new(.3,2.25,1.4),Vector3.new(x-.86,1.95,z),C.dark,Enum.Material.SmoothPlastic,1,true)
+   part(train,"FoldedTrayTable",Vector3.new(.10,.68,1.04),Vector3.new(x-1.06,1.94,z),Color3.fromRGB(175,183,188),Enum.Material.SmoothPlastic,0,false)
+   part(train,"TrayLatch",Vector3.new(.06,.09,.24),Vector3.new(x-1.13,2.3,z),Color3.fromRGB(96,108,118),Enum.Material.Metal,0,false)
+   part(train,"SeatBackPocket",Vector3.new(.11,.42,.92),Vector3.new(x-1.06,1.2,z),Color3.fromRGB(29,45,62),Enum.Material.Fabric,0,false)
    collider.CastShadow=false
   end
  end
 end
 -- A quiet center aisle, recessed service panels and luggage rails complete the
 -- interior without blocking the continuous walk path between coaches.
-part(train,"AisleRunner",Vector3.new(58,.035,1.72),Vector3.new(35,.115,0),Color3.fromRGB(53,68,72),Enum.Material.Fabric,0,false)
+part(train,"AisleRunner",Vector3.new(58,.035,1.72),Vector3.new(35,.115,0),Color3.fromRGB(53,62,74),Enum.Material.SmoothPlastic,0,false)
 for _,x in ipairs({11,29,41,59}) do
  for _,side in ipairs({-1,1}) do
   local rack=part(train,"LuggageShelf",Vector3.new(7.2,.18,1.5),Vector3.new(x,6.2,side*3.82),Color3.fromRGB(145,161,162),Enum.Material.Metal,0,false)
@@ -2377,19 +2566,35 @@ end
 -- Distinct roof equipment, passenger information panels and threshold lights
 -- make all three coaches read as working high-speed rolling stock.
 for _,x in ipairs({19,51}) do
- local pod=ellipsoid(train,"RoofHVACPod",Vector3.new(x,10.08,0),Vector3.new(12,.5,3.8),Color3.fromRGB(142,157,160),Enum.Material.Metal,0,false)
+ local pod=ellipsoid(train,"RoofHVACPod",Vector3.new(x,8.48,0),Vector3.new(12,.5,3.8),Color3.fromRGB(142,157,160),Enum.Material.Metal,0,false)
  for _,z in ipairs({-1.05,1.05}) do
-  part(train,"HVACVent",Vector3.new(8,.08,.22),Vector3.new(x,10.31,z),Color3.fromRGB(73,91,96),Enum.Material.Metal,0,false)
+  part(train,"HVACVent",Vector3.new(8,.08,.22),Vector3.new(x,8.71,z),Color3.fromRGB(73,91,96),Enum.Material.Metal,0,false)
+ end
+end
+for _,side in ipairs({-1,1}) do
+ for _,x in ipairs({20,50}) do
+  part(train,"WindowSill",Vector3.new(17.1,.14,.42),Vector3.new(x,2.59,side*5.34),Color3.fromRGB(191,197,196),Enum.Material.SmoothPlastic,0,false)
+  part(train,"WindowTopFrame",Vector3.new(17.1,.09,.14),Vector3.new(x,5.4,side*5.58),Color3.fromRGB(154,166,177),Enum.Material.Metal,0,false)
+ end
+ local warm=part(train,"IndirectCeilingStrip",Vector3.new(58,.06,.12),Vector3.new(35,7.2,side*4.8),Color3.fromRGB(255,231,200),Enum.Material.Neon,0,false)
+ pointLight(warm,Color3.fromRGB(255,234,209),.3,15)
+end
+for _,x in ipairs({29,41}) do
+ for _,side in ipairs({-1,1}) do
+  local bag=part(train,"OverheadCarryOn",Vector3.new(2.1,.94,.9),Vector3.new(x,6.76,side*3.9),side<0 and Color3.fromRGB(74,92,110) or Color3.fromRGB(139,107,83),Enum.Material.Fabric,0,false)
+  for _,strap in ipairs({-.64,.64}) do
+   part(train,"LuggageStrap",Vector3.new(.08,.96,.92),bag.Position+Vector3.new(strap,0,0),Color3.fromRGB(28,34,41),Enum.Material.SmoothPlastic,0,false)
+  end
  end
 end
 for _,x in ipairs({11,29,41,59}) do
- local box=part(train,"InteriorRouteDisplay",Vector3.new(3.8,.54,.12),Vector3.new(x,7.12,0),Color3.fromRGB(5,20,26),Enum.Material.Glass,.02,false)
+ local box=part(train,"InteriorRouteDisplay",Vector3.new(3.8,.54,.12),Vector3.new(x,7.12,0),Color3.fromRGB(5,20,26),Enum.Material.SmoothPlastic,0,false)
  label(box,"末班車  •  下一站",C.cyan)
 end
 -- A low articulated pantograph gives the electrical roofline a recognizable
 -- high-speed train detail while staying clear of the station ceiling.
 for _,z in ipairs({-.72,.72}) do
- local a=Vector3.new(35,10.28,z); local b=Vector3.new(39,10.28,z)
+ local a=Vector3.new(35,8.55,z); local b=Vector3.new(39,8.55,z)
  local c=Vector3.new(37.3,11.55,z)
  part(train,"PantographInsulator",Vector3.new(.55,.22,.55),a,Color3.fromRGB(46,65,72),Enum.Material.Metal,0,false)
  part(train,"PantographInsulator",Vector3.new(.55,.22,.55),b,Color3.fromRGB(46,65,72),Enum.Material.Metal,0,false)
@@ -2536,10 +2741,22 @@ addDisembarkPrompt(frontCar,95)
 part(rearCar,"RearCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(-32,4.1,0),C.dark,Enum.Material.Metal)
 part(frontCar,"FrontCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(99,4.1,0),C.dark,Enum.Material.Metal)
 -- Align the negative-side doors within arm's reach of the platform edge.
-for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,-6.35) end end
+for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,GameConfig.TrainCenterZ) end end
+
+-- Freeze a stable pivot; seat occupancy and wheel animation must not change it.
+train:PivotTo(train:GetPivot())
+train:SetAttribute("PassengerFrameOffset",train:GetPivot():ToObjectSpace(CFrame.new(35,0,GameConfig.TrainCenterZ)))
 
 for i,station in ipairs(GameConfig.Stations) do
  local center=(i-1)*spacing; local accent=station.Accent
+ -- End screens close each platform while leaving the train clearance open.
+ for _,endSign in ipairs({-1,1}) do
+  for _,side in ipairs({-1,1}) do
+   local gate=part(geometry,"PlatformEndScreen",Vector3.new(.26,9,20.5),Vector3.new(center+endSign*205,4.5,side*22.5),Color3.fromRGB(109,127,141),Enum.Material.Metal)
+   local sign=part(geometry,"TunnelAccessNotice",Vector3.new(.12,1.45,9),gate.Position+Vector3.new(-endSign*.20,1.6,0),Color3.fromRGB(25,35,48),Enum.Material.SmoothPlastic,0,false)
+   label(sign,"隧道封閉 · 請搭乘列車",Color3.fromRGB(243,220,163),nil,nil,endSign<0 and Enum.NormalId.Right or Enum.NormalId.Left)
+  end
+ end
  for _,side in ipairs({-1,1}) do
   -- Finished wall cladding, inset light panels, and service access doors make the
   -- full tunnel enclosure read as a designed station instead of a bare corridor.
@@ -2647,15 +2864,15 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="23">
+  <Item class="StarterPlayer" referent="25">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="24">
+    <Item class="StarterPlayerScripts" referent="26">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="25">
+      <Item class="LocalScript" referent="27">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -3330,7 +3547,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="26">
+      <Item class="LocalScript" referent="28">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -3677,13 +3894,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="27">
+  <Item class="Workspace" referent="29">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="28">
+    <Item class="SpawnLocation" referent="30">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>
