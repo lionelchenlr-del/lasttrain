@@ -36,6 +36,7 @@ for station=1,#Config.Stations do
  end
 end
 local seats={}
+local glazing=0
 for _,part in ipairs(train:GetDescendants()) do
  if part:IsA("Seat") then table.insert(seats,part) end
  if part.Name=="PanoramicWindowBand" then check(part.Transparency>=.65,"Opaque passenger glass") end
@@ -44,7 +45,9 @@ for _,part in ipairs(train:GetDescendants()) do
   check(math.abs(math.abs(z-Config.TrainCenterZ)-Config.TrackHalfGauge)<.001,"Wheel gauge mismatch")
   check(math.abs(part.Position.Y-.675-Config.RailTop)<.001,"Wheel not resting on rail")
  end
+ if part:GetAttribute("CabGlazing") then glazing+=1 end
 end
+check(glazing>=200,"Dark cab glazing missing")
 check(#seats>=32,"Missing usable seats")
 check(Config.StationSpacing>=2800 and Config.TravelDuration>=40,"Route too short")
 local params=RaycastParams.new(); params.FilterType=Enum.RaycastFilterType.Include
@@ -53,6 +56,45 @@ check(not workspace:Raycast(Vector3.new(-25,3.5,Config.TrainCenterZ),Vector3.new
 for _,x in ipairs({4.9,5.1,64.9,65.1}) do
  check(workspace:Raycast(Vector3.new(x,2,Config.TrainCenterZ),Vector3.new(0,-5,0),params)~=nil,"Missing seam floor")
  check(workspace:Raycast(Vector3.new(x,3,Config.TrainCenterZ),Vector3.new(0,10,0),params)~=nil,"Missing seam ceiling")
+end
+local function checkConnections()
+ local frame=Operations.Frame(train)
+ for _,jointX in ipairs({5,65}) do
+  for _,z in ipairs({-3,0,3}) do
+   for _,dx in ipairs({-3.2,-2.6,-.1,0,.1,2.6,3.2}) do
+    local start=frame:PointToWorldSpace(Vector3.new(jointX-35+dx,2,z))
+    local floor=workspace:Raycast(start,Vector3.new(0,-3,0),params)
+    check(floor~=nil,"Connection floor gap")
+    check(math.abs(floor.Position.Y-frame.Position.Y-.1)<.015,"Connection collision floor step")
+   end
+   local start=frame:PointToWorldSpace(Vector3.new(jointX-35-3,3.5,z))
+   check(not workspace:Raycast(start,frame:VectorToWorldSpace(Vector3.new(6,0,0)),params),"Connection passage obstructed")
+  end
+  for _,side in ipairs({-1,1}) do
+   local start=frame:PointToWorldSpace(Vector3.new(jointX-35,3.5,0))
+   check(workspace:Raycast(start,frame:VectorToWorldSpace(Vector3.new(0,0,side*5)),params)~=nil,"Connection side wall missing")
+  end
+ end
+end
+checkConnections()
+local visible=RaycastParams.new(); visible.FilterType=Enum.RaycastFilterType.Include
+visible.FilterDescendantsInstances={train}
+for _,p in ipairs(train:GetDescendants()) do
+ if p.Name=="GangwayCeilingLight" then
+  local hit=workspace:Raycast(p.Position-Vector3.new(0,.8,0),Vector3.new(0,.9,0),visible)
+  check(hit and hit.Instance==p,"Gangway light hidden above ceiling")
+ end
+ if p.Name=="PassengerSeat" then
+  check(p:FindFirstChildWhichIsA("ProximityPrompt")~=nil,"Seat prompt missing after finishing")
+ end
+end
+for _,entry in ipairs({{train.RearCarriage,"01 / 03"},{train,"02 / 03"},{train.FrontCarriage,"03 / 03"}}) do
+ for _,p in ipairs(entry[1]:GetChildren()) do
+  if p.Name=="CoachNumberDisplay" then
+   local gui=p:FindFirstChildWhichIsA("SurfaceGui")
+   check(gui and string.find(gui.TextLabel.Text,entry[2],1,true)~=nil,"Coach number overwritten by parent")
+  end
+ end
 end
 for _,rail in ipairs(W.Geometry:GetChildren()) do
  if rail.Name=="ContinuousRail" then
@@ -78,6 +120,7 @@ for cycle=1,2 do
   check(h.SeatPart==seats[1],"Seat detached during motion")
   check((seated.HumanoidRootPart.Position-seats[1].Position).Magnitude<5,"Seated rider did not move")
   op:SetDoors(true)
+  checkConnections()
   for _,door in ipairs(op.Doors) do
    local expected=train:GetPivot()*(door.Part:GetAttribute("Side")==-1 and door.Open or door.Closed)
    check((door.Part.Position-expected.Position).Magnitude<.02,"Door detached after arrival")
@@ -93,16 +136,21 @@ h.Sit=false
 local weld=seats[1]:FindFirstChild("SeatWeld"); if weld then weld:Destroy() end
 seated:PivotTo(Operations.Frame(train)*CFrame.new(0,3.2,0)); task.wait(.15)
 check(h.SeatPart==nil,"Cannot leave seat")
-check(not Operations.Contains(train,rig("RoofIntruder",Operations.Frame(train).Position+Vector3.new(0,12,0),true)),"Roof counted as carriage")
+local roofIntruder=rig("RoofIntruder",Operations.Frame(train).Position+Vector3.new(0,12,0),true)
+check(not Operations.Contains(train,roofIntruder),"Roof counted as carriage")
+roofIntruder:Destroy()
 standing:Destroy(); seated:Destroy()
 print("LASTTRAIN_REGRESSION_ALL_PASS",tests,"assertions; two full routes; seated and standing riders; 12 arrivals")
 
 -- Optional visual review: 12 seconds per view after all checks finish.
 local camera=workspace.CurrentCamera
 if camera then
+ camera.CameraType=Enum.CameraType.Scriptable
+ camera.FieldOfView=65
  for _,view in ipairs({
-  {"Exterior",Vector3.new(-92,7.6,-25),Vector3.new(-20,4,-6.35)},
-  {"Interior",Vector3.new(7,4.5,-6.35),Vector3.new(58,4.5,-6.35)},
+  {"Exterior",Vector3.new(-84,7.6,-23),Vector3.new(-12,3.8,-6.35)},
+  {"Interior",Vector3.new(30,4.1,-6.35),Vector3.new(8,4.1,-6.35)},
+  {"Gangway",Vector3.new(0,4.1,-6.35),Vector3.new(20,4.1,-6.35)},
   {"Rail contact",Vector3.new(-4,2.5,1.9),Vector3.new(14,-.8,-6.35)},
  }) do
   camera.CFrame=CFrame.lookAt(view[2],view[3])

@@ -1,0 +1,23 @@
+Roblox Studio 0.744 engine regression; 2026-10-24 Asia/Taipei.
+Final source build: LastTrain-premium-final-regression.rbxlx (temporary, never publish).
+23 Luau files compiled successfully.
+
+2026-10-24T01:44:18.214Z,33.214417,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 1
+2026-10-24T01:44:20.797Z,35.797119,6c087000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 2
+2026-10-24T01:44:23.381Z,38.381081,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 3
+2026-10-24T01:44:25.981Z,40.981571,6c087000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 4
+2026-10-24T01:44:28.563Z,43.563660,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 5
+2026-10-24T01:44:31.147Z,46.147465,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 6
+2026-10-24T01:44:35.612Z,50.612919,6c49f000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 1
+2026-10-24T01:44:38.196Z,53.196682,6c49f000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 2
+2026-10-24T01:44:40.779Z,55.779819,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 3
+2026-10-24T01:44:43.380Z,58.380589,6be7b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 4
+2026-10-24T01:44:45.946Z,60.946987,6b66b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 5
+2026-10-24T01:44:48.530Z,63.530666,6b45f000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 6
+2026-10-24T01:44:51.444Z,66.444389,6b66b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_ALL_PASS 5648 assertions; two full routes; seated and standing riders; 12 arrivals
+2026-10-24T01:44:51.444Z,66.444557,6b66b000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Exterior
+2026-10-24T01:45:03.459Z,78.459755,6c087000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Interior
+2026-10-24T01:45:15.475Z,90.475441,6c087000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Gangway
+2026-10-24T01:45:27.493Z,102.493095,6c087000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Rail contact
+
+Limitations: anchored standing rig; unanchored seated rig; accelerated travel. Real-player walking, four-client latency, production teleport and purchases are not established by this fixture.

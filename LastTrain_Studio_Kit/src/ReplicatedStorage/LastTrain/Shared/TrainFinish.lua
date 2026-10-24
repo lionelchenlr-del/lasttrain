@@ -1,7 +1,7 @@
 -- A shared finish keeps lobby and playable stock in the same silver livery.
 local Finish = {}
-Finish.Silver = Color3.fromRGB(150, 160, 176)
-Finish.Roof = Color3.fromRGB(169, 179, 194)
+Finish.Silver = Color3.fromRGB(184, 192, 203)
+Finish.Roof = Color3.fromRGB(197, 204, 213)
 Finish.Orange = Color3.fromRGB(219, 106, 38)
 Finish.Graphite = Color3.fromRGB(25, 29, 35)
 local bodyNames = {

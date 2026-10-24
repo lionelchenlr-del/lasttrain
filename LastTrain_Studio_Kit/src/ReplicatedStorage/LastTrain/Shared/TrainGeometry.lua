@@ -22,8 +22,9 @@ local function triangle(parent,a,b,c,color,material,endName)
    p.CFrame=CFrame.fromMatrix(data[1],data[2],up,data[3])
    p.Anchored=true; p.CanCollide=false; p.CanTouch=false; p.CastShadow=false
    p.Color=color; p.Material=material
-   p.Reflectance=material==Enum.Material.Glass and 0.14 or 0.2
+   p.Reflectance=material==Enum.Material.Metal and 0.2 or 0.06
    p:SetAttribute("CabEnd",endName)
+   p:SetAttribute("CabGlazing",material==Enum.Material.SmoothPlastic)
    p.Parent=parent
   end
  end
@@ -44,7 +45,9 @@ function Geometry.BuildCab(parent,endName,shoulderX,direction)
    local windshield=ring>=1 and ring<=5 and math.sin(mid)>0.78
    local orange=math.sin(mid)>-0.62 and math.sin(mid)<-0.38
    local color=windshield and Finish.Graphite or (orange and Finish.Orange or Finish.Silver)
-   local material=windshield and Enum.Material.Glass or Enum.Material.Metal
+   -- Opaque glazing over a sealed cab keeps its dark visor under strong
+   -- station reflections; native Glass can wash this curved surface white.
+   local material=windshield and Enum.Material.SmoothPlastic or Enum.Material.Metal
    local a,b,c,d=surface(t0,angle0),surface(t1,angle0),surface(t0,angle1),surface(t1,angle1)
    triangle(parent,a,b,c,color,material,endName)
    triangle(parent,b,d,c,color,material,endName)

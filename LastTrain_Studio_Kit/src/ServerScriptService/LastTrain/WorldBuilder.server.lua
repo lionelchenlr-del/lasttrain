@@ -4,6 +4,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TrainFinish = require(ReplicatedStorage.LastTrain.Shared:WaitForChild("TrainFinish"))
 local TrainGeometry = require(ReplicatedStorage.LastTrain.Shared:WaitForChild("TrainGeometry"))
+local TrainLuxury = require(ReplicatedStorage.LastTrain.Shared:WaitForChild("TrainLuxury"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
 
 -- This place also hosts the public lobby. Only reserved round servers build the route.
@@ -355,8 +356,8 @@ local function makeCarriage(name,offset,keepCab)
    end
   end
  end
- -- Flexible, dark gangways bridge the one-stud body seams while keeping a
- -- clear interior passage between the cars.
+ -- Both coach bodies meet at this shared plane. The flexible surround covers
+ -- their seam; a matching-height collision floor bridges the entire passage.
  local jointX=offset<0 and 65 or 5
  if offset== -60 or offset==60 then
   for _,side in ipairs({-1,1}) do
@@ -368,9 +369,11 @@ local function makeCarriage(name,offset,keepCab)
   part(car,"ConnectedCeiling",Vector3.new(5.6,.84,8.8),Vector3.new(jointX+offset,7.88,0),TrainFinish.Silver,Enum.Material.Metal,0,false)
   local ceilingCollider=part(car,"GangwayCeilingCollider",Vector3.new(5.6,.18,7.4),Vector3.new(jointX+offset,7.42,0),Color3.fromRGB(157,171,171),Enum.Material.Metal)
   ceilingCollider.Transparency=1; ceilingCollider.CastShadow=false; ceilingCollider.CanQuery=false
-  part(car,"GangwayFloorPlate",Vector3.new(5.4,.14,7.5),Vector3.new(jointX+offset,.12,0),Color3.fromRGB(103,118,121),Enum.Material.Metal,0,false)
-  local ceilingLight=part(car,"GangwayCeilingLight",Vector3.new(2.8,.08,.62),Vector3.new(jointX+offset,7.86,0),Color3.fromRGB(220,243,233),Enum.Material.Neon,0,false)
-  pointLight(ceilingLight,Color3.fromRGB(194,234,224),.5,8)
+  local bridgeFloor=part(car,"GangwayStructuralFloor",Vector3.new(5.6,.6,8.32),Vector3.new(jointX+offset,-.2,0),Color3.fromRGB(38,44,54),Enum.Material.Metal,1,true)
+  bridgeFloor.CastShadow=false
+  part(car,"GangwayFloorPlate",Vector3.new(5.4,.035,7.5),Vector3.new(jointX+offset,.115,0),Color3.fromRGB(49,57,65),Enum.Material.Rubber,0,false)
+  local ceilingLight=part(car,"GangwayCeilingLight",Vector3.new(2.8,.06,.62),Vector3.new(jointX+offset,7.22,0),Color3.fromRGB(255,235,207),Enum.Material.Neon,0,false)
+  pointLight(ceilingLight,Color3.fromRGB(255,231,202),.5,8)
   for _,side in ipairs({-1,1}) do
    local outer=part(car,"GangwayRim",Vector3.new(.22,6.1,.24),Vector3.new(jointX+offset,4.15,side*4.28),Color3.fromRGB(137,153,154),Enum.Material.Metal,0,false)
    outer:SetAttribute("CoachConnection",true)
@@ -384,7 +387,9 @@ end
 local rearCar=makeCarriage("RearCarriage",-60,"Rear")
 local frontCar=makeCarriage("FrontCarriage",60,"Front")
 local function labelCoach(model,description)
- for _,display in ipairs(model:GetDescendants()) do
+ -- Nested coaches carry their own numbers; labeling the center must not
+ -- overwrite the rear coach through the parent train model.
+ for _,display in ipairs(model:GetChildren()) do
   if display.Name=="InteriorRouteDisplay" then
    for _,gui in ipairs(display:GetChildren()) do
     local text=gui:FindFirstChildWhichIsA("TextLabel")
@@ -407,6 +412,7 @@ for _,child in ipairs(train:GetChildren()) do
  if child:IsA("BasePart") and child:GetAttribute("CabEnd") then child:Destroy() end
 end
 TrainFinish.Apply(train)
+TrainLuxury.Apply(train,rearCar,frontCar)
 -- Recessed walk plates meet the platform edge when the platform-side doors open.
 for _,car in ipairs({train,rearCar,frontCar}) do
  local offset=car==rearCar and -60 or (car==frontCar and 60 or 0)
