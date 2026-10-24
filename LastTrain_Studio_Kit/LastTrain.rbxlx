@@ -401,14 +401,14 @@ return Theme
             <string name="Source"><![CDATA[-- Set real PassId values from this experience's Creator Dashboard before sale.
 local Catalog={Order={"NeonFlashlight","PremiumStaff","MysteryPassenger","LuxuryPass","LiveryBundle","VIP","RoyalCarriage","StarTrain"}}
 Catalog.Items={
- NeonFlashlight={Name="霓虹手電筒",BasePrice=79,PassId=0,Kind="Flashlight",Description="霓虹燈框、三種光色、專屬手電筒。永久解鎖。",Color=Color3.fromRGB(77,218,225)},
- PremiumStaff={Name="高級站務員",BasePrice=149,PassId=0,Kind="Skin",Skin="PremiumStaff",Description="深藍訂製制服、橘色領帶與金屬名牌。永久角色。",Color=Color3.fromRGB(226,126,54)},
- MysteryPassenger={Name="神祕乘客",BasePrice=199,PassId=0,Kind="Skin",Skin="NightGuard",Description="黑色長外套、銀色面罩與神祕配件。永久角色。",Color=Color3.fromRGB(151,164,211)},
- LuxuryPass={Name="豪華列車通行證",BasePrice=299,PassId=0,Kind="Access",Description="第二車商務座位與白橘商務票面。保留一般乘客走道。",Color=Color3.fromRGB(224,176,101)},
- LiveryBundle={Name="列車外觀組合包",BasePrice=399,PassId=0,Kind="Livery",Description="解鎖晨光橘、午夜藍、香檳白；房主出發前選用。",Color=Color3.fromRGB(222,139,76)},
- VIP={Name="VIP 通行證",BasePrice=499,PassId=0,Kind="Skin",Skin="VIP",Description="VIP 正式服裝、金色名牌與專屬候車區。",Color=Color3.fromRGB(235,200,105)},
- RoyalCarriage={Name="皇家豪華車廂",BasePrice=799,PassId=0,Kind="Royal",Description="香檳白金皇家列車、第三車包廂、觀景座位、餐桌、休息床與茶飲吧。可邀同車朋友。",Color=Color3.fromRGB(206,171,101)},
- StarTrain={Name="銀河高鐵・限定500台",BasePrice=999,PassId=0,ProductId=0,Limited=500,Kind="Livery",Description="全遊戲限量500台，一人一台永久編號。銀河車身、星空頂棚與觀景內裝。",Color=Color3.fromRGB(126,135,231)},
+ NeonFlashlight={Name="霓虹手電筒",BasePrice=79,PassId=2052923441,Kind="Flashlight",Description="霓虹燈框、三種光色、專屬手電筒。永久解鎖。",Color=Color3.fromRGB(77,218,225)},
+ PremiumStaff={Name="高級站務員",BasePrice=149,PassId=2055605260,Kind="Skin",Skin="PremiumStaff",Description="深藍訂製制服、橘色領帶與金屬名牌。永久角色。",Color=Color3.fromRGB(226,126,54)},
+ MysteryPassenger={Name="神祕乘客",BasePrice=199,PassId=2053571414,Kind="Skin",Skin="NightGuard",Description="黑色長外套、銀色面罩與神祕配件。永久角色。",Color=Color3.fromRGB(151,164,211)},
+ LuxuryPass={Name="豪華列車通行證",BasePrice=299,PassId=2052533423,Kind="Access",Description="第二車商務座位與白橘商務票面。保留一般乘客走道。",Color=Color3.fromRGB(224,176,101)},
+ LiveryBundle={Name="列車外觀組合包",BasePrice=399,PassId=2053343347,Kind="Livery",Description="解鎖晨光橘、午夜藍、香檳白；房主出發前選用。",Color=Color3.fromRGB(222,139,76)},
+ VIP={Name="VIP 通行證",BasePrice=499,PassId=2055395324,Kind="Skin",Skin="VIP",Description="VIP 正式服裝、金色名牌與專屬候車區。",Color=Color3.fromRGB(235,200,105)},
+ RoyalCarriage={Name="皇家豪華車廂",BasePrice=799,PassId=2054231362,Kind="Royal",Description="香檳白金皇家列車、第三車包廂、觀景座位、餐桌、休息床與茶飲吧。可邀同車朋友。",Color=Color3.fromRGB(206,171,101)},
+ StarTrain={Name="銀河高鐵・限定500台",BasePrice=999,PassId=0,ProductId=3721842164,Limited=500,Kind="Livery",Description="全遊戲限量500台，一人一台永久編號。銀河車身、星空頂棚與觀景內裝。",Color=Color3.fromRGB(126,135,231)},
 }
 Catalog.Liveries={
  Taiwan={Name="台灣高鐵・白橘",Body=Color3.fromRGB(241,243,241),Stripe=Color3.fromRGB(219,106,38)},
@@ -1377,6 +1377,10 @@ local shopRequest = root:WaitForChild("Remotes"):WaitForChild("ShopRequest")
 local Profiles = require(script.Parent:WaitForChild("ProfileService"))
 local Catalog=require(root.Shared.PremiumCatalog)
 local Edition=require(script.Parent.LimitedEdition)
+local Release=require(script.Parent.ReleaseSettings)
+local function billingReady()
+ return Release.BillingEnabled==true and Release.UniverseId>0 and game.GameId==Release.UniverseId and not game:GetService("RunService"):IsStudio()
+end
 
 local passToSkin = {}
 local productById = {}
@@ -1473,12 +1477,14 @@ shopRequest.OnServerInvoke = function(player, action, key)
         local succeeded, message = Profiles.EquipSkin(player, key)
         return { ok = succeeded, message = message, state = Profiles.GetState(player) }
     elseif action == "PromptPass" then
+        if not billingReady() then return {ok=false,message="此商品尚未上架。"} end
         local skin = GameConfig.Skins[key]
         if not skin or not skin.GamePassId or skin.GamePassId <= 0 then
             return { ok = false, message = "這個角色尚未設定 Robux 商品。" }
         end
         return { ok = true, promptType = "GamePass", id = skin.GamePassId }
     elseif action == "PromptProduct" then
+        if not billingReady() then return {ok=false,message="此商品尚未上架。"} end
         local product = GameConfig.Products[key]
         if not product or not product.ProductId or product.ProductId <= 0 then
             return { ok = false, message = "這個商品尚未設定 Robux 商品 ID。" }
@@ -2650,6 +2656,10 @@ local RS=game:GetService("ReplicatedStorage")
 local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
 local Profiles=require(script.Parent.ProfileService)
 local Edition=require(script.Parent.LimitedEdition)
+local Release=require(script.Parent.ReleaseSettings)
+local function billingReady()
+ return Release.BillingEnabled==true and Release.UniverseId>0 and game.GameId==Release.UniverseId and not game:GetService("RunService"):IsStudio()
+end
 local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
 local request=remotes:WaitForChild("PremiumShopRequest")
 local notice=remotes:WaitForChild("PremiumNotice")
@@ -2662,12 +2672,13 @@ end
 local function offer(key)
  local item=Catalog.Items[key]
  local id=item.ProductId or item.PassId
+ if not billingReady() then return {Price=item.BasePrice,ForSale=false,Planned=true,CheckoutEnabled=false} end
  if id<=0 then return {Price=item.BasePrice,ForSale=false,Planned=true} end
  local cached=prices[key]
  if cached and os.clock()-cached.At<120 then return cached end
  local ok,info=pcall(Marketplace.GetProductInfoAsync,Marketplace,id,item.ProductId and Enum.InfoType.Product or Enum.InfoType.GamePass)
  local amount=ok and type(info)=="table" and tonumber(info.PriceInRobux) or nil
- local result={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Planned=false}
+ local result={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Planned=false,CheckoutEnabled=true}
  prices[key]=result;return result
 end
 local function verify(p,key)
@@ -2725,6 +2736,8 @@ request.OnServerInvoke=function(p,action,key,option)
   local current=offer(key)
   if not current.ForSale then return {ok=false,message="此商品尚未上架，目前可預覽內容。"} end
   if Catalog.Items[key].Limited then
+   local existing=Edition.OwnedSerial(p.UserId)
+   if existing then Profiles.GrantEdition(p,existing);return {ok=false,message="你已經擁有這個限定編號。",state=Profiles.GetState(p)} end
    local serial,message=Edition.Reserve(p.UserId)
    if not serial then return {ok=false,message=message} end
    return {ok=true,id=Catalog.Items[key].ProductId,promptType="Product",serial=serial}
@@ -3133,7 +3146,20 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="32">
+      <Item class="ModuleScript" referent="32">
+        <Properties>
+          <string name="Name">ReleaseSettings</string>
+          <string name="Source"><![CDATA[-- Generated by tools/configure_release.py. Pausing checkout never disables receipt delivery.
+return {
+    BillingEnabled = true,
+    UniverseId = 10772691974,
+    StartPlaceId = 136113946825604,
+    Version = "2026-10-24-release",
+}
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="33">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -3381,7 +3407,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="33">
+      <Item class="Script" referent="34">
         <Properties>
           <string name="Name">RoundLivery</string>
           <token name="RunContext">0</token>
@@ -3423,7 +3449,7 @@ Players.PlayerAdded:Connect(choose);for _,p in ipairs(Players:GetPlayers()) do c
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
@@ -3439,7 +3465,7 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="35">
+      <Item class="Script" referent="36">
         <Properties>
           <string name="Name">RoyalFacilities</string>
           <token name="RunContext">0</token>
@@ -3475,7 +3501,7 @@ Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">StationScenes</string>
           <string name="Source"><![CDATA[-- Station coordinates are local to a fixed passenger train. Only scenery moves.
@@ -3525,7 +3551,7 @@ return Scenes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="37">
+      <Item class="Script" referent="38">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -3701,7 +3727,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">TicketAccess</string>
           <string name="Source"><![CDATA[-- Per-round, per-player state. This never reads a client-provided credential.
@@ -3728,7 +3754,7 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
@@ -3818,7 +3844,7 @@ return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="40">
+      <Item class="Script" referent="41">
         <Properties>
           <string name="Name">VIPLounge</string>
           <token name="RunContext">0</token>
@@ -3869,7 +3895,7 @@ Players.PlayerRemoving:Connect(function(p) noticeAt[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="41">
+      <Item class="Script" referent="42">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -4128,15 +4154,15 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="42">
+  <Item class="StarterPlayer" referent="43">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="43">
+    <Item class="StarterPlayerScripts" referent="44">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="44">
+      <Item class="LocalScript" referent="45">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -4884,7 +4910,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="45">
+      <Item class="LocalScript" referent="46">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -5229,7 +5255,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="46">
+      <Item class="LocalScript" referent="47">
         <Properties>
           <string name="Name">PremiumFlashlight</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -5262,7 +5288,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="47">
+      <Item class="LocalScript" referent="48">
         <Properties>
           <string name="Name">PremiumShop</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -5406,7 +5432,7 @@ local function refresh()
   state=r.state;offers=r.offers;party=r.party or {}
   for _,key in ipairs(Catalog.Order) do
    local id=Catalog.Items[key].ProductId or Catalog.Items[key].PassId
-   if id>0 then
+   if id>0 and offers[key] and offers[key].CheckoutEnabled~=false then
     local cached=personalQuotes[key]
     if cached and os.clock()-cached.At<120 then local quote=table.clone(cached);quote.Edition=offers[key] and offers[key].Edition;offers[key]=quote else
      offers[key]={Loading=true,ForSale=false}
@@ -5487,16 +5513,24 @@ invite.Activated:Connect(function()
  local ok,r=pcall(request.InvokeServer,request,"Invite","RoyalCarriage",target.Id)
  status.Text=ok and r.message or "連線忙碌。";inviteIndex=inviteIndex%#party+1;render(false)
 end)
+local purchasePromptOpen=false
 action.Activated:Connect(function()
+ if purchasePromptOpen then status.Text="請先完成或關閉 Roblox 付款視窗。";return end
  local owned=state and state.OwnedPasses[selected]
  local ok,r=pcall(request.InvokeServer,request,owned and "Equip" or "Buy",selected,option())
  if not ok or not r then status.Text="連線忙碌，請稍後再試。";return end
  if r.ok and r.id then
-  if r.promptType=="Product" then status.Text=string.format("已保留 #%03d / 500，請完成 Roblox 付款。",r.serial);Marketplace:PromptProductPurchase(p,r.id) else Marketplace:PromptGamePassPurchase(p,r.id) end else status.Text=r.message or "完成。" end
+  purchasePromptOpen=true
+  local prompted,err=pcall(function()
+   if r.promptType=="Product" then status.Text=string.format("已保留 #%03d / 500，請完成 Roblox 付款。",r.serial);Marketplace:PromptProductPurchase(p,r.id)
+   else Marketplace:PromptGamePassPurchase(p,r.id) end
+  end)
+  if not prompted then purchasePromptOpen=false;status.Text="付款視窗未能開啟，請稍後再試。";warn("LastTrain purchase prompt unavailable",err) end
+ else status.Text=r.message or "完成。" end
  if r.state then state=r.state;render(false) end
 end)
-Marketplace.PromptGamePassPurchaseFinished:Connect(function(who,_,bought) if who==p and bought then task.delay(1.5,refresh) end end)
-Marketplace.PromptProductPurchaseFinished:Connect(function(userId) if userId==p.UserId then task.delay(.5,refresh) end end)
+Marketplace.PromptGamePassPurchaseFinished:Connect(function(who,_,bought) if who==p then purchasePromptOpen=false;if bought then task.delay(1.5,refresh) end end end)
+Marketplace.PromptProductPurchaseFinished:Connect(function(userId) if userId==p.UserId then purchasePromptOpen=false;task.delay(.5,refresh) end end)
 remotes:WaitForChild("PremiumNotice").OnClientEvent:Connect(function(message,key)
  if Catalog.Items[key] then selected=key;optionIndex=1 end
  status.Text=message;visible(true)
@@ -5533,7 +5567,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="48">
+      <Item class="LocalScript" referent="49">
         <Properties>
           <string name="Name">RidePresentation</string>
           <string name="Source"><![CDATA[local RS=game:GetService("ReplicatedStorage")
@@ -5584,7 +5618,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="49">
+      <Item class="LocalScript" referent="50">
         <Properties>
           <string name="Name">TravelScenery</string>
           <string name="Source"><![CDATA[-- The passenger carriage and camera never receive travel transforms.
@@ -5654,13 +5688,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="50">
+  <Item class="Workspace" referent="51">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="51">
+    <Item class="SpawnLocation" referent="52">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

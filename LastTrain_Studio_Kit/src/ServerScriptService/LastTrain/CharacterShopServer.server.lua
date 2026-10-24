@@ -8,6 +8,10 @@ local shopRequest = root:WaitForChild("Remotes"):WaitForChild("ShopRequest")
 local Profiles = require(script.Parent:WaitForChild("ProfileService"))
 local Catalog=require(root.Shared.PremiumCatalog)
 local Edition=require(script.Parent.LimitedEdition)
+local Release=require(script.Parent.ReleaseSettings)
+local function billingReady()
+ return Release.BillingEnabled==true and Release.UniverseId>0 and game.GameId==Release.UniverseId and not game:GetService("RunService"):IsStudio()
+end
 
 local passToSkin = {}
 local productById = {}
@@ -104,12 +108,14 @@ shopRequest.OnServerInvoke = function(player, action, key)
         local succeeded, message = Profiles.EquipSkin(player, key)
         return { ok = succeeded, message = message, state = Profiles.GetState(player) }
     elseif action == "PromptPass" then
+        if not billingReady() then return {ok=false,message="此商品尚未上架。"} end
         local skin = GameConfig.Skins[key]
         if not skin or not skin.GamePassId or skin.GamePassId <= 0 then
             return { ok = false, message = "這個角色尚未設定 Robux 商品。" }
         end
         return { ok = true, promptType = "GamePass", id = skin.GamePassId }
     elseif action == "PromptProduct" then
+        if not billingReady() then return {ok=false,message="此商品尚未上架。"} end
         local product = GameConfig.Products[key]
         if not product or not product.ProductId or product.ProductId <= 0 then
             return { ok = false, message = "這個商品尚未設定 Robux 商品 ID。" }

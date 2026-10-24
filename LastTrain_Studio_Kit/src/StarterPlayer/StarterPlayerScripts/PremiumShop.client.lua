@@ -139,7 +139,7 @@ local function refresh()
   state=r.state;offers=r.offers;party=r.party or {}
   for _,key in ipairs(Catalog.Order) do
    local id=Catalog.Items[key].ProductId or Catalog.Items[key].PassId
-   if id>0 then
+   if id>0 and offers[key] and offers[key].CheckoutEnabled~=false then
     local cached=personalQuotes[key]
     if cached and os.clock()-cached.At<120 then local quote=table.clone(cached);quote.Edition=offers[key] and offers[key].Edition;offers[key]=quote else
      offers[key]={Loading=true,ForSale=false}
@@ -220,16 +220,24 @@ invite.Activated:Connect(function()
  local ok,r=pcall(request.InvokeServer,request,"Invite","RoyalCarriage",target.Id)
  status.Text=ok and r.message or "連線忙碌。";inviteIndex=inviteIndex%#party+1;render(false)
 end)
+local purchasePromptOpen=false
 action.Activated:Connect(function()
+ if purchasePromptOpen then status.Text="請先完成或關閉 Roblox 付款視窗。";return end
  local owned=state and state.OwnedPasses[selected]
  local ok,r=pcall(request.InvokeServer,request,owned and "Equip" or "Buy",selected,option())
  if not ok or not r then status.Text="連線忙碌，請稍後再試。";return end
  if r.ok and r.id then
-  if r.promptType=="Product" then status.Text=string.format("已保留 #%03d / 500，請完成 Roblox 付款。",r.serial);Marketplace:PromptProductPurchase(p,r.id) else Marketplace:PromptGamePassPurchase(p,r.id) end else status.Text=r.message or "完成。" end
+  purchasePromptOpen=true
+  local prompted,err=pcall(function()
+   if r.promptType=="Product" then status.Text=string.format("已保留 #%03d / 500，請完成 Roblox 付款。",r.serial);Marketplace:PromptProductPurchase(p,r.id)
+   else Marketplace:PromptGamePassPurchase(p,r.id) end
+  end)
+  if not prompted then purchasePromptOpen=false;status.Text="付款視窗未能開啟，請稍後再試。";warn("LastTrain purchase prompt unavailable",err) end
+ else status.Text=r.message or "完成。" end
  if r.state then state=r.state;render(false) end
 end)
-Marketplace.PromptGamePassPurchaseFinished:Connect(function(who,_,bought) if who==p and bought then task.delay(1.5,refresh) end end)
-Marketplace.PromptProductPurchaseFinished:Connect(function(userId) if userId==p.UserId then task.delay(.5,refresh) end end)
+Marketplace.PromptGamePassPurchaseFinished:Connect(function(who,_,bought) if who==p then purchasePromptOpen=false;if bought then task.delay(1.5,refresh) end end end)
+Marketplace.PromptProductPurchaseFinished:Connect(function(userId) if userId==p.UserId then purchasePromptOpen=false;task.delay(.5,refresh) end end)
 remotes:WaitForChild("PremiumNotice").OnClientEvent:Connect(function(message,key)
  if Catalog.Items[key] then selected=key;optionIndex=1 end
  status.Text=message;visible(true)

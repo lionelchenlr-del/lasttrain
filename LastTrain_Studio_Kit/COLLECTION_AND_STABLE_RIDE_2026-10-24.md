@@ -53,14 +53,14 @@
 
 角色使用俐落髮型、合身服裝、自然膚色與細節配件。保留臉部圖樣。原有車票幣服裝仍在 M 商店中。
 
-## 正式收費：目前尚未上架
+## 正式收費：已設定八項商品，遊戲仍為私人
 
-使用者已確認商品尚未建立。本套件七項通行證的 `PassId` 與銀河收藏的 `ProductId` 均為 0，因此現在只能預覽，不會開啟收費視窗或假裝購買成功。
+已於 Universe 10772691974 建立七項通行證與一項銀河開發者商品，填入正式 ID，設定售價並儲存到私人遊戲。詳細 ID 與發佈待辦請見 `release/發佈準備.md`。下列為維護說明；目前商品已建立，不需重建。Studio 保持預覽，正式伺服器才可開啟付款。
 
 1. 在 Roblox Creator Hub 選擇此遊戲，開啟「營利／Monetization → 通行證／Passes」。
 2. 為前七個項目建立通行證。銀河高鐵另在「Developer Products／開發者商品」建立 999 R$ 商品；不要開啟站外銷售，限從遊戲內保留編號後購買。
 3. 複製各自 ID。Studio 中開啟 `ReplicatedStorage → LastTrain → Shared → PremiumCatalog`，將前七項的 `PassId=0` 換成通行證 ID，銀河商品則填入 `ProductId=0`。使用原始碼工具時，修改 `src/ReplicatedStorage/LastTrain/Shared/PremiumCatalog.lua` 後重新建置。
-4. 發布更新後，以正式伺服器確認顯示價格、購買取消、成功解鎖與重新登入恢復。
+4. 另須依 `release/發佈準備.md` 填寫目標 Universe ID 與 Place ID，並使用 `tools/configure_release.py` 啟用正式付款。未完成時 `ReleaseSettings.BillingEnabled` 保持 false。發布更新後，以正式伺服器確認顯示價格、購買取消、成功解鎖與重新登入恢復。
 
 `BasePrice` 是預定基準價格，不能代替 Roblox 後台售價。正式 ID 設好後，商店會讀取玩家端 Roblox 回傳價格，以反映地區價格或折扣；最終收費以 Roblox 購買視窗為準。
 

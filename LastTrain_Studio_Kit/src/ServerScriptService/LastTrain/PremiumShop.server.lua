@@ -4,6 +4,10 @@ local RS=game:GetService("ReplicatedStorage")
 local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
 local Profiles=require(script.Parent.ProfileService)
 local Edition=require(script.Parent.LimitedEdition)
+local Release=require(script.Parent.ReleaseSettings)
+local function billingReady()
+ return Release.BillingEnabled==true and Release.UniverseId>0 and game.GameId==Release.UniverseId and not game:GetService("RunService"):IsStudio()
+end
 local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
 local request=remotes:WaitForChild("PremiumShopRequest")
 local notice=remotes:WaitForChild("PremiumNotice")
@@ -16,12 +20,13 @@ end
 local function offer(key)
  local item=Catalog.Items[key]
  local id=item.ProductId or item.PassId
+ if not billingReady() then return {Price=item.BasePrice,ForSale=false,Planned=true,CheckoutEnabled=false} end
  if id<=0 then return {Price=item.BasePrice,ForSale=false,Planned=true} end
  local cached=prices[key]
  if cached and os.clock()-cached.At<120 then return cached end
  local ok,info=pcall(Marketplace.GetProductInfoAsync,Marketplace,id,item.ProductId and Enum.InfoType.Product or Enum.InfoType.GamePass)
  local amount=ok and type(info)=="table" and tonumber(info.PriceInRobux) or nil
- local result={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Planned=false}
+ local result={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Planned=false,CheckoutEnabled=true}
  prices[key]=result;return result
 end
 local function verify(p,key)
@@ -79,6 +84,8 @@ request.OnServerInvoke=function(p,action,key,option)
   local current=offer(key)
   if not current.ForSale then return {ok=false,message="此商品尚未上架，目前可預覽內容。"} end
   if Catalog.Items[key].Limited then
+   local existing=Edition.OwnedSerial(p.UserId)
+   if existing then Profiles.GrantEdition(p,existing);return {ok=false,message="你已經擁有這個限定編號。",state=Profiles.GetState(p)} end
    local serial,message=Edition.Reserve(p.UserId)
    if not serial then return {ok=false,message=message} end
    return {ok=true,id=Catalog.Items[key].ProductId,promptType="Product",serial=serial}

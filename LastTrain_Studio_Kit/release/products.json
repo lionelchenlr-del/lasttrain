@@ -1,0 +1,87 @@
+{
+  "universeId": 10772691974,
+  "startPlaceId": 136113946825604,
+  "billingEnabled": true,
+  "products": [
+    {
+      "key": "NeonFlashlight",
+      "name": "霓虹手電筒",
+      "type": "GamePass",
+      "id": 2052923441,
+      "priceRobux": 79,
+      "description": "霓虹燈框、三種光色、專屬手電筒。永久解鎖。",
+      "icon": "icons/NeonFlashlight.png",
+      "externalSales": true
+    },
+    {
+      "key": "PremiumStaff",
+      "name": "高級站務員",
+      "type": "GamePass",
+      "id": 2055605260,
+      "priceRobux": 149,
+      "description": "深藍訂製制服、橘色領帶與金屬名牌。永久角色。",
+      "icon": "icons/PremiumStaff.png",
+      "externalSales": true
+    },
+    {
+      "key": "MysteryPassenger",
+      "name": "神祕乘客",
+      "type": "GamePass",
+      "id": 2053571414,
+      "priceRobux": 199,
+      "description": "黑色長外套、銀色面罩與神祕配件。永久角色。",
+      "icon": "icons/MysteryPassenger.png",
+      "externalSales": true
+    },
+    {
+      "key": "LuxuryPass",
+      "name": "豪華列車通行證",
+      "type": "GamePass",
+      "id": 2052533423,
+      "priceRobux": 299,
+      "description": "第二車商務座位與白橘商務票面。保留一般乘客走道。",
+      "icon": "icons/LuxuryPass.png",
+      "externalSales": true
+    },
+    {
+      "key": "LiveryBundle",
+      "name": "列車外觀組合包",
+      "type": "GamePass",
+      "id": 2053343347,
+      "priceRobux": 399,
+      "description": "解鎖晨光橘、午夜藍、香檳白；房主出發前選用。",
+      "icon": "icons/LiveryBundle.png",
+      "externalSales": true
+    },
+    {
+      "key": "VIP",
+      "name": "VIP 通行證",
+      "type": "GamePass",
+      "id": 2055395324,
+      "priceRobux": 499,
+      "description": "VIP 正式服裝、金色名牌與專屬候車區。",
+      "icon": "icons/VIP.png",
+      "externalSales": true
+    },
+    {
+      "key": "RoyalCarriage",
+      "name": "皇家豪華車廂",
+      "type": "GamePass",
+      "id": 2054231362,
+      "priceRobux": 799,
+      "description": "香檳白金皇家列車、第三車包廂、觀景座位、餐桌、休息床與茶飲吧。可邀同車朋友。",
+      "icon": "icons/RoyalCarriage.png",
+      "externalSales": true
+    },
+    {
+      "key": "StarTrain",
+      "name": "銀河高鐵・限定500台",
+      "type": "DeveloperProduct",
+      "id": 3721842164,
+      "priceRobux": 999,
+      "description": "全遊戲限量500台，一人一台永久編號。銀河車身、星空頂棚與觀景內裝。",
+      "icon": "icons/StarTrain.png",
+      "externalSales": false
+    }
+  ]
+}
