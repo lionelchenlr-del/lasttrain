@@ -218,13 +218,15 @@ GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
 GameConfig.MinimumStopDuration = 8
 GameConfig.DepartureCountdown = 3
+GameConfig.FirstStationGateX = -120
+GameConfig.FirstStationEntrySpawnX = -170
 GameConfig.TrainCenterZ = -6.35
 GameConfig.TrackHalfGauge = 4.05
 GameConfig.RailTop = -1.55
 GameConfig.PlatformHalfLength = 210
 GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
 GameConfig.Objectives = {
-	"登上列車，檢查沒有目的地的車票",
+	"領取無目的地車票，刷卡通過閘門後上車",
 	"調查乘客紀錄簿，找出空白的離站紀錄",
 	"找到真正的錄音，關閉錯誤的廣播",
 	"拍下異常倒影，找回實驗報告缺頁",
@@ -706,6 +708,7 @@ local function ensure(className, name)
 end
 
 ensure("RemoteEvent", "ObjectiveUpdate")
+ensure("RemoteEvent", "TicketUpdate")
 ensure("RemoteFunction", "ShopRequest")
 ensure("RemoteFunction", "MatchmakingRequest")
 ensure("RemoteEvent", "MatchmakingUpdate")
@@ -905,7 +908,127 @@ Workspace:SetAttribute("LastTrainMode", mode)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="16">
+      <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">FirstStationEntry</string>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local TweenService=game:GetService("TweenService")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local Access=require(script.Parent.TicketAccess)
+local Entry={}
+Entry.__index=Entry
+function Entry:Instruction(player)
+ if not self.Access:HasTicket(player) then return "① 領取車票：前往入口取票機，領取無目的地的車票。" end
+ if not self.Access:HasEntry(player) then return "② 刷卡進站：到閘門感應區刷卡，每位乘客都需要驗票。" end
+ return "③ 上車：通過閘門，前往白色列車；可走進車門或使用「登上列車」提示。"
+end
+function Entry:CanBoard(player,station) return station~=1 or self.Access:HasEntry(player) end
+function Entry:Notify(player,text)
+ if (workspace:GetAttribute("LastTrainStation") or 1)==1 and player.Parent==Players then self.NotifyPlayer(player,text or self:Instruction(player)) end
+end
+function Entry:Effect(player,kind,screen,anomaly)
+ self.Remote:FireClient(player,{Kind=kind,Screen=screen,Anomaly=anomaly==true})
+end
+function Entry:SetGate(gate,open)
+ gate.Model:SetAttribute("Open",open)
+ for _,leaf in ipairs(gate.Leaves) do
+  if leaf.Tween then leaf.Tween:Cancel() end
+  leaf.Part.CanCollide=false
+  local target=open and leaf.Open or leaf.Closed
+  local tween=TweenService:Create(leaf.Part,TweenInfo.new(.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{CFrame=target})
+  leaf.Tween=tween
+  tween.Completed:Once(function(state)
+   if state==Enum.PlaybackState.Completed and leaf.Tween==tween then leaf.Part.CanCollide=not open end
+  end)
+  tween:Play()
+ end
+end
+function Entry:OpenGate(gate)
+ gate.Version+=1; local version=gate.Version
+ self:SetGate(gate,true)
+ task.delay(3,function()
+  if gate.Version~=version or not gate.Model.Parent then return end
+  for _,p in ipairs(Players:GetPlayers()) do
+   local r=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+   if r and math.abs(r.Position.X-self.Config.FirstStationGateX)<1.8 and math.abs(r.Position.Z-gate.Model:GetAttribute("LaneZ"))<2 then
+    self:OpenGate(gate); return
+   end
+  end
+  self:SetGate(gate,false)
+ end)
+end
+function Entry:Near(player,anchor,prompt)
+ local c=player.Character; local r=c and c:FindFirstChild("HumanoidRootPart")
+ local h=c and c:FindFirstChildWhichIsA("Humanoid")
+ return player.Parent==Players and r and h and h.Health>0 and (r.Position-anchor.Position).Magnitude<=prompt.MaxActivationDistance+1
+  and (workspace:GetAttribute("LastTrainStation") or 1)==1 and not workspace:GetAttribute("LastTrainTraveling") and self.Train:GetAttribute("DoorsOpen")
+end
+function Entry:Enforce(player)
+ if (workspace:GetAttribute("LastTrainStation") or 1)~=1 or self.Access:HasEntry(player) then return end
+ local c=player.Character; local r=c and c:FindFirstChild("HumanoidRootPart")
+ if not r or r.Position.X<=self.Config.FirstStationGateX+1 then return end
+ local h=c:FindFirstChildWhichIsA("Humanoid")
+ if h and h.SeatPart then
+  local weld=h.SeatPart:FindFirstChild("SeatWeld"); h.Sit=false; if weld then weld:Destroy() end
+ end
+ c:PivotTo(CFrame.new(self.Config.FirstStationGateX-9,3.2,-22)*CFrame.Angles(0,-math.pi/2,0))
+ r.AssemblyLinearVelocity=Vector3.zero; r.AssemblyAngularVelocity=Vector3.zero
+ player:SetAttribute("OnLastTrain",false)
+ if not self.LastNotice[player] or os.clock()-self.LastNotice[player]>2 then
+  self.LastNotice[player]=os.clock(); self:Notify(player)
+ end
+end
+function Entry.new(world,train,config,notify)
+ local self=setmetatable({Access=Access.new(),Config=config,Train=train,NotifyPlayer=notify,LastNotice={},Gates={}},Entry)
+ self.Remote=ReplicatedStorage.LastTrain.Remotes:WaitForChild("TicketUpdate")
+ for _,model in ipairs(world.Props.FirstStationEntry:GetChildren()) do
+  if model:GetAttribute("TicketGate") then
+   local gate={Model=model,Leaves={},Version=0}
+   for _,p in ipairs(model:GetChildren()) do
+    if p.Name=="TicketGateLeaf" then
+     table.insert(gate.Leaves,{Part=p,Closed=p.CFrame,Open=p.CFrame+Vector3.new(0,0,p:GetAttribute("OpenShiftZ"))})
+    end
+   end
+   self.Gates[model.Name]=gate
+  end
+ end
+ for _,anchor in ipairs(world.Objectives:GetChildren()) do
+  local kind=anchor:GetAttribute("PromptType")
+  local prompt=anchor:FindFirstChildOfClass("ProximityPrompt")
+  if prompt and (kind=="CollectTicket" or kind=="TicketReader") then prompt.Triggered:Connect(function(player)
+   if not self:Near(player,anchor,prompt) then return end
+   if kind=="CollectTicket" then
+    self.Access:Collect(player); player:SetAttribute("FirstStationHasTicket",true)
+    self:Effect(player,"Collected"); self:Notify(player)
+   else
+    local gate=self.Gates[anchor:GetAttribute("GateName")]
+    local ok,first=self.Access:Validate(player)
+    if not ok then
+     self:Effect(player,"Rejected",gate.Model.ReaderScreen)
+     self:Notify(player,"請先到入口取票機領取車票，再來刷卡進站。"); return
+    end
+    player:SetAttribute("FirstStationValidated",true)
+    self:OpenGate(gate)
+    self:Effect(player,"Accepted",gate.Model.ReaderScreen,first)
+    self:Notify(player)
+   end
+  end) end
+ end
+ local function initialize(player)
+  player:SetAttribute("FirstStationHasTicket",false); player:SetAttribute("FirstStationValidated",false)
+  player.CharacterAdded:Connect(function() task.delay(1,function() self:Notify(player) end) end)
+  task.delay(1,function() self:Notify(player) end)
+ end
+ Players.PlayerAdded:Connect(initialize)
+ for _,player in ipairs(Players:GetPlayers()) do initialize(player) end
+ Players.PlayerRemoving:Connect(function(player) self.Access:Forget(player); self.LastNotice[player]=nil end)
+ return self
+end
+return Entry
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="17">
         <Properties>
           <string name="Name">LobbyWorldBuilder</string>
           <token name="RunContext">0</token>
@@ -1355,7 +1478,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="17">
+      <Item class="Script" referent="18">
         <Properties>
           <string name="Name">Matchmaking</string>
           <token name="RunContext">0</token>
@@ -1427,7 +1550,9 @@ local function studioRound(party)
 		-- Keep the first-person spawn clear of the rear carriage side. Starting at
 		-- the west end gives the player a readable view of the train and the nearby
 		-- platform approach, instead of spawning alongside an opaque cab panel.
-		character:PivotTo(CFrame.new((station - 1) * config.StationSpacing - 80, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		local x=(station - 1) * config.StationSpacing - 80
+		if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
+		character:PivotTo(CFrame.new(x, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
 		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
 		if humanoid then
 			humanoid.Died:Once(function()
@@ -1661,7 +1786,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="18">
+      <Item class="Script" referent="19">
         <Properties>
           <string name="Name">PlayerSpawn</string>
           <token name="RunContext">0</token>
@@ -1677,7 +1802,7 @@ if Workspace:GetAttribute("LastTrainMode") ~= "Game" then
 end
 Players.CharacterAutoLoads = false
 
-local function getStationSpawnCFrame()
+local function getStationSpawnCFrame(player)
 	local world=Workspace:WaitForChild("LastTrainWorld")
 	while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
@@ -1685,11 +1810,12 @@ local function getStationSpawnCFrame()
 	-- Respawns use the same clear approach point as a new round, away from the
 	-- carriage body so the locked first-person camera cannot start inside it.
 	local x = (station - 1) * config.StationSpacing - 80
+	if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
 	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
 end
 
 local function placeCharacter(player, character)
-	local spawnCFrame = getStationSpawnCFrame()
+	local spawnCFrame = getStationSpawnCFrame(player)
 	local root = character:WaitForChild("HumanoidRootPart", 10)
 	if root and character.Parent then
 		character:PivotTo(spawnCFrame * CFrame.new(0, 3, 0))
@@ -1730,7 +1856,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="19">
+      <Item class="Script" referent="20">
         <Properties>
           <string name="Name">ProfileLoader</string>
           <token name="RunContext">0</token>
@@ -1751,7 +1877,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">ProfileService</string>
           <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
@@ -2009,7 +2135,7 @@ return Profiles
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="21">
+      <Item class="Script" referent="22">
         <Properties>
           <string name="Name">RecoveryGuard</string>
           <token name="RunContext">0</token>
@@ -2047,6 +2173,7 @@ RunService.Heartbeat:Connect(function()
 				lastRecovery[player] = os.clock()
 				local stop = currentStop
 				local x = (stop - 1) * GameConfig.StationSpacing - 80
+    if stop==1 and not player:GetAttribute("FirstStationValidated") then x=GameConfig.FirstStationEntrySpawnX end
 				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
 				root.AssemblyLinearVelocity = Vector3.zero
 				root.AssemblyAngularVelocity = Vector3.zero
@@ -2061,7 +2188,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="22">
+      <Item class="Script" referent="23">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -2071,6 +2198,7 @@ local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Operations=require(script.Parent:WaitForChild("TrainOperations"))
 local DepartureGate=require(script.Parent:WaitForChild("DepartureGate"))
+local FirstStationEntry=require(script.Parent:WaitForChild("FirstStationEntry"))
 local RunService=game:GetService("RunService")
 local Workspace=game:GetService("Workspace")
 local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -2093,11 +2221,23 @@ local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
 local operations=Operations.new(train)
+local entry=FirstStationEntry.new(world,train,GameConfig,function(player,text)
+ objectiveEvent:FireClient(player,stage,text,false,GameConfig.Stations[1].Name,"",nil,"Entry",1)
+end)
+local completeFirstBoarding
 
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
+local function publish(text,story,endingKey,rideState)
+ for _,player in ipairs(Players:GetPlayers()) do
+  if station==1 and not entry:CanBoard(player,station) then
+   entry:Notify(player)
+  else
+   objectiveEvent:FireClient(player,stage,text,completed,GameConfig.Stations[station].Name,story,endingKey,rideState,station)
+  end
+ end
+end
 local function broadcast(endingKey)
- local data=GameConfig.Stations[station]
- objectiveEvent:FireAllClients(stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked",station)
+ publish(boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked")
 end
 local function setDoors(open,instant) operations:SetDoors(open,instant) end
 local function updateDisplays(moving)
@@ -2111,6 +2251,7 @@ local function updateDisplays(moving)
  end
 end
 local function boardPlayer(player)
+ if not entry:CanBoard(player,station) then entry:Notify(player); return end
  local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
  if not character or not humanoid or humanoid.Health<=0 then return end
  character:PivotTo(Operations.Frame(train)*CFrame.new(-10,3.2,0)*CFrame.Angles(0,-math.pi/2,0)); player:SetAttribute("OnLastTrain",true)
@@ -2121,8 +2262,12 @@ RunService.Heartbeat:Connect(function()
  for _,p in ipairs(Players:GetPlayers()) do
   local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
   if root then
+   entry:Enforce(p)
    local aboard=Operations.Contains(train,character)
    p:SetAttribute("OnLastTrain",aboard)
+   if aboard and station==1 and stage==0 and not departurePending and completeFirstBoarding and entry:CanBoard(p,station) then
+    task.spawn(completeFirstBoarding,p)
+   end
   else p:SetAttribute("OnLastTrain",false) end
  end
 end)
@@ -2131,7 +2276,7 @@ local function moveToNextStation()
  Workspace:SetAttribute("LastTrainBoardingPending",true)
  local lastMessage=nil
  local function readiness()
-  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return Operations.Contains(train,p.Character) end)
+  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return entry:CanBoard(p,station) and Operations.Contains(train,p.Character) end)
  end
  while true do
   local state=readiness()
@@ -2142,12 +2287,12 @@ local function moveToNextStation()
   Workspace:SetAttribute("LastTrainBoardedCount",state.Boarded)
   Workspace:SetAttribute("LastTrainPassengerCount",state.Total)
   if boardingText~=lastMessage then
-   objectiveEvent:FireAllClients(stage,boardingText,false,GameConfig.Stations[station].Name,"",nil,state.State=="Countdown" and "Countdown" or "Boarding",station)
+   publish(boardingText,"",nil,state.State=="Countdown" and "Countdown" or "Boarding")
    lastMessage=boardingText
   end
   if state.Ready then
    traveling=true
-   objectiveEvent:FireAllClients(stage,"全員已上車，車門關閉中。",false,GameConfig.Stations[station].Name,"",nil,"Closing",station)
+   publish("全員已上車，車門關閉中。","",nil,"Closing")
    setDoors(false)
    -- Check real positions again after the door animation. Someone can walk
    -- out while it closes, die, respawn, or join during that animation.
@@ -2163,7 +2308,7 @@ local function moveToNextStation()
  Workspace:SetAttribute("LastTrainTraveling",true)
  boardingText=nil
  updateDisplays(true)
- objectiveEvent:FireAllClients(stage,"列車開往下一站。",false,GameConfig.Stations[station].Name,"",nil,"Moving",station)
+ publish("列車開往下一站。","",nil,"Moving")
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
  Workspace:SetAttribute("LastTrainStation",station)
@@ -2172,11 +2317,23 @@ local function moveToNextStation()
  updateDisplays(false); setDoors(true); traveling=false; departurePending=false; broadcast()
 end
 
+-- The first task now finishes by boarding after personal ticket validation,
+-- including walking through the door. It has no shared collectible shortcut.
+completeFirstBoarding=function(player)
+ if station~=1 or stage~=0 or departurePending or traveling or player.Parent~=Players
+  or not entry:CanBoard(player,station) or not Operations.Contains(train,player.Character) then return end
+ departurePending=true; boardingText="進站任務完成，請等待所有乘客上車。"
+ stage=1; Workspace:SetAttribute("LastTrainRoundStage",stage)
+ Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[1] or 0)
+ broadcast(); task.spawn(moveToNextStation)
+end
+
 -- Initial carriage is already docked at NEW MOON with its doors open.
 setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:SetAttribute("LastTrainTraveling",false); updateDisplays(false); broadcast()
  for _,anchor in ipairs(objectiveFolder:GetChildren()) do
  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
  if p then p.Triggered:Connect(function(player)
+  if anchor:GetAttribute("PromptType")=="CollectTicket" or anchor:GetAttribute("PromptType")=="TicketReader" then return end
   if anchor.Name:match("^BoardTrain_") then
    local requiredStation=anchor:GetAttribute("StationIndex")
    local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -2234,7 +2391,10 @@ for _,item in ipairs(train:GetDescendants()) do
  end) end
 end
 Players.PlayerAdded:Connect(function(player)
- task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station) end end)
+ task.delay(2,function() if player.Parent then
+  if station==1 and not entry:CanBoard(player,station) then entry:Notify(player); return end
+  local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station)
+ end end)
 end)
 
 for _,seat in ipairs(train:GetDescendants()) do
@@ -2246,7 +2406,7 @@ for _,seat in ipairs(train:GetDescendants()) do
     local character=player.Character
     local root=character and character:FindFirstChild("HumanoidRootPart")
     local h=character and character:FindFirstChildWhichIsA("Humanoid")
-    if not root or not h or h.Health<=0 or seat.Occupant or not Operations.Contains(train,character) then return end
+    if not root or not h or h.Health<=0 or seat.Occupant or not entry:CanBoard(player,station) or not Operations.Contains(train,character) then return end
     if (root.Position-seat.Position).Magnitude>prompt.MaxActivationDistance+1 then return end
     seat:Sit(h)
    end)
@@ -2256,7 +2416,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
@@ -2272,7 +2432,7 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="24">
+      <Item class="Script" referent="25">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -2441,7 +2601,34 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
+        <Properties>
+          <string name="Name">TicketAccess</string>
+          <string name="Source"><![CDATA[-- Per-round, per-player state. This never reads a client-provided credential.
+local Access={}
+Access.__index=Access
+function Access.new() return setmetatable({Records={}},Access) end
+function Access:HasTicket(player)
+ local r=self.Records[player]; return r~=nil and r.Collected==true
+end
+function Access:HasEntry(player)
+ local r=self.Records[player]; return r~=nil and r.Validated==true
+end
+function Access:Collect(player)
+ if self:HasTicket(player) then return false end
+ self.Records[player]={Collected=true,Validated=false}; return true
+end
+function Access:Validate(player)
+ if not self:HasTicket(player) then return false,false end
+ local r=self.Records[player]; local first=not r.Validated
+ r.Validated=true; return true,first
+end
+function Access:Forget(player) self.Records[player]=nil end
+return Access
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
@@ -2549,7 +2736,7 @@ return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="26">
+      <Item class="Script" referent="28">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -3101,6 +3288,38 @@ for i,station in ipairs(GameConfig.Stations) do
 end
 
 -- Station 01 notices and entry signage.
+local entry=Instance.new("Model"); entry.Name="FirstStationEntry"; entry.Parent=props
+local gx=GameConfig.FirstStationGateX
+-- Two generous lanes span the first platform. The server separately checks
+-- each passenger's ticket, so one open lane cannot validate a whole party.
+for _,range in ipairs({{-33,-29.1},{-25.7,-20.5},{-17.1,-12}}) do
+ local z=(range[1]+range[2])/2; local width=range[2]-range[1]
+ part(entry,"TicketGateHousing",Vector3.new(3.8,3.1,width),Vector3.new(gx,1.55,z),Color3.fromRGB(166,177,183),Enum.Material.Metal)
+ part(entry,"TicketGateCap",Vector3.new(3.85,.16,width),Vector3.new(gx,3.18,z),Color3.fromRGB(36,48,56),Enum.Material.SmoothPlastic,0,false)
+end
+for index,laneZ in ipairs({-27.4,-18.8}) do
+ local gate=Instance.new("Model"); gate.Name="EntryGate"..index; gate.Parent=entry
+ gate:SetAttribute("TicketGate",true); gate:SetAttribute("LaneZ",laneZ); gate:SetAttribute("Open",false)
+ for _,side in ipairs({-1,1}) do
+  local leaf=part(gate,"TicketGateLeaf",Vector3.new(.16,2.5,1.65),Vector3.new(gx,1.55,laneZ+side*.825),Color3.fromRGB(110,177,185),Enum.Material.SmoothPlastic,.30,true)
+  leaf:SetAttribute("OpenShiftZ",side*1.75)
+ end
+ local screen=part(gate,"ReaderScreen",Vector3.new(.08,.85,1.7),Vector3.new(gx-1.95,2.72,laneZ-2.2),Color3.fromRGB(14,30,35),Enum.Material.SmoothPlastic,0,false)
+ local gui=label(screen,"感應車票\nTAP TO ENTER",Color3.fromRGB(145,231,200),nil,nil,Enum.NormalId.Left)
+ gui.Name="ReaderDisplay"; gui:FindFirstChildWhichIsA("TextLabel").Name="StatusText"
+ part(gate,"ReaderTouchPad",Vector3.new(.65,.08,.8),Vector3.new(gx-1.15,3.3,laneZ-2.2),Color3.fromRGB(79,197,177),Enum.Material.Neon,0,false)
+ local a=prompt("TicketReader_"..index,-1,Vector3.new(gx-2.8,2.6,laneZ),"刷卡進站","每位乘客請感應車票",{PromptType="TicketReader",GateName=gate.Name})
+ local p=a:FindFirstChildOfClass("ProximityPrompt"); p.HoldDuration=.35; p.MaxActivationDistance=7
+ part(entry,"EntryLaneArrow",Vector3.new(5,.035,.14),Vector3.new(gx-6,.10,laneZ),Color3.fromRGB(111,215,181),Enum.Material.Neon,0,false)
+end
+local kiosk=part(entry,"TicketMachine",Vector3.new(3.4,4.5,2),Vector3.new(-151,2.25,-29.6),Color3.fromRGB(213,221,221),Enum.Material.SmoothPlastic)
+local machineScreen=part(entry,"TicketMachineScreen",Vector3.new(2.5,1.65,.08),Vector3.new(-151,3.1,-28.55),Color3.fromRGB(13,29,38),Enum.Material.SmoothPlastic,0,false)
+label(machineScreen,"領取無目的地車票\nFREE TICKET",Color3.fromRGB(238,226,185),nil,nil,Enum.NormalId.Back)
+part(entry,"TicketOutputSlot",Vector3.new(1.6,.12,.08),Vector3.new(-151,1.75,-28.5),C.dark,Enum.Material.SmoothPlastic,0,false)
+part(entry,"UnclaimedTicket",Vector3.new(.85,.04,.5),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(237,221,181),Enum.Material.SmoothPlastic,0,false)
+local entrySign=part(entry,"EntryInstructions",Vector3.new(.18,2.2,15.5),Vector3.new(gx-2,6.2,-22.5),C.dark,Enum.Material.SmoothPlastic,0,false)
+local entryGui=label(entrySign,"① 領取車票　→　② 刷卡進站　→　③ 上車",Color3.fromRGB(243,232,201),nil,nil,Enum.NormalId.Left)
+entryGui.CanvasSize=Vector2.new(1600,220); entryGui:FindFirstChildWhichIsA("TextLabel").TextWrapped=false
 local notice=part(props,"OpeningNotice",Vector3.new(7,4,.55),Vector3.new(-82,4,-31.5),C.dark,Enum.Material.Metal)
 local noticeFace=part(props,"OpeningNoticeGlow",Vector3.new(6.5,2.8,.08),Vector3.new(-82,4,-31.17),C.cyan,Enum.Material.Neon,.22,false); label(noticeFace,"NIGHT SERVICE  /  PLATFORM 01",Color3.fromRGB(234,248,244))
 for _,x in ipairs({-94,-43,11,98}) do for _,side in ipairs({-1,1}) do
@@ -3109,7 +3328,7 @@ for _,x in ipairs({-94,-43,11,98}) do for _,side in ipairs({-1,1}) do
 end end
 
 -- One clear prompt per story beat. Branches at stops six and seven are deliberate.
-prompt("TicketClue",0,Vector3.new(24,2.2,-6.35),"檢查車票","新月站：無目的地車票")
+prompt("TicketClue",-1,Vector3.new(-151,2.4,-26.8),"領取車票","新月站：免費無目的地車票",{PromptType="CollectTicket"})
 prompt("PassengerLedger",1,Vector3.new(spacing-82,2.2,-27),"翻閱乘客簿","失語站：空白離站紀錄")
 prompt("TrueRecording",2,Vector3.new(spacing*2-80,2.2,-27),"播放真正的錄音","回聲站：第三次循環")
 prompt("MirrorReport",3,Vector3.new(spacing*3-82,2.2,-27),"拍下倒影並取回報告","鏡湖站：異常倒影")
@@ -3127,15 +3346,15 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="27">
+  <Item class="StarterPlayer" referent="29">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="28">
+    <Item class="StarterPlayerScripts" referent="30">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="29">
+      <Item class="LocalScript" referent="31">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -3791,6 +4010,9 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     if completed then
         objectiveLabel.Text = tostring(text or "旅程結束。")
         showToast(tostring(text or "旅程結束。"), 9)
+    elseif rideState=="Entry" then
+        objectiveLabel.Text="第一站 · 進站任務\n"..tostring(text or "請領取車票")
+        if lastRideState~="Entry" then showToast(tostring(text),4) end
     elseif rideState=="Boarding" or rideState=="Countdown" or rideState=="Closing" or rideState=="Moving" then
         objectiveLabel.Text=tostring(text or "請返回列車")
         if rideState~=lastRideState then showToast(objectiveLabel.Text,3) end
@@ -3804,6 +4026,41 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     if shop.Visible then refreshShop() end
 end)
 
+local ticketSound=Instance.new("Sound")
+ticketSound.Name="TicketReaderFeedback"
+ticketSound.SoundId="rbxasset://sounds/volume_slider.ogg"
+ticketSound.Volume=.3
+ticketSound.Parent=game:GetService("SoundService")
+local readerVersions={}
+remotes:WaitForChild("TicketUpdate").OnClientEvent:Connect(function(data)
+    ticketSound:Stop()
+    ticketSound.PlaybackSpeed=data.Kind=="Rejected" and .65 or 1.4
+    ticketSound:Play()
+    local screen=data.Screen
+    if not screen then return end
+    local display=screen:FindFirstChild("ReaderDisplay")
+    local text=display and display:FindFirstChild("StatusText")
+    if not text then return end
+    readerVersions[screen]=(readerVersions[screen] or 0)+1
+    local version=readerVersions[screen]
+    local function current() return text.Parent and readerVersions[screen]==version end
+    if data.Kind=="Rejected" then
+        text.Text="未偵測到車票\n請先領票"; text.TextColor3=Color3.fromRGB(255,190,102)
+    elseif data.Anomaly then
+        -- This display change is local to the passenger who scanned.
+        text.Text="你已於二十年前進站"; text.TextColor3=Color3.fromRGB(255,89,83)
+        showToast("你已於二十年前進站",1.4)
+        task.delay(1.2,function()
+            if current() then text.Text="驗票成功\n請通行"; text.TextColor3=Color3.fromRGB(145,231,200) end
+        end)
+    else
+        text.Text="驗票成功\n請通行"; text.TextColor3=Color3.fromRGB(145,231,200)
+    end
+    task.delay(3.8,function()
+        if current() then text.Text="感應車票\nTAP TO ENTER"; text.TextColor3=Color3.fromRGB(145,231,200) end
+    end)
+end)
+
 local function updateCoins()
     if shop.Visible then refreshShop() end
 end
@@ -3815,7 +4072,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="30">
+      <Item class="LocalScript" referent="32">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -4162,13 +4419,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="31">
+  <Item class="Workspace" referent="33">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="32">
+    <Item class="SpawnLocation" referent="34">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

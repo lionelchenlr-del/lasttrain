@@ -651,6 +651,9 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     if completed then
         objectiveLabel.Text = tostring(text or "旅程結束。")
         showToast(tostring(text or "旅程結束。"), 9)
+    elseif rideState=="Entry" then
+        objectiveLabel.Text="第一站 · 進站任務\n"..tostring(text or "請領取車票")
+        if lastRideState~="Entry" then showToast(tostring(text),4) end
     elseif rideState=="Boarding" or rideState=="Countdown" or rideState=="Closing" or rideState=="Moving" then
         objectiveLabel.Text=tostring(text or "請返回列車")
         if rideState~=lastRideState then showToast(objectiveLabel.Text,3) end
@@ -662,6 +665,41 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     end
     lastRideState=rideState
     if shop.Visible then refreshShop() end
+end)
+
+local ticketSound=Instance.new("Sound")
+ticketSound.Name="TicketReaderFeedback"
+ticketSound.SoundId="rbxasset://sounds/volume_slider.ogg"
+ticketSound.Volume=.3
+ticketSound.Parent=game:GetService("SoundService")
+local readerVersions={}
+remotes:WaitForChild("TicketUpdate").OnClientEvent:Connect(function(data)
+    ticketSound:Stop()
+    ticketSound.PlaybackSpeed=data.Kind=="Rejected" and .65 or 1.4
+    ticketSound:Play()
+    local screen=data.Screen
+    if not screen then return end
+    local display=screen:FindFirstChild("ReaderDisplay")
+    local text=display and display:FindFirstChild("StatusText")
+    if not text then return end
+    readerVersions[screen]=(readerVersions[screen] or 0)+1
+    local version=readerVersions[screen]
+    local function current() return text.Parent and readerVersions[screen]==version end
+    if data.Kind=="Rejected" then
+        text.Text="未偵測到車票\n請先領票"; text.TextColor3=Color3.fromRGB(255,190,102)
+    elseif data.Anomaly then
+        -- This display change is local to the passenger who scanned.
+        text.Text="你已於二十年前進站"; text.TextColor3=Color3.fromRGB(255,89,83)
+        showToast("你已於二十年前進站",1.4)
+        task.delay(1.2,function()
+            if current() then text.Text="驗票成功\n請通行"; text.TextColor3=Color3.fromRGB(145,231,200) end
+        end)
+    else
+        text.Text="驗票成功\n請通行"; text.TextColor3=Color3.fromRGB(145,231,200)
+    end
+    task.delay(3.8,function()
+        if current() then text.Text="感應車票\nTAP TO ENTER"; text.TextColor3=Color3.fromRGB(145,231,200) end
+    end)
 end)
 
 local function updateCoins()

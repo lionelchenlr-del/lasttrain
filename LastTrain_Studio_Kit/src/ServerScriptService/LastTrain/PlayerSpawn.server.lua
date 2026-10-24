@@ -10,7 +10,7 @@ if Workspace:GetAttribute("LastTrainMode") ~= "Game" then
 end
 Players.CharacterAutoLoads = false
 
-local function getStationSpawnCFrame()
+local function getStationSpawnCFrame(player)
 	local world=Workspace:WaitForChild("LastTrainWorld")
 	while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
@@ -18,11 +18,12 @@ local function getStationSpawnCFrame()
 	-- Respawns use the same clear approach point as a new round, away from the
 	-- carriage body so the locked first-person camera cannot start inside it.
 	local x = (station - 1) * config.StationSpacing - 80
+	if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
 	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
 end
 
 local function placeCharacter(player, character)
-	local spawnCFrame = getStationSpawnCFrame()
+	local spawnCFrame = getStationSpawnCFrame(player)
 	local root = character:WaitForChild("HumanoidRootPart", 10)
 	if root and character.Parent then
 		character:PivotTo(spawnCFrame * CFrame.new(0, 3, 0))

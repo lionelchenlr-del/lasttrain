@@ -1,0 +1,26 @@
+2026-10-24 Asia/Taipei; Roblox Studio 0.744.
+TicketAccess CLI: 45 checks passed. DepartureGate CLI: 116 checks passed.
+28 game and fixture Luau sources compiled.
+Real-client fixture: /tmp/LastTrain-ticket-entry-regression.rbxlx; actual RoundController enabled.
+
+2026-10-24T03:08:01.372Z,89.372780,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:08:01.389Z,89.389679,6fca3000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_NO_TICKET_PASS
+2026-10-24T03:08:03.388Z,91.388657,704b3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketClue
+2026-10-24T03:08:05.455Z,93.455933,704b3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketClue
+2026-10-24T03:08:05.539Z,93.539421,706bf000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_BYPASS_BLOCKED_PASS
+2026-10-24T03:08:07.238Z,95.238846,708cb000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:08:10.222Z,98.222801,706bf000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:08:13.522Z,101.522148,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_SCAN_ANOMALY_FLAPS_PASS
+2026-10-24T03:08:15.405Z,103.405693,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_RESPAWN_PASS
+2026-10-24T03:08:17.106Z,105.106674,70ad7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_1
+2026-10-24T03:08:22.287Z,110.287956,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT PassengerLedger
+2026-10-24T03:08:26.322Z,114.322662,70ad7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_PLATFORM_WAIT_PASS
+2026-10-24T03:08:28.038Z,116.038948,70ce3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_2
+2026-10-24T03:08:31.288Z,119.288261,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_REBOARD_PROMPT_PASS
+2026-10-24T03:08:33.288Z,121.288948,70ce3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TrueRecording
+2026-10-24T03:08:35.070Z,123.070885,70ad7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_3
+2026-10-24T03:08:38.470Z,126.470154,704b3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLOSING_EXIT_PASS
+2026-10-24T03:08:40.171Z,128.171860,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_3
+2026-10-24T03:08:43.305Z,131.305450,6fa97000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_ALL_PASS real client; personal ticket; reader; private anomaly; gate collision; respawn; station-2 waiting; closing exit; station 4 reached
+
+Limits: one real local client with anchored test character, native prompt hold input, accelerated travel. No manual walking, four-client latency, published teleport or purchase claims. Fixture is excluded from production.

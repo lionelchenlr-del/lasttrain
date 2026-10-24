@@ -66,7 +66,9 @@ local function studioRound(party)
 		-- Keep the first-person spawn clear of the rear carriage side. Starting at
 		-- the west end gives the player a readable view of the train and the nearby
 		-- platform approach, instead of spawning alongside an opaque cab panel.
-		character:PivotTo(CFrame.new((station - 1) * config.StationSpacing - 80, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		local x=(station - 1) * config.StationSpacing - 80
+		if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
+		character:PivotTo(CFrame.new(x, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
 		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
 		if humanoid then
 			humanoid.Died:Once(function()

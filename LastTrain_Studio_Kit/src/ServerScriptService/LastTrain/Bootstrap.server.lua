@@ -25,6 +25,7 @@ local function ensure(className, name)
 end
 
 ensure("RemoteEvent", "ObjectiveUpdate")
+ensure("RemoteEvent", "TicketUpdate")
 ensure("RemoteFunction", "ShopRequest")
 ensure("RemoteFunction", "MatchmakingRequest")
 ensure("RemoteEvent", "MatchmakingUpdate")

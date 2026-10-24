@@ -4,6 +4,7 @@ local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Operations=require(script.Parent:WaitForChild("TrainOperations"))
 local DepartureGate=require(script.Parent:WaitForChild("DepartureGate"))
+local FirstStationEntry=require(script.Parent:WaitForChild("FirstStationEntry"))
 local RunService=game:GetService("RunService")
 local Workspace=game:GetService("Workspace")
 local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -26,11 +27,23 @@ local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
 local operations=Operations.new(train)
+local entry=FirstStationEntry.new(world,train,GameConfig,function(player,text)
+ objectiveEvent:FireClient(player,stage,text,false,GameConfig.Stations[1].Name,"",nil,"Entry",1)
+end)
+local completeFirstBoarding
 
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
+local function publish(text,story,endingKey,rideState)
+ for _,player in ipairs(Players:GetPlayers()) do
+  if station==1 and not entry:CanBoard(player,station) then
+   entry:Notify(player)
+  else
+   objectiveEvent:FireClient(player,stage,text,completed,GameConfig.Stations[station].Name,story,endingKey,rideState,station)
+  end
+ end
+end
 local function broadcast(endingKey)
- local data=GameConfig.Stations[station]
- objectiveEvent:FireAllClients(stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked",station)
+ publish(boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked")
 end
 local function setDoors(open,instant) operations:SetDoors(open,instant) end
 local function updateDisplays(moving)
@@ -44,6 +57,7 @@ local function updateDisplays(moving)
  end
 end
 local function boardPlayer(player)
+ if not entry:CanBoard(player,station) then entry:Notify(player); return end
  local character=player.Character; local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
  if not character or not humanoid or humanoid.Health<=0 then return end
  character:PivotTo(Operations.Frame(train)*CFrame.new(-10,3.2,0)*CFrame.Angles(0,-math.pi/2,0)); player:SetAttribute("OnLastTrain",true)
@@ -54,8 +68,12 @@ RunService.Heartbeat:Connect(function()
  for _,p in ipairs(Players:GetPlayers()) do
   local character=p.Character; local root=character and character:FindFirstChild("HumanoidRootPart")
   if root then
+   entry:Enforce(p)
    local aboard=Operations.Contains(train,character)
    p:SetAttribute("OnLastTrain",aboard)
+   if aboard and station==1 and stage==0 and not departurePending and completeFirstBoarding and entry:CanBoard(p,station) then
+    task.spawn(completeFirstBoarding,p)
+   end
   else p:SetAttribute("OnLastTrain",false) end
  end
 end)
@@ -64,7 +82,7 @@ local function moveToNextStation()
  Workspace:SetAttribute("LastTrainBoardingPending",true)
  local lastMessage=nil
  local function readiness()
-  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return Operations.Contains(train,p.Character) end)
+  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return entry:CanBoard(p,station) and Operations.Contains(train,p.Character) end)
  end
  while true do
   local state=readiness()
@@ -75,12 +93,12 @@ local function moveToNextStation()
   Workspace:SetAttribute("LastTrainBoardedCount",state.Boarded)
   Workspace:SetAttribute("LastTrainPassengerCount",state.Total)
   if boardingText~=lastMessage then
-   objectiveEvent:FireAllClients(stage,boardingText,false,GameConfig.Stations[station].Name,"",nil,state.State=="Countdown" and "Countdown" or "Boarding",station)
+   publish(boardingText,"",nil,state.State=="Countdown" and "Countdown" or "Boarding")
    lastMessage=boardingText
   end
   if state.Ready then
    traveling=true
-   objectiveEvent:FireAllClients(stage,"全員已上車，車門關閉中。",false,GameConfig.Stations[station].Name,"",nil,"Closing",station)
+   publish("全員已上車，車門關閉中。","",nil,"Closing")
    setDoors(false)
    -- Check real positions again after the door animation. Someone can walk
    -- out while it closes, die, respawn, or join during that animation.
@@ -96,7 +114,7 @@ local function moveToNextStation()
  Workspace:SetAttribute("LastTrainTraveling",true)
  boardingText=nil
  updateDisplays(true)
- objectiveEvent:FireAllClients(stage,"列車開往下一站。",false,GameConfig.Stations[station].Name,"",nil,"Moving",station)
+ publish("列車開往下一站。","",nil,"Moving")
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
  Workspace:SetAttribute("LastTrainStation",station)
@@ -105,11 +123,23 @@ local function moveToNextStation()
  updateDisplays(false); setDoors(true); traveling=false; departurePending=false; broadcast()
 end
 
+-- The first task now finishes by boarding after personal ticket validation,
+-- including walking through the door. It has no shared collectible shortcut.
+completeFirstBoarding=function(player)
+ if station~=1 or stage~=0 or departurePending or traveling or player.Parent~=Players
+  or not entry:CanBoard(player,station) or not Operations.Contains(train,player.Character) then return end
+ departurePending=true; boardingText="進站任務完成，請等待所有乘客上車。"
+ stage=1; Workspace:SetAttribute("LastTrainRoundStage",stage)
+ Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[1] or 0)
+ broadcast(); task.spawn(moveToNextStation)
+end
+
 -- Initial carriage is already docked at NEW MOON with its doors open.
 setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:SetAttribute("LastTrainTraveling",false); updateDisplays(false); broadcast()
  for _,anchor in ipairs(objectiveFolder:GetChildren()) do
  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
  if p then p.Triggered:Connect(function(player)
+  if anchor:GetAttribute("PromptType")=="CollectTicket" or anchor:GetAttribute("PromptType")=="TicketReader" then return end
   if anchor.Name:match("^BoardTrain_") then
    local requiredStation=anchor:GetAttribute("StationIndex")
    local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -167,7 +197,10 @@ for _,item in ipairs(train:GetDescendants()) do
  end) end
 end
 Players.PlayerAdded:Connect(function(player)
- task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station) end end)
+ task.delay(2,function() if player.Parent then
+  if station==1 and not entry:CanBoard(player,station) then entry:Notify(player); return end
+  local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station)
+ end end)
 end)
 
 for _,seat in ipairs(train:GetDescendants()) do
@@ -179,7 +212,7 @@ for _,seat in ipairs(train:GetDescendants()) do
     local character=player.Character
     local root=character and character:FindFirstChild("HumanoidRootPart")
     local h=character and character:FindFirstChildWhichIsA("Humanoid")
-    if not root or not h or h.Health<=0 or seat.Occupant or not Operations.Contains(train,character) then return end
+    if not root or not h or h.Health<=0 or seat.Occupant or not entry:CanBoard(player,station) or not Operations.Contains(train,character) then return end
     if (root.Position-seat.Position).Magnitude>prompt.MaxActivationDistance+1 then return end
     seat:Sit(h)
    end)

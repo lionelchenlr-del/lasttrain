@@ -1,0 +1,27 @@
+2026-10-24 Asia/Taipei; Roblox Studio 0.744.
+Normal Lobby -> one-person matchmaking -> local Game.
+Temporary fixture: /tmp/LastTrain-ticket-lobby-final.rbxlx.
+Production Matchmaking and RoundController enabled; accelerated fixture travel.
+
+2026-10-24T03:17:45.497Z,67.497635,6dd8b000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_LOBBY_JOIN_PASS
+2026-10-24T03:17:52.545Z,74.545967,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:17:52.611Z,74.611916,6e59b000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_NO_TICKET_PASS
+2026-10-24T03:17:54.629Z,76.629044,6e9b3000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketClue
+2026-10-24T03:17:56.662Z,78.662231,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketClue
+2026-10-24T03:17:56.778Z,78.778969,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_BYPASS_BLOCKED_PASS
+2026-10-24T03:17:58.479Z,80.479103,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:18:01.462Z,83.462151,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TicketReader_1
+2026-10-24T03:18:04.695Z,86.695259,6e59b000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_SCAN_ANOMALY_FLAPS_PASS
+2026-10-24T03:18:06.578Z,88.578896,6e59b000,6,Info [FLog::CreatorOutput] LASTTRAIN_ENTRY_RESPAWN_PASS
+2026-10-24T03:18:08.279Z,90.279045,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_1
+2026-10-24T03:18:13.544Z,95.544899,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT PassengerLedger
+2026-10-24T03:18:17.561Z,99.561905,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_PLATFORM_WAIT_PASS
+2026-10-24T03:18:19.278Z,101.278122,6db7f000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_2
+2026-10-24T03:18:22.444Z,104.444725,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_REBOARD_PROMPT_PASS
+2026-10-24T03:18:24.445Z,106.445572,6ebbf000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT TrueRecording
+2026-10-24T03:18:26.178Z,108.178429,6ebbf000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_3
+2026-10-24T03:18:29.444Z,111.444008,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLOSING_EXIT_PASS
+2026-10-24T03:18:31.127Z,113.127594,6dd8b000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_CLIENT_INPUT BoardTrain_3
+2026-10-24T03:18:34.410Z,116.410912,6e7a7000,6,Info [FLog::CreatorOutput] LASTTRAIN_STORY_ALL_PASS real client; personal ticket; reader; private anomaly; gate collision; respawn; station-2 waiting; closing exit; station 4 reached
+
+Limits: one actual local client; anchored character; native prompt input. No manual walking, four-client latency, actual reserved-server teleport or purchase claims.

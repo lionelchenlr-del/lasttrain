@@ -546,6 +546,38 @@ for i,station in ipairs(GameConfig.Stations) do
 end
 
 -- Station 01 notices and entry signage.
+local entry=Instance.new("Model"); entry.Name="FirstStationEntry"; entry.Parent=props
+local gx=GameConfig.FirstStationGateX
+-- Two generous lanes span the first platform. The server separately checks
+-- each passenger's ticket, so one open lane cannot validate a whole party.
+for _,range in ipairs({{-33,-29.1},{-25.7,-20.5},{-17.1,-12}}) do
+ local z=(range[1]+range[2])/2; local width=range[2]-range[1]
+ part(entry,"TicketGateHousing",Vector3.new(3.8,3.1,width),Vector3.new(gx,1.55,z),Color3.fromRGB(166,177,183),Enum.Material.Metal)
+ part(entry,"TicketGateCap",Vector3.new(3.85,.16,width),Vector3.new(gx,3.18,z),Color3.fromRGB(36,48,56),Enum.Material.SmoothPlastic,0,false)
+end
+for index,laneZ in ipairs({-27.4,-18.8}) do
+ local gate=Instance.new("Model"); gate.Name="EntryGate"..index; gate.Parent=entry
+ gate:SetAttribute("TicketGate",true); gate:SetAttribute("LaneZ",laneZ); gate:SetAttribute("Open",false)
+ for _,side in ipairs({-1,1}) do
+  local leaf=part(gate,"TicketGateLeaf",Vector3.new(.16,2.5,1.65),Vector3.new(gx,1.55,laneZ+side*.825),Color3.fromRGB(110,177,185),Enum.Material.SmoothPlastic,.30,true)
+  leaf:SetAttribute("OpenShiftZ",side*1.75)
+ end
+ local screen=part(gate,"ReaderScreen",Vector3.new(.08,.85,1.7),Vector3.new(gx-1.95,2.72,laneZ-2.2),Color3.fromRGB(14,30,35),Enum.Material.SmoothPlastic,0,false)
+ local gui=label(screen,"感應車票\nTAP TO ENTER",Color3.fromRGB(145,231,200),nil,nil,Enum.NormalId.Left)
+ gui.Name="ReaderDisplay"; gui:FindFirstChildWhichIsA("TextLabel").Name="StatusText"
+ part(gate,"ReaderTouchPad",Vector3.new(.65,.08,.8),Vector3.new(gx-1.15,3.3,laneZ-2.2),Color3.fromRGB(79,197,177),Enum.Material.Neon,0,false)
+ local a=prompt("TicketReader_"..index,-1,Vector3.new(gx-2.8,2.6,laneZ),"刷卡進站","每位乘客請感應車票",{PromptType="TicketReader",GateName=gate.Name})
+ local p=a:FindFirstChildOfClass("ProximityPrompt"); p.HoldDuration=.35; p.MaxActivationDistance=7
+ part(entry,"EntryLaneArrow",Vector3.new(5,.035,.14),Vector3.new(gx-6,.10,laneZ),Color3.fromRGB(111,215,181),Enum.Material.Neon,0,false)
+end
+local kiosk=part(entry,"TicketMachine",Vector3.new(3.4,4.5,2),Vector3.new(-151,2.25,-29.6),Color3.fromRGB(213,221,221),Enum.Material.SmoothPlastic)
+local machineScreen=part(entry,"TicketMachineScreen",Vector3.new(2.5,1.65,.08),Vector3.new(-151,3.1,-28.55),Color3.fromRGB(13,29,38),Enum.Material.SmoothPlastic,0,false)
+label(machineScreen,"領取無目的地車票\nFREE TICKET",Color3.fromRGB(238,226,185),nil,nil,Enum.NormalId.Back)
+part(entry,"TicketOutputSlot",Vector3.new(1.6,.12,.08),Vector3.new(-151,1.75,-28.5),C.dark,Enum.Material.SmoothPlastic,0,false)
+part(entry,"UnclaimedTicket",Vector3.new(.85,.04,.5),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(237,221,181),Enum.Material.SmoothPlastic,0,false)
+local entrySign=part(entry,"EntryInstructions",Vector3.new(.18,2.2,15.5),Vector3.new(gx-2,6.2,-22.5),C.dark,Enum.Material.SmoothPlastic,0,false)
+local entryGui=label(entrySign,"① 領取車票　→　② 刷卡進站　→　③ 上車",Color3.fromRGB(243,232,201),nil,nil,Enum.NormalId.Left)
+entryGui.CanvasSize=Vector2.new(1600,220); entryGui:FindFirstChildWhichIsA("TextLabel").TextWrapped=false
 local notice=part(props,"OpeningNotice",Vector3.new(7,4,.55),Vector3.new(-82,4,-31.5),C.dark,Enum.Material.Metal)
 local noticeFace=part(props,"OpeningNoticeGlow",Vector3.new(6.5,2.8,.08),Vector3.new(-82,4,-31.17),C.cyan,Enum.Material.Neon,.22,false); label(noticeFace,"NIGHT SERVICE  /  PLATFORM 01",Color3.fromRGB(234,248,244))
 for _,x in ipairs({-94,-43,11,98}) do for _,side in ipairs({-1,1}) do
@@ -554,7 +586,7 @@ for _,x in ipairs({-94,-43,11,98}) do for _,side in ipairs({-1,1}) do
 end end
 
 -- One clear prompt per story beat. Branches at stops six and seven are deliberate.
-prompt("TicketClue",0,Vector3.new(24,2.2,-6.35),"檢查車票","新月站：無目的地車票")
+prompt("TicketClue",-1,Vector3.new(-151,2.4,-26.8),"領取車票","新月站：免費無目的地車票",{PromptType="CollectTicket"})
 prompt("PassengerLedger",1,Vector3.new(spacing-82,2.2,-27),"翻閱乘客簿","失語站：空白離站紀錄")
 prompt("TrueRecording",2,Vector3.new(spacing*2-80,2.2,-27),"播放真正的錄音","回聲站：第三次循環")
 prompt("MirrorReport",3,Vector3.new(spacing*3-82,2.2,-27),"拍下倒影並取回報告","鏡湖站：異常倒影")

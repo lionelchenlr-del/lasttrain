@@ -7,13 +7,15 @@ GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
 GameConfig.MinimumStopDuration = 8
 GameConfig.DepartureCountdown = 3
+GameConfig.FirstStationGateX = -120
+GameConfig.FirstStationEntrySpawnX = -170
 GameConfig.TrainCenterZ = -6.35
 GameConfig.TrackHalfGauge = 4.05
 GameConfig.RailTop = -1.55
 GameConfig.PlatformHalfLength = 210
 GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
 GameConfig.Objectives = {
-	"登上列車，檢查沒有目的地的車票",
+	"領取無目的地車票，刷卡通過閘門後上車",
 	"調查乘客紀錄簿，找出空白的離站紀錄",
 	"找到真正的錄音，關閉錯誤的廣播",
 	"拍下異常倒影，找回實驗報告缺頁",
