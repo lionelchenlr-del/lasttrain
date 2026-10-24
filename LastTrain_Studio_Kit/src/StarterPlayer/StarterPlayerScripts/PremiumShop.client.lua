@@ -7,6 +7,7 @@ local p=Players.LocalPlayer
 local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
 local Appearance=require(RS.LastTrain.Shared.CharacterAppearance)
 local Livery=require(RS.LastTrain.Shared.TrainLivery)
+local TrainModelFactory=require(RS.LastTrain.Shared.TrainModelFactory)
 local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
 local request=remotes:WaitForChild("PremiumShopRequest")
 local gui=Instance.new("ScreenGui");gui.Name="LastTrainPremiumShop";gui.ResetOnSpawn=false;gui.DisplayOrder=30;gui.Parent=p:WaitForChild("PlayerGui")
@@ -53,9 +54,25 @@ local function option() local list=options(selected);return list[(optionIndex-1)
 local function piece(parent,name,size,position,color,shape)
  local v=Instance.new("Part");v.Name=name;v.Size=size;v.Position=position;v.Color=color;v.Material=Enum.Material.SmoothPlastic;v.Anchored=true;v.CanCollide=false;v.Shape=shape or Enum.PartType.Block;v.Parent=parent;return v
 end
+local trainPhotoTemplate=nil
+local trainPhoto=false
+local previewBounds=Vector3.one
+local function fitPreview()
+ if not model or not base then return end
+ local rotation=CFrame.Angles(trainPhoto and .28 or 0,angle,0)
+ model:PivotTo(rotation*base)
+ local aspect=math.max(viewport.AbsoluteSize.X/math.max(viewport.AbsoluteSize.Y,1),.5)
+ local tangent=math.tan(math.rad(camera.FieldOfView/2));local distance=1
+ for _,x in ipairs({-1,1}) do for _,y in ipairs({-1,1}) do for _,z in ipairs({-1,1}) do
+  local v=rotation:VectorToWorldSpace(previewBounds*Vector3.new(x,y,z)/2)
+  distance=math.max(distance,math.abs(v.Y)/tangent+v.Z,math.abs(v.X)/(tangent*aspect)+v.Z)
+ end end end
+ camera.CFrame=CFrame.lookAt(Vector3.new(0,0,distance*1.16),Vector3.zero)
+end
 local function makePreview()
  preview:ClearAllChildren();model=Instance.new("Model");model.Name="ProductModel";model.Parent=preview
  local item=Catalog.Items[selected]
+ trainPhoto=not item.Skin and item.Kind~="Flashlight"
  if item.Skin and p.Character then
   local arch=p.Character.Archivable;p.Character.Archivable=true;local clone=p.Character:Clone();p.Character.Archivable=arch
   clone.Parent=model
@@ -69,28 +86,28 @@ local function makePreview()
   local color=option()=="Amber" and Color3.fromRGB(255,193,99) or option()=="Violet" and Color3.fromRGB(172,156,255) or Color3.fromRGB(104,225,240)
   local ring=piece(model,"NeonRing",Vector3.new(.10,.98,.98),Vector3.new(0,1.70,0),color,Enum.PartType.Cylinder);ring.CFrame=CFrame.new(ring.Position)*CFrame.Angles(0,0,math.pi/2);ring.Material=Enum.Material.Neon
  else
-  for i=1,3 do
-   local x=(i-2)*18
-   piece(model,"DisplayCarBody",Vector3.new(17,3.8,4.6),Vector3.new(x,2,0),Color3.fromRGB(241,243,241))
-   for _,side in ipairs({-1,1}) do
-    piece(model,"Window",Vector3.new(14,1.2,.06),Vector3.new(x,2.6,side*2.32),Color3.fromRGB(48,65,86))
-    piece(model,"Stripe",Vector3.new(17,.18,.07),Vector3.new(x,1.5,side*2.35),Color3.fromRGB(219,106,38))
-   end
-   if i<3 then piece(model,"Gangway",Vector3.new(1,3.5,4),Vector3.new(x+9,1.9,0),navy) end
+  -- Cache an isolated coach so option changes do not rebuild the whole train.
+  if not trainPhotoTemplate then
+   local actual=TrainModelFactory.Build(nil)
+   trainPhotoTemplate=actual:FindFirstChild("FrontCarriage")
+   trainPhotoTemplate.Parent=nil;actual:Destroy()
   end
-  for _,side in ipairs({-1,1}) do
-   local nose=piece(model,"StreamlinedNose",Vector3.new(9,3.4,4.5),Vector3.new(side*30,1.8,0),Color3.fromRGB(241,243,241));local mesh=Instance.new("SpecialMesh");mesh.MeshType=Enum.MeshType.Sphere;mesh.Parent=nose
+  local lead=trainPhotoTemplate:Clone();lead.Parent=model
+  for _,d in ipairs(lead:GetDescendants()) do
+   if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("LuaSourceContainer") or d:IsA("ProximityPrompt") then d:Destroy()
+   elseif d:IsA("BasePart") then d.Anchored=true;d.CanCollide=false;d.CanTouch=false;d.CanQuery=false end
   end
-  local key=(item.Kind=="Livery" or item.Kind=="Royal") and option() or "Taiwan";Livery.Apply(model,key)
-  if selected=="RoyalCarriage" then for _,d in ipairs(model:GetDescendants()) do if d:IsA("BasePart") and d.Name=="Stripe" then d.Color=Color3.fromRGB(202,173,111) end end end
+  -- Preserve the coach name so the shared interior theme still recognizes it.
+  local key=(item.Kind=="Livery" or item.Kind=="Royal") and option() or "Taiwan"
+  Livery.Apply(model,key)
+
  end
  local box,size=model:GetBoundingBox()
  for _,part in ipairs(model:GetDescendants()) do if part:IsA("BasePart") then part.CFrame=part.CFrame-box.Position end end
  model.WorldPivot=CFrame.new();base=CFrame.new();angle=.3
- local _,bounds=model:GetBoundingBox();local aspect=math.max(viewport.AbsoluteSize.X/math.max(viewport.AbsoluteSize.Y,1),.5)
- local radius=math.sqrt(bounds.X*bounds.X+bounds.Z*bounds.Z)/2
- local distance=(math.max(bounds.Y/2,radius/aspect)/math.tan(math.rad(camera.FieldOfView/2))+radius)*1.12
- camera.CFrame=CFrame.lookAt(Vector3.new(0,bounds.Y*.08,distance),Vector3.zero)
+ local _,bounds=model:GetBoundingBox();previewBounds=bounds
+ angle=trainPhoto and -.85 or .3
+ fitPreview()
 end
 local function render(rebuild)
  local item=Catalog.Items[selected];local owned=state and state.OwnedPasses[selected]
@@ -224,7 +241,7 @@ end)
 viewport.InputBegan:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true end end)
 UIS.InputEnded:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
 UIS.InputChanged:Connect(function(input) if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then angle+=input.Delta.X*.008 end end)
-Run.RenderStepped:Connect(function(dt) if panel.Visible and model and base then if not dragging then angle+=dt*.15 end;model:PivotTo(CFrame.Angles(0,angle,0)*base) end end)
+Run.RenderStepped:Connect(function(dt) if panel.Visible and model and base then if not dragging and not trainPhoto then angle+=dt*.15 end;fitPreview() end end)
 
 p.PlayerGui:GetAttributeChangedSignal("OpenLastTrainPremium"):Connect(function()
  if p.PlayerGui:GetAttribute("OpenLastTrainPremium") then p.PlayerGui:SetAttribute("OpenLastTrainPremium",false);visible(true) end
