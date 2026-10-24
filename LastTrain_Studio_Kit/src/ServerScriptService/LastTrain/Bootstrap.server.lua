@@ -34,3 +34,6 @@ ensure("RemoteFunction", "PremiumShopRequest")
 ensure("RemoteEvent", "PremiumNotice")
 
 ensure("RemoteEvent", "RoyalFeedback")
+
+ensure("RemoteFunction", "PlatformChallengeRequest")
+ensure("RemoteEvent", "PlatformChallengeUpdate")

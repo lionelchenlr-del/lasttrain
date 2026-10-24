@@ -18,7 +18,7 @@ local motion=nil
 local function effects(index,on)
  for _,p in ipairs(scenes[index] or {}) do
   for _,d in ipairs(p:GetDescendants()) do
-   if d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=on end
+   if (d:IsA("SurfaceGui") or d:IsA("BillboardGui")) or d:IsA("Light") then d.Enabled=on end
   end
  end
 end

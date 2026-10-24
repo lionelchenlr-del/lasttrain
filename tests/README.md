@@ -1,3 +1,9 @@
+# Seven different platform tasks (2026-10-24)
+
+The native story fixture now collects all three luggage tags, rejects a wrong passenger, replays and rejects a wrong signal sequence, focuses the actual client camera on the mirror witness, rejects a wrong CCTV frame before saving camera 2 at 23:47, rotates the circuit before choosing a branch, and stabilizes three core nodes at server-validated times. Secret-ending locking remains covered. Fixtures now zero premium IDs in temporary XML so real creator-owned passes cannot interfere with isolated entitlement checks; production IDs are unchanged.
+
+This is scripted native prompt input plus real RemoteFunction requests and a real camera, with an anchored story character. It is not a claim of manual mouse input or multi-client latency coverage.
+
 # Current stationary-carriage regression (2026-10-24)
 
 Production now keeps the passenger train fixed. Scenery and station scenes provide travel. Historical results below describe earlier moving-train versions.
@@ -50,3 +56,9 @@ Run `luau tests/TicketAccess.spec.luau` for 45 checks of independent four-passen
 This is one actual client with scripted prompt input and an anchored test character; manual walking and four-client latency remain separate. Latest output: `tests/results/2026-10-24-ticket-entry.txt`. No ticket data is persisted across rounds.
 
 For the normal Studio lobby path, build `python3 tools/build_story_regression.py /tmp/LastTrain-ticket-lobby-final.rbxlx --lobby`, then start Test (F5). Its temporary client driver joins the one-person queue using the normal MatchmakingRequest, leaves the initial Status debounce window, and runs the same tutorial/respawn/station-4 test. The initial spawn check requires the exact ticket-concourse position. Both direct-round and lobby-to-round sessions passed; lobby log: `tests/results/2026-10-24-ticket-lobby.txt`.
+
+### Ending cinematics (2026-10-24)
+
+The native seven-station story driver also waits for each 16-second movie, checks camera animation, replays it, checks the two-second skip guard, skips and returns. It asserts local scenery cleanup, camera type/FOV restoration, input release, and zero train/character drift during the movie. Buttons and the driver share the local `EndingCinema.Action` BindableEvent; no server progression is granted by it. Tests run in disposable places with billing disabled and synthetic entitlements. This is scripted native-client coverage, not a manual mouse/mobile or multi-client network test.
+
+Seat fixtures identify the same seat on server and client by its `RequiredPass` and `SeatNumber`; replicated child ordering is not assumed. A previous post-movie false failure compared two different same-named seats.

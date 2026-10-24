@@ -76,6 +76,23 @@ local function huntAllowed()
     local station=Workspace:GetAttribute("LastTrainStation") or 1
     return stage>=1 and stage<3 and station>=2 and station<=3
         and not Workspace:GetAttribute("LastTrainTraveling")
+        and not Workspace:GetAttribute("LastTrainBoardingPending")
+end
+-- The visible blue task areas protect readers while the chase remains active
+-- outside. This uses server world geometry, never a client menu-open flag.
+local taskSafeZones={}
+for _,zone in ipairs(world:GetDescendants()) do
+ if zone:IsA("BasePart") and zone:GetAttribute("TaskSafeZone") then table.insert(taskSafeZones,zone) end
+end
+local function atTaskDesk(position)
+ local station=Workspace:GetAttribute("LastTrainStation")
+ for _,zone in ipairs(taskSafeZones) do
+  if zone:GetAttribute("StationIndex")==station then
+   local localPoint=zone.CFrame:PointToObjectSpace(position)
+   if math.abs(localPoint.X)<=zone.Size.X/2 and math.abs(localPoint.Z)<=zone.Size.Z/2 and math.abs(localPoint.Y)<10 then return true end
+  end
+ end
+ return false
 end
 local function nearestPlayer()
     local bestRoot, bestDistance, bestRange, bestScore
@@ -83,7 +100,7 @@ local function nearestPlayer()
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
         local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
-        if humanoid and playerRoot and humanoid.Health > 0 then
+        if humanoid and playerRoot and humanoid.Health > 0 and not atTaskDesk(playerRoot.Position) then
             local distance = (playerRoot.Position - root.Position).Magnitude
             local range = 190 * (player:GetAttribute("MonsterDetectionMultiplier") or 1)
             local score = distance / math.max(range, 1)
@@ -101,7 +118,7 @@ local function catchNearbyPlayer()
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
         local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
-        if humanoid and playerRoot and humanoid.Health > 0 and (playerRoot.Position - root.Position).Magnitude < 4.2 then
+        if humanoid and playerRoot and humanoid.Health > 0 and not atTaskDesk(playerRoot.Position) and (playerRoot.Position - root.Position).Magnitude < 4.2 then
             humanoid.Health = 0
         end
     end

@@ -8,10 +8,12 @@ local train=W.Props.LastTrainCar
 local ack=Instance.new("RemoteEvent"); ack.Name="StoryTestAck"; ack.Parent=game.ReplicatedStorage
 local inputAcks={}; local anomalyCount=0; local anomalyCorrect=false; local anomalyCleared=false
 local endingSeen=nil
+local cinemaSeen=nil
 local player
 ack.OnServerEvent:Connect(function(sender,kind,value)
  if sender~=player then return end
- if kind=="Ending" then endingSeen=value
+ if kind=="Cinema" then cinemaSeen=value
+ elseif kind=="Ending" then endingSeen=value
  elseif kind=="Input" then inputAcks[value]=true
  elseif kind=="Anomaly" then anomalyCount+=1; anomalyCorrect=value==true
  elseif kind=="AnomalyCleared" then anomalyCleared=value==true end
@@ -39,6 +41,9 @@ local function atStation(index)
  task.wait(.2)
 end
 local function platformTask(name,stage)
+ if name=="PassengerLedger" then
+  for i=1,3 do local tag=W.Objectives["MissingLuggageTag"..i];position(CFrame.new(tag.Position+Vector3.new(0,1,2)));trigger(tag.Name) end
+ end
  position(CFrame.new(W.Objectives[name].Position+Vector3.new(0,1,0)))
  trigger(name)
  untilTrue(function() return workspace:GetAttribute("LastTrainRoundStage")==stage end,"Objective not triggered: "..name)
@@ -124,6 +129,7 @@ local prompt=ending=="Truth" and "TruthEnding" or ending=="Station08" and "Secre
 position(CFrame.new(W.Objectives[prompt].Position+Vector3.new(0,1,0))); trigger(prompt)
 untilTrue(function() return endingSeen==ending end,"Ending did not reach the real client: "..ending)
 assert(workspace:GetAttribute("LastTrainStation")==7,"Ending skipped final station")
+untilTrue(function() return cinemaSeen==ending end,"Ending cinema failed: "..ending,50)
 local Profiles=require(game.ServerScriptService.LastTrain.ProfileService)
 for _,key in ipairs({"LuxuryPass","RoyalCarriage"}) do
  local seat
@@ -131,11 +137,13 @@ for _,key in ipairs({"LuxuryPass","RoyalCarriage"}) do
   if candidate:IsA("Seat") and candidate:GetAttribute("RequiredPass")==key then seat=candidate;break end
  end
  assert(seat,"Missing paid seat: "..key)
+ workspace:SetAttribute("StoryTestSeatNumber",seat:GetAttribute("SeatNumber"))
  root.Anchored=false
  position(CFrame.new(seat.Position+Vector3.new(1.6,2,0)))
  trigger("Seat:"..key);task.wait(.3)
  assert(character.Humanoid.SeatPart==nil,"Unowned seat accepted: "..key)
  assert(Profiles.SetPass(player,key,true)) -- Fixture grant, never a purchase.
+ task.wait(3.2) -- Native Seat has a reseat cooldown after a denied touch.
  trigger("Seat:"..key)
  untilTrue(function() return character.Humanoid.SeatPart==seat end,"Owned paid seat rejected: "..key)
  character.Humanoid.Sit=false

@@ -244,12 +244,12 @@ GameConfig.PlatformHalfLength = 210
 GameConfig.ObjectiveRewards = { 100, 150, 180, 180, 220, 250, 500 }
 GameConfig.Objectives = {
 	"領取無目的地車票，刷卡通過閘門後上車",
-	"調查乘客紀錄簿，找出空白的離站紀錄",
-	"找到真正的錄音，關閉錯誤的廣播",
-	"拍下異常倒影，找回實驗報告缺頁",
-	"調查乘客留下的物品與監視器影像",
-	"搜尋事故紀錄，決定是否相信站務員",
-	"進入 HOME TERMINAL，揭開列車循環的真相",
+	"找齊三張行李牌，回紀錄台找出未離站的乘客",
+	"在廣播台記住四次燈號，依順序重新輸入",
+	"對準藍色倒影，保持兩秒後按快門拍攝",
+	"開啟監視器台：2號鏡頭、倒帶到23:47並截存證據",
+	"依接線圖轉動三個旋鈕，通電後決定相信誰",
+	"在綠色區間穩定三個核心節點，再選擇結局",
 }
 
 GameConfig.Stations = {
@@ -1360,6 +1360,9 @@ ensure("RemoteFunction", "PremiumShopRequest")
 ensure("RemoteEvent", "PremiumNotice")
 
 ensure("RemoteEvent", "RoyalFeedback")
+
+ensure("RemoteFunction", "PlatformChallengeRequest")
+ensure("RemoteEvent", "PlatformChallengeUpdate")
 ]]></string>
         </Properties>
       </Item>
@@ -2554,7 +2557,166 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="26">
+      <Item class="ModuleScript" referent="26">
+        <Properties>
+          <string name="Name">PlatformChallenges</string>
+          <string name="Source"><![CDATA[-- Round-scoped cooperative platform puzzles. Only this server advances state.
+local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local Http=game:GetService("HttpService")
+local Challenges={};Challenges.__index=Challenges
+local names={PassengerLedger=2,TrueRecording=3,MirrorReport=4,CCTVEvidence=5,TrustConductor=6,ReadAccidentLog=6,LeaveEnding=7,TruthEnding=7,SecretEnding=7}
+local titles={[2]="失語站｜失蹤的乘客",[3]="回聲站｜重播燈號",[4]="鏡湖站｜拍下異常倒影",[5]="遺忘站｜監視器倒帶",[6]="終寂站｜恢復事故電路",[7]="不存在的終點｜穩定核心"}
+local instructions={[2]="先在月台找齊三張行李牌，再比對紀錄簿，選出沒有離站紀錄的乘客。",[3]="記住四次亮燈的順序，再依序按下同名按鈕。答錯可重播，不會扣除獎勵。",[4]="將畫面中央準星對準藍色人影，保持穩定兩秒，再按快門或 C 拍攝。",[5]="值班便條：調查三天前 23:47、2 號鏡頭。倒帶找出那一格，再截存證據。",[6]="轉動三個配電旋鈕，使箭頭與上方的接線圖一致。通電後決定是否相信站務員。",[7]="等游標進入綠色區域再按「穩定」。依序穩定三個節點，然後選擇結局。"}
+local tagText={"12A 林先生：已離站","08B 陳小姐：已離站","03C 紅衣孩童：離站欄空白"}
+local allowedChoice={Conductor=true,Records=true}
+local allowedEnding={Truth=true,Conductor=true,Station08=true}
+function Challenges.new(world,context,complete,notify)
+ local self=setmetatable({World=world,Context=context,Complete=complete,Notify=notify,Sessions={},Last={},Tags={},Echo={Progress=0,Sequence={}},Circuit={Dials={0,0,0}},Core={Progress=0,Epoch=workspace:GetServerTimeNow()},CCTV={}},Challenges)
+ local random=Random.new();for i=1,4 do self.Echo.Sequence[i]=random:NextInteger(1,3) end
+ for i=1,3 do self.Circuit.Dials[i]=random:NextInteger(0,3) end
+ if self.Circuit.Dials[1]==1 and self.Circuit.Dials[2]==3 and self.Circuit.Dials[3]==2 then self.Circuit.Dials[1]=0 end
+ local remotes=RS.LastTrain:WaitForChild("Remotes");self.Updates=remotes:WaitForChild("PlatformChallengeUpdate")
+ remotes:WaitForChild("PlatformChallengeRequest").OnServerInvoke=function(p,token,action,value,origin,direction) return self:Request(p,token,action,value,origin,direction) end
+ Players.PlayerRemoving:Connect(function(p) self.Sessions[p]=nil;self.Last[p]=nil end)
+ return self
+end
+function Challenges:Valid(p,anchor,index)
+ local stage,station,completed,traveling,pending=self.Context()
+ if completed or traveling or pending or stage~=index-1 or station~=index or not anchor or not anchor.Parent then return false end
+ local c=p.Character;local root=c and c:FindFirstChild("HumanoidRootPart");local h=c and c:FindFirstChildOfClass("Humanoid")
+ local prompt=anchor:FindFirstChildOfClass("ProximityPrompt")
+ return root and h and h.Health>0 and prompt and (root.Position-anchor.Position).Magnitude<=prompt.MaxActivationDistance+5
+end
+function Challenges:Snapshot(p,message)
+ local s=self.Sessions[p];if not s then return {ok=false,closed=true} end
+ local data={ok=true,token=s.Token,station=s.Station,title=titles[s.Station],instruction=instructions[s.Station],message=message or "",anchor=s.Anchor.Position}
+ if s.Station==2 then
+  data.tags={};for i=1,3 do data.tags[i]=self.Tags[i] and tagText[i] or "尚未找到行李牌 "..i end
+  local count=0;for _ in pairs(self.Tags) do count+=1 end;data.count=count
+ elseif s.Station==3 then data.sequence=table.clone(self.Echo.Sequence);data.progress=self.Echo.Progress
+ elseif s.Station==4 then
+  local target=self.World.Props:FindFirstChild("MirrorWitnessTarget");data.target=target and target.Position
+  data.focus=s.FocusStart and math.clamp(workspace:GetServerTimeNow()-s.FocusStart,0,2) or 0
+ elseif s.Station==5 then data.camera=s.Camera or 1;data.frame=s.Frame or 0
+ elseif s.Station==6 then data.dials=table.clone(self.Circuit.Dials);data.ready=self.Circuit.Ready==true
+ elseif s.Station==7 then
+  data.progress=self.Core.Progress;data.epoch=self.Core.Epoch;data.ready=self.Core.Progress>=3
+  local _,_,_,_,_,choice=self.Context();data.secret=choice=="Records"
+ end
+ return data
+end
+function Challenges:UpdateOthers(index)
+ for p,s in pairs(self.Sessions) do
+  if s.Station==index and p.Parent==Players then self.Updates:FireClient(p,self:Snapshot(p)) end
+ end
+end
+function Challenges:Finish(p,override)
+ local s=self.Sessions[p];if not s or not self:Valid(p,s.Anchor,s.Station) then return {ok=false,closed=true} end
+ -- RoundController rechecks stage and locks departure before issuing rewards.
+ local result=self.Complete(p,s.Anchor,override)
+ if result then
+  for player in pairs(self.Sessions) do if player.Parent==Players then self.Updates:FireClient(player,{closed=true,ok=true}) end end
+  self.Sessions={}
+  return {ok=true,closed=true}
+ end
+ return self:Snapshot(p,"目前無法完成，請確認任務條件。")
+end
+function Challenges:Open(p,anchor)
+ local tag=anchor:GetAttribute("LuggageTagIndex")
+ local index=names[anchor.Name] or (tag and 2)
+ if not index then return false end
+ if not self:Valid(p,anchor,index) then return true end
+ if tag then
+  if not self.Tags[tag] then
+   self.Tags[tag]=true;anchor.Color=Color3.fromRGB(102,194,149)
+   local count=0;for _ in pairs(self.Tags) do count+=1 end
+   self.Notify(string.format("行李牌 %d / 3：%s%s",count,tagText[tag],count==3 and "。回到乘客簿比對紀錄。" or "。繼續搜尋月台。"))
+   self:UpdateOthers(2)
+  else self.Notify("這張行李牌已登記，請尋找其他牌或回到紀錄簿。",p) end
+  return true
+ end
+ local previous=self.Sessions[p]
+ self.Sessions[p]={Anchor=anchor,Station=index,Token=Http:GenerateGUID(false),Opened=workspace:GetServerTimeNow(),Camera=previous and previous.Station==index and previous.Camera or 1,Frame=previous and previous.Station==index and previous.Frame or 0}
+ self.Updates:FireClient(p,self:Snapshot(p));return true
+end
+local function integer(v,min,max) return type(v)=="number" and v%1==0 and v>=min and v<=max end
+function Challenges:Aiming(p,s,origin,direction)
+ if typeof(origin)~="Vector3" or typeof(direction)~="Vector3" then return false end
+ local function finite(v) return v.X==v.X and v.Y==v.Y and v.Z==v.Z and math.abs(v.X)<1e7 and math.abs(v.Y)<1e7 and math.abs(v.Z)<1e7 end
+ if not finite(origin) or not finite(direction) or direction.Magnitude<.9 or direction.Magnitude>1.1 then return false end
+ local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+ local target=self.World.Props:FindFirstChild("MirrorWitnessTarget")
+ if not root or not target or (origin-root.Position).Magnitude>8 then return false end
+ local delta=target.Position-origin
+ if delta.Magnitude>42 or delta.Magnitude<.1 or direction.Unit:Dot(delta.Unit)<math.cos(math.rad(7)) then return false end
+ local filter=RaycastParams.new();filter.FilterType=Enum.RaycastFilterType.Exclude;filter.FilterDescendantsInstances={p.Character}
+ local hit=workspace:Raycast(origin,delta,filter)
+ return hit~=nil and (hit.Instance==target or hit.Instance:GetAttribute("MirrorWitness")==true)
+end
+function Challenges:Request(p,token,action,value,origin,direction)
+ local s=self.Sessions[p]
+ if not s or token~=s.Token or type(action)~="string" then return {ok=false,closed=true} end
+ if action=="Close" then self.Sessions[p]=nil;return {ok=true,closed=true} end
+ if not self:Valid(p,s.Anchor,s.Station) then self.Sessions[p]=nil;return {ok=false,closed=true,message="已離開互動範圍，請回到任務台。"} end
+ local now=workspace:GetServerTimeNow()
+ if action~="Photo" and now-(self.Last[p] or 0)<.12 then return self:Snapshot(p) end;self.Last[p]=now
+ if action=="State" then return self:Snapshot(p) end
+ if s.Station==2 and action=="Passenger" then
+  for i=1,3 do if not self.Tags[i] then return self:Snapshot(p,"先找齊月台上的三張行李牌。") end end
+  if value~=3 then return self:Snapshot(p,"比對已找到的行李牌：誰的離站欄是空白？") end
+  return self:Finish(p)
+ elseif s.Station==3 and action=="Signal" and integer(value,1,3) then
+  if value~=self.Echo.Sequence[self.Echo.Progress+1] then self.Echo.Progress=0;self:UpdateOthers(3);return self:Snapshot(p,"順序不符，從第一個燈號重新輸入；可按重播。") end
+  self.Echo.Progress+=1
+  if self.Echo.Progress==4 then return self:Finish(p) end
+  self:UpdateOthers(3);return self:Snapshot(p,"燈號正確。")
+ elseif s.Station==4 and (action=="Focus" or action=="Photo") then
+  local valid=self:Aiming(p,s,origin,direction)
+  if not valid then s.FocusStart=nil;s.LastFocus=nil;return self:Snapshot(p,"準星尚未對準人影，請調整鏡頭。") end
+  if not s.LastFocus or now-s.LastFocus>1.1 then s.FocusStart=now end;s.LastFocus=now
+  if action=="Photo" then
+   if now-s.FocusStart<1.8 then return self:Snapshot(p,"保持穩定兩秒後再按快門。") end
+   return self:Finish(p)
+  end
+  return self:Snapshot(p)
+ elseif s.Station==5 then
+  if action=="Camera" and integer(value,1,3) then s.Camera=value;s.ViewedAt=now
+  elseif action=="Frame" and integer(value,0,4) then s.Frame=value;s.ViewedAt=now
+  elseif action=="Evidence" then
+   if s.Camera~=2 or s.Frame~=3 then return self:Snapshot(p,"影格不符。值班便條寫的是三天前 23:47、2 號鏡頭。") end
+   if now-(s.ViewedAt or now)<.8 then return self:Snapshot(p,"先看清這一格，再截存證據。") end
+   return self:Finish(p)
+  else return self:Snapshot(p,"請使用鏡頭、倒帶與截存按鈕。") end
+  self.Updates:FireClient(p,self:Snapshot(p))
+  return self:Snapshot(p)
+ elseif s.Station==6 then
+  if action=="Dial" and integer(value,1,3) and not self.Circuit.Ready then
+   self.Circuit.Dials[value]=(self.Circuit.Dials[value]+1)%4
+   local d=self.Circuit.Dials;self.Circuit.Ready=d[1]==1 and d[2]==3 and d[3]==2
+   self:UpdateOthers(6);return self:Snapshot(p,self.Circuit.Ready and "供電恢復。選擇相信站務員，或查看事故紀錄。" or "旋鈕已轉動。")
+  elseif action=="Choice" and allowedChoice[value] and self.Circuit.Ready then return self:Finish(p,value) end
+  return self:Snapshot(p,"先接通三個電路，再選擇調查方向。")
+ elseif s.Station==7 then
+  if action=="Stabilize" and self.Core.Progress<3 then
+   local centers={.25,.65,.45};local center=centers[self.Core.Progress+1]
+   local phase=((now-self.Core.Epoch)%4)/4
+   if math.abs(phase-center)>.14 then return self:Snapshot(p,"稍早或稍晚了；等游標進入綠色區域再按，不會扣除已完成節點。") end
+   self.Core.Progress+=1;self:UpdateOthers(7);return self:Snapshot(p,self.Core.Progress>=3 and "核心已穩定。現在選擇旅程的結局。" or "節點穩定，繼續下一個。")
+  elseif action=="Ending" and allowedEnding[value] and self.Core.Progress>=3 then
+   local _,_,_,_,_,choice=self.Context()
+   if value=="Station08" and choice~="Records" then return self:Snapshot(p,"未讀取第六站事故紀錄，無法啟動封存結局。") end
+   return self:Finish(p,value)
+  end
+  return self:Snapshot(p,"先依序穩定三個節點。")
+ end
+ return self:Snapshot(p,"請依畫面指示操作。")
+end
+return Challenges
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="27">
         <Properties>
           <string name="Name">PlayerSpawn</string>
           <token name="RunContext">0</token>
@@ -2625,7 +2787,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">PremiumAccess</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -2646,7 +2808,7 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="28">
+      <Item class="Script" referent="29">
         <Properties>
           <string name="Name">PremiumShop</string>
           <token name="RunContext">0</token>
@@ -2750,7 +2912,7 @@ Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="29">
+      <Item class="Script" referent="30">
         <Properties>
           <string name="Name">ProfileLoader</string>
           <token name="RunContext">0</token>
@@ -2771,7 +2933,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">ProfileService</string>
           <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
@@ -3092,7 +3254,7 @@ return Profiles
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="31">
+      <Item class="Script" referent="32">
         <Properties>
           <string name="Name">RecoveryGuard</string>
           <token name="RunContext">0</token>
@@ -3146,7 +3308,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">ReleaseSettings</string>
           <string name="Source"><![CDATA[-- Generated by tools/configure_release.py. Pausing checkout never disables receipt delivery.
@@ -3159,7 +3321,7 @@ return {
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="33">
+      <Item class="Script" referent="34">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -3303,9 +3465,41 @@ completeFirstBoarding=function(player)
  broadcast(); task.spawn(moveToNextStation)
 end
 
+-- A puzzle can request completion, but this controller still owns the stage,
+-- branch, reward and all-passengers-aboard departure gate.
+local function finishObjective(player,anchor,override)
+ if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return false end
+ local character=player.Character;local root=character and character:FindFirstChild("HumanoidRootPart");local h=character and character:FindFirstChildOfClass("Humanoid")
+ local prompt=anchor:FindFirstChildOfClass("ProximityPrompt")
+ if not root or not h or h.Health<=0 or not prompt or (root.Position-anchor.Position).Magnitude>prompt.MaxActivationDistance+5 then return false end
+ if stage==5 then
+  local selected=override or anchor:GetAttribute("Choice")
+  if selected~="Conductor" and selected~="Records" then return false end
+  choice=selected
+ end
+ if stage==6 then
+  local endingKey=override or anchor:GetAttribute("Ending")
+  if not GameConfig.Endings[endingKey] then return false end
+  if endingKey=="Station08" and choice~="Records" then
+   objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station));return false
+  end
+  completed=true;Workspace:SetAttribute("LastTrainRoundStage",stage);Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
+  objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey],true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station);return true
+ end
+ departurePending=true;boardingText="任務完成，請所有乘客返回列車。"
+ stage+=1;Workspace:SetAttribute("LastTrainRoundStage",stage);Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
+ broadcast();task.spawn(moveToNextStation);return true
+end
+local challenges=require(script.Parent.PlatformChallenges).new(world,function()
+ return stage,station,completed,traveling,departurePending,choice
+end,finishObjective,function(text,recipient)
+ if recipient then objectiveEvent:FireClient(recipient,stage,text,false,GameConfig.Stations[station].Name,"",nil,"Challenge",station)
+ else publish(text,"",nil,"Challenge") end
+end)
+
 -- Initial carriage is already docked at NEW MOON with its doors open.
-setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:SetAttribute("LastTrainTraveling",false); updateDisplays(false); broadcast()
- for _,anchor in ipairs(objectiveFolder:GetChildren()) do
+setDoors(true,true);Workspace:SetAttribute("LastTrainStation",1);Workspace:SetAttribute("LastTrainTraveling",false);updateDisplays(false);broadcast()
+for _,anchor in ipairs(objectiveFolder:GetChildren()) do
  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
  if p then p.Triggered:Connect(function(player)
   if anchor:GetAttribute("PromptType")=="CollectTicket" or anchor:GetAttribute("PromptType")=="TicketReader" then return end
@@ -3316,21 +3510,8 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
    return
   end
   if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return end
-  local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
-  if not root or not humanoid or humanoid.Health<=0 or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+4 then return end
-  if stage==5 then choice=anchor:GetAttribute("Choice") end
-  if stage==6 then
-   local endingKey=anchor:GetAttribute("Ending")
-   if endingKey=="Station08" and choice~="Records" then objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station)); return end
-   completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
-   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station); return
-  end
-  departurePending=true -- Lock rewards/objectives while still allowing boarding.
-  boardingText="任務完成，請所有乘客返回列車。"
-  stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
-  if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
-  broadcast()
-  task.spawn(moveToNextStation)
+  if challenges:Open(player,anchor) then return end
+  -- All platform objectives are puzzle-backed; unknown anchors cannot advance.
  end) end
 end
 for _,anchor in ipairs(train:GetDescendants()) do
@@ -3407,7 +3588,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="34">
+      <Item class="Script" referent="35">
         <Properties>
           <string name="Name">RoundLivery</string>
           <token name="RunContext">0</token>
@@ -3449,7 +3630,7 @@ Players.PlayerAdded:Connect(choose);for _,p in ipairs(Players:GetPlayers()) do c
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
@@ -3465,7 +3646,7 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="36">
+      <Item class="Script" referent="37">
         <Properties>
           <string name="Name">RoyalFacilities</string>
           <token name="RunContext">0</token>
@@ -3501,7 +3682,7 @@ Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">StationScenes</string>
           <string name="Source"><![CDATA[-- Station coordinates are local to a fixed passenger train. Only scenery moves.
@@ -3532,7 +3713,7 @@ function Scenes:Dock(index)
    p.CanCollide=active and p:GetAttribute("StationCollision")==true
    p.CanQuery=active and p:GetAttribute("StationQuery")==true
    for _,d in ipairs(p:GetDescendants()) do
-    if d:IsA("ProximityPrompt") or d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=active end
+    if d:IsA("ProximityPrompt") or (d:IsA("SurfaceGui") or d:IsA("BillboardGui")) or d:IsA("Light") then d.Enabled=active end
    end
   end
  end
@@ -3551,7 +3732,7 @@ return Scenes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="38">
+      <Item class="Script" referent="39">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -3633,6 +3814,23 @@ local function huntAllowed()
     local station=Workspace:GetAttribute("LastTrainStation") or 1
     return stage>=1 and stage<3 and station>=2 and station<=3
         and not Workspace:GetAttribute("LastTrainTraveling")
+        and not Workspace:GetAttribute("LastTrainBoardingPending")
+end
+-- The visible blue task areas protect readers while the chase remains active
+-- outside. This uses server world geometry, never a client menu-open flag.
+local taskSafeZones={}
+for _,zone in ipairs(world:GetDescendants()) do
+ if zone:IsA("BasePart") and zone:GetAttribute("TaskSafeZone") then table.insert(taskSafeZones,zone) end
+end
+local function atTaskDesk(position)
+ local station=Workspace:GetAttribute("LastTrainStation")
+ for _,zone in ipairs(taskSafeZones) do
+  if zone:GetAttribute("StationIndex")==station then
+   local localPoint=zone.CFrame:PointToObjectSpace(position)
+   if math.abs(localPoint.X)<=zone.Size.X/2 and math.abs(localPoint.Z)<=zone.Size.Z/2 and math.abs(localPoint.Y)<10 then return true end
+  end
+ end
+ return false
 end
 local function nearestPlayer()
     local bestRoot, bestDistance, bestRange, bestScore
@@ -3640,7 +3838,7 @@ local function nearestPlayer()
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
         local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
-        if humanoid and playerRoot and humanoid.Health > 0 then
+        if humanoid and playerRoot and humanoid.Health > 0 and not atTaskDesk(playerRoot.Position) then
             local distance = (playerRoot.Position - root.Position).Magnitude
             local range = 190 * (player:GetAttribute("MonsterDetectionMultiplier") or 1)
             local score = distance / math.max(range, 1)
@@ -3658,7 +3856,7 @@ local function catchNearbyPlayer()
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
         local playerRoot = character and character:FindFirstChild("HumanoidRootPart")
-        if humanoid and playerRoot and humanoid.Health > 0 and (playerRoot.Position - root.Position).Magnitude < 4.2 then
+        if humanoid and playerRoot and humanoid.Health > 0 and not atTaskDesk(playerRoot.Position) and (playerRoot.Position - root.Position).Magnitude < 4.2 then
             humanoid.Health = 0
         end
     end
@@ -3727,7 +3925,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">TicketAccess</string>
           <string name="Source"><![CDATA[-- Per-round, per-player state. This never reads a client-provided credential.
@@ -3754,7 +3952,7 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
@@ -3844,7 +4042,7 @@ return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="41">
+      <Item class="Script" referent="42">
         <Properties>
           <string name="Name">VIPLounge</string>
           <token name="RunContext">0</token>
@@ -3895,7 +4093,7 @@ Players.PlayerRemoving:Connect(function(p) noticeAt[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="42">
+      <Item class="Script" referent="43">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -4143,6 +4341,43 @@ prompt("ReadAccidentLog",5,Vector3.new(spacing*5+40,2.2,-27),"讀取事故紀錄
 prompt("LeaveEnding",6,Vector3.new(spacing*6-50,2.2,-27),"相信列車長，離開","結局：回到城市",{Ending="Conductor"})
 prompt("TruthEnding",6,Vector3.new(spacing*6,2.2,-27),"關閉核心，終止循環","真相結局：讓列車停下",{Ending="Truth"})
 prompt("SecretEnding",6,Vector3.new(spacing*6+50,2.2,-27),"啟動封存系統","隱藏結局：STATION 08",{Ending="Station08"})
+-- Physical task stations make the next interaction visible from the platform.
+local taskNames={PassengerLedger="乘客紀錄台",TrueRecording="廣播燈號台",MirrorReport="倒影攝影點",CCTVEvidence="監視器調閱台",TrustConductor="事故配電台",ReadAccidentLog="事故配電台",LeaveEnding="終點核心台",TruthEnding="終點核心台",SecretEnding="終點核心台"}
+local function marker(anchor,text)
+ local gui=Instance.new("BillboardGui");gui.Name="TaskMarker";gui.Size=UDim2.fromOffset(220,54);gui.StudsOffset=Vector3.new(0,4,0);gui.AlwaysOnTop=true;gui.MaxDistance=100;gui.Parent=anchor
+ local t=Instance.new("TextLabel");t.Size=UDim2.fromScale(1,1);t.BackgroundColor3=Color3.fromRGB(18,29,43);t.BackgroundTransparency=.15;t.TextColor3=Color3.fromRGB(252,211,147);t.Font=Enum.Font.GothamBold;t.TextSize=18;t.TextWrapped=true;t.Text=text;t.Parent=gui
+ local corner=Instance.new("UICorner");corner.CornerRadius=UDim.new(0,8);corner.Parent=t
+end
+for name,title in pairs(taskNames) do
+ local anchor=objectives:FindFirstChild(name)
+ if anchor then
+  buildingStation=anchor:GetAttribute("StationIndex")
+  local p=anchor:FindFirstChildOfClass("ProximityPrompt");p.ActionText="開啟任務";p.ObjectText=title;p.HoldDuration=.3
+  local at=anchor.Position
+  local desk=part(props,"PlatformTaskDesk",Vector3.new(4.8,1.6,2.2),Vector3.new(at.X,1,at.Z+.6),C.dark,Enum.Material.Metal)
+  local screen=part(props,"PlatformTaskScreen",Vector3.new(4.2,2.4,.18),Vector3.new(at.X,3.25,at.Z-.8),C.dark,Enum.Material.SmoothPlastic,0,false)
+  label(screen,title.."\n按 E / 點擊互動",Color3.fromRGB(159,221,221),nil,nil,Enum.NormalId.Back)
+  marker(anchor,title)
+  if buildingStation==2 or buildingStation==3 then
+   local safe=part(props,"TaskSafeZone",Vector3.new(16,.025,16),Vector3.new(at.X,.14,at.Z+3),Color3.fromRGB(61,178,181),Enum.Material.Neon,.82,false)
+   safe.CanQuery=false;safe.CanTouch=false;safe:SetAttribute("TaskSafeZone",true);safe:SetAttribute("SafeRadius",8)
+  end
+ end
+end
+for index,at in ipairs({Vector3.new(spacing-112,1.8,-22),Vector3.new(spacing-22,1.8,-29),Vector3.new(spacing+58,1.8,-23)}) do
+ buildingStation=2
+ local tag=prompt("MissingLuggageTag"..index,1,at,"登記行李牌","找回失蹤乘客的身分",{LuggageTagIndex=index})
+ tag.Transparency=0;tag.Size=Vector3.new(1.4,.9,.14);tag.Color=Color3.fromRGB(239,182,82);tag.CanQuery=true
+ local bag=part(props,"LostLuggage",Vector3.new(2.1,1.8,1.3),at+Vector3.new(0,-.7,.8),Color3.fromRGB(72,89,112),Enum.Material.Fabric)
+ marker(tag,"行李牌 "..index.." / 3")
+end
+buildingStation=4
+local witnessAt=Vector3.new(spacing*3-75,3.5,-29.2)
+local witness=part(props,"MirrorWitnessTarget",Vector3.new(1.8,2.6,.45),witnessAt,Color3.fromRGB(81,191,224),Enum.Material.Neon,.15,false)
+witness:SetAttribute("MirrorWitness",true);witness.CanQuery=true
+for _,item in ipairs({{Name="MirrorWitnessHead",Size=Vector3.new(1.1,1.1,.5),Offset=Vector3.new(0,1.8,0)},{Name="MirrorWitnessArm",Size=Vector3.new(.5,1.9,.45),Offset=Vector3.new(-1.2,.5,0)},{Name="MirrorWitnessArm",Size=Vector3.new(.5,1.3,.45),Offset=Vector3.new(1.2,-.5,0)}}) do
+ local p=part(props,item.Name,item.Size,witnessAt+item.Offset,witness.Color,Enum.Material.Neon,.2,false);p:SetAttribute("MirrorWitness",true)
+end
 buildingStation=nil
 local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(118,0.15,-22),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
 local ambience=Instance.new("Sound"); ambience.Name="StationAmbience"; ambience.SoundId=""; ambience.Looped=true; ambience.Volume=.12; ambience.RollOffMaxDistance=200; ambience.Parent=world
@@ -4154,15 +4389,233 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="43">
+  <Item class="StarterPlayer" referent="44">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="44">
+    <Item class="StarterPlayerScripts" referent="45">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="45">
+      <Item class="LocalScript" referent="46">
+        <Properties>
+          <string name="Name">EndingCinematics</string>
+          <string name="Source"><![CDATA[-- Local movie sets are isolated from the physical train and all server progression.
+local Players=game:GetService("Players")
+local Run=game:GetService("RunService")
+local Input=game:GetService("UserInputService")
+local Lighting=game:GetService("Lighting")
+local player=Players.LocalPlayer
+local shared=game.ReplicatedStorage:WaitForChild("LastTrain")
+local config=require(shared.Shared.GameConfig)
+local controls=require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
+local gui=Instance.new("ScreenGui")
+gui.Name="EndingCinema";gui.IgnoreGuiInset=true;gui.ResetOnSpawn=false;gui.DisplayOrder=70;gui.Enabled=false;gui.Parent=player:WaitForChild("PlayerGui")
+local function ui(kind,name,pos,size,color,parent)
+ local x=Instance.new(kind);x.Name=name;x.Position=pos;x.Size=size;x.BorderSizePixel=0;x.BackgroundColor3=color;x.Parent=parent or gui;return x
+end
+local black=Color3.fromRGB(3,6,14)
+local gold=Color3.fromRGB(244,189,97)
+local blue=Color3.fromRGB(90,195,255)
+local function label(name,text,pos,size,parent)
+ local x=ui("TextLabel",name,pos,size,black,parent);x.BackgroundTransparency=1;x.Text=text;x.TextColor3=Color3.fromRGB(247,246,241);x.Font=Enum.Font.GothamMedium;x.TextSize=20;x.TextWrapped=true;return x
+end
+local top=ui("Frame","TopBar",UDim2.fromScale(0,0),UDim2.fromScale(1,.13),black)
+local bottom=ui("Frame","BottomBar",UDim2.fromScale(0,.79),UDim2.fromScale(1,.21),black)
+local chapter=label("Chapter","",UDim2.fromScale(.04,.02),UDim2.fromScale(.72,.09))
+chapter.TextXAlignment=Enum.TextXAlignment.Left;chapter.TextSize=17
+local subtitle=label("Subtitle","",UDim2.fromScale(.08,.81),UDim2.fromScale(.84,.13))
+local skip=ui("TextButton","Skip",UDim2.fromScale(.81,.035),UDim2.fromScale(.15,.055),Color3.fromRGB(32,39,51))
+skip.Text="略過  ▸";skip.TextColor3=Color3.new(1,1,1);skip.TextSize=16;skip.Font=Enum.Font.GothamMedium
+local fade=ui("Frame","Fade",UDim2.fromScale(0,0),UDim2.fromScale(1,1),black);fade.ZIndex=5;fade.BackgroundTransparency=1
+local card=ui("Frame","EndingCard",UDim2.fromScale(.1,.15),UDim2.fromScale(.8,.65),black);card.Visible=false;card.ZIndex=8
+local constraint=Instance.new("UISizeConstraint");constraint.MinSize=Vector2.new(240,220);constraint.Parent=card
+local title=label("Title","",UDim2.fromScale(.06,.06),UDim2.fromScale(.88,.16),card);title.TextSize=29;title.ZIndex=9
+local story=label("Story","",UDim2.fromScale(.08,.25),UDim2.fromScale(.84,.42),card);story.TextSize=19;story.ZIndex=9
+local replay=ui("TextButton","Replay",UDim2.fromScale(.08,.77),UDim2.fromScale(.39,.13),Color3.fromRGB(201,108,42),card)
+local close=ui("TextButton","Return",UDim2.fromScale(.53,.77),UDim2.fromScale(.39,.13),Color3.fromRGB(41,51,67),card)
+for _,b in ipairs({replay,close}) do b.TextColor3=Color3.new(1,1,1);b.TextSize=17;b.Font=Enum.Font.GothamBold;b.ZIndex=9 end
+replay.Text="重播動畫";close.Text="返回遊戲畫面"
+local action=Instance.new("BindableEvent");action.Name="Action";action.Parent=gui
+local titles={Conductor="離開結局 · 晨光之後",Truth="真相結局 · 循環終止",Station08="隱藏結局 · 第八站"}
+local duration=16
+local origin=Vector3.new(0,2400,0)
+local scene,connection,saved,key,started,seen=nil,nil,nil,nil,0,false
+local hiddenUI,postEffects,atmospheres={},{},{}
+local function ease(t) t=math.clamp(t,0,1);return t*t*(3-2*t) end
+local function phase(t,a,b) return ease((t-a)/(b-a)) end
+local function part(name,size,pos,color,material)
+ local p=Instance.new("Part");p.Name=name;p.Size=size;p.CFrame=CFrame.new(origin+pos);p.Color=color;p.Material=material or Enum.Material.SmoothPlastic
+ p.Anchored=true;p.CanCollide=false;p.CanTouch=false;p.CanQuery=false;p.CastShadow=false;p.Parent=scene;return p
+end
+local function textOn(p,text,color,face)
+ local s=Instance.new("SurfaceGui");s.Face=face or Enum.NormalId.Back;s.CanvasSize=Vector2.new(800,200);s.Parent=p
+ local l=label("Sign",text,UDim2.fromScale(0,0),UDim2.fromScale(1,1),s);l.TextColor3=color or gold;l.TextScaled=true;return l
+end
+local function person(pos)
+ local body=part("ConductorBody",Vector3.new(1.7,2.5,.8),pos+Vector3.new(0,2.4,0),Color3.fromRGB(25,42,63))
+ local head=part("ConductorHead",Vector3.new(1.1,1.1,1),pos+Vector3.new(0,4.15,0),Color3.fromRGB(226,186,151));textOn(head,"•  •\n  ◡",Color3.fromRGB(40,31,28))
+ part("ConductorCap",Vector3.new(1.4,.3,1.2),pos+Vector3.new(0,4.8,0),Color3.fromRGB(22,34,51))
+ part("OrangeTie",Vector3.new(.19,1.2,.05),pos+Vector3.new(0,2.8,.43),gold)
+ for _,x in ipairs({-.48,.48}) do part("Leg",Vector3.new(.65,1.3,.75),pos+Vector3.new(x,.65,0),Color3.fromRGB(20,28,41)) end
+ local arm=part("WavingArm",Vector3.new(.55,2.1,.65),pos+Vector3.new(-1.15,2.6,0),body.Color)
+ part("RestingArm",Vector3.new(.55,2.1,.65),pos+Vector3.new(1.15,2.6,0),body.Color)
+ return arm,head
+end
+local function corridor(color)
+ part("Floor",Vector3.new(54,1,140),Vector3.new(0,-.5,-36),Color3.fromRGB(29,34,46),Enum.Material.Metal)
+ for _,x in ipairs({-25,25}) do
+  part("Wall",Vector3.new(1,19,140),Vector3.new(x,9,-36),Color3.fromRGB(15,21,34))
+  for z=-90,20,15 do
+   part("Pillar",Vector3.new(1.4,19,2),Vector3.new(x*.94,9,z),Color3.fromRGB(65,72,84))
+   part("Light",Vector3.new(.25,.18,12),Vector3.new(x*.84,12,z),color,Enum.Material.Neon)
+  end
+ end
+ for z=-85,15,20 do
+  local lamp=part("CeilingLamp",Vector3.new(8,.2,1),Vector3.new(0,14,z),color,Enum.Material.Neon)
+  local light=Instance.new("PointLight");light.Color=Color3.fromRGB(197,210,231);light.Brightness=1.4;light.Range=29;light.Shadows=false;light.Parent=lamp
+ end
+ for _,x in ipairs({-17,17}) do part("FloorGuide",Vector3.new(.2,.04,125),Vector3.new(x,.03,-36),color,Enum.Material.Neon) end
+end
+local function clearScene()
+ if connection then connection:Disconnect();connection=nil end
+ if scene then scene:Destroy();scene=nil end
+end
+local function restore()
+ if not saved then return end
+ local camera=workspace.CurrentCamera
+ if camera then camera.CameraSubject=saved.subject;camera.FieldOfView=saved.fov;camera.CFrame=saved.frame;camera.CameraType=saved.kind end
+ for prop,value in pairs(saved.light) do Lighting[prop]=value end
+ for uiObject,enabled in pairs(hiddenUI) do if uiObject.Parent then uiObject.Enabled=enabled end end;hiddenUI={}
+ for effect,enabled in pairs(postEffects) do if effect.Parent then effect.Enabled=enabled end end;postEffects={}
+ for atmosphere,values in pairs(atmospheres) do if atmosphere.Parent then for prop,value in pairs(values) do atmosphere[prop]=value end end end;atmospheres={}
+ controls:Enable();player:SetAttribute("LastTrainCinematic",false);saved=nil
+end
+local function finish()
+ if not saved then return end
+ clearScene();restore();skip.Visible=false;top.Visible=false;bottom.Visible=false;chapter.Visible=false;subtitle.Visible=false;fade.BackgroundTransparency=1
+ card.Visible=true;gui:SetAttribute("State","Card")
+end
+local function dismiss()
+ clearScene();restore();gui.Enabled=false;card.Visible=false;gui:SetAttribute("State","Closed")
+end
+local function start(ending)
+ clearScene();restore();key=ending
+ local camera=workspace.CurrentCamera
+ saved={kind=camera.CameraType,subject=camera.CameraSubject,frame=camera.CFrame,fov=camera.FieldOfView,light={ClockTime=Lighting.ClockTime,Brightness=Lighting.Brightness,Ambient=Lighting.Ambient,OutdoorAmbient=Lighting.OutdoorAmbient,FogEnd=Lighting.FogEnd,FogStart=Lighting.FogStart}}
+ for _,other in ipairs(player.PlayerGui:GetChildren()) do
+  if other:IsA("ScreenGui") and other~=gui then hiddenUI[other]=other.Enabled;other.Enabled=false end
+ end
+ for _,effect in ipairs(Lighting:GetChildren()) do
+  if effect:IsA("PostEffect") then postEffects[effect]=effect.Enabled;effect.Enabled=false
+  elseif effect:IsA("Atmosphere") then atmospheres[effect]={Density=effect.Density,Haze=effect.Haze,Glare=effect.Glare};effect.Density=0;effect.Haze=0;effect.Glare=0 end
+ end
+ controls:Disable();player:SetAttribute("LastTrainCinematic",true)
+ camera.CameraType=Enum.CameraType.Scriptable;camera.FieldOfView=62
+ Lighting.ClockTime=ending=="Conductor" and 7 or 0;Lighting.Brightness=2;Lighting.Ambient=Color3.fromRGB(145,152,169);Lighting.OutdoorAmbient=Color3.fromRGB(130,143,170);Lighting.FogEnd=100000;Lighting.FogStart=99900
+ gui.Enabled=true;card.Visible=false;top.Visible=true;bottom.Visible=true;chapter.Visible=true;subtitle.Visible=true;skip.Visible=false
+ title.Text=titles[ending];story.Text=config.Endings[ending];chapter.Text="末班車  /  "..titles[ending]
+ gui:SetAttribute("Ending",ending);gui:SetAttribute("State","Playing")
+ scene=Instance.new("Model");scene.Name="LastTrainEndingSet";scene.Parent=workspace
+ local animate
+ if ending=="Conductor" then
+  corridor(gold)
+  local left=part("ExitLeft",Vector3.new(10,14,.6),Vector3.new(-5,7,-39),Color3.fromRGB(145,152,160),Enum.Material.Metal)
+  local right=part("ExitRight",left.Size,Vector3.new(5,7,-39),left.Color,Enum.Material.Metal)
+  local exit=part("MorningExit",Vector3.new(20,14,.25),Vector3.new(0,7,-42),Color3.fromRGB(255,224,165),Enum.Material.Neon)
+  textOn(part("ExitSign",Vector3.new(18,2,.5),Vector3.new(0,16,-39),black),"出口 EXIT  →",gold)
+  local arm=person(Vector3.new(-9,0,-29))
+  for i=1,14 do
+   local x=(i-7.5)*7;local h=12+(i*17%25)
+   part("CityBuilding",Vector3.new(5,h,6),Vector3.new(x,h/2,-75-(i%3)*9),Color3.fromRGB(111+i*3,130+i*2,153+i*2))
+  end
+  animate=function(t)
+   local a=phase(t,2.5,7.5);left.CFrame=CFrame.new(origin+Vector3.new(-5-9*a,7,-39));right.CFrame=CFrame.new(origin+Vector3.new(5+9*a,7,-39));exit.Transparency=phase(t,6,10)
+   arm.CFrame=CFrame.new(origin+Vector3.new(-10.15,3.1,-29))*CFrame.Angles(0,0,math.rad(-25+math.sin(t*3)*24))
+   local p=Vector3.new(5,5,12):Lerp(Vector3.new(1,5,-50),phase(t,0,14))
+   camera.CFrame=CFrame.lookAt(origin+p,origin+Vector3.new(-9,3.7,-29):Lerp(Vector3.new(0,6,-78),phase(t,3,7)))
+   subtitle.Text=t<5 and "車門再次開啟。這一次，出口通往晨光。" or t<10 and "站務員揮手道別，你走向熟悉的城市。" or "身後的廣播響起——那竟然是你自己的聲音。"
+  end
+ elseif ending=="Truth" then
+  corridor(Color3.fromRGB(109,234,204))
+  local core=part("Core",Vector3.new(5,9,5),Vector3.new(0,5,-28),Color3.fromRGB(95,231,207),Enum.Material.Neon);core.Shape=Enum.PartType.Cylinder
+  local rings={}
+  for i=1,3 do
+   local ring=Instance.new("Model");ring.Name="CoreOrbit"..i;ring.Parent=scene
+   local radius=4+i*.65
+   for n=1,24 do
+    local a=n*math.pi/12
+    local segment=part("RingArc",Vector3.new(.14,radius*math.pi/12+.035,.14),Vector3.new(math.cos(a)*radius,5+math.sin(a)*radius,-28),blue,Enum.Material.Neon)
+    segment.CFrame=CFrame.new(origin+Vector3.new(math.cos(a)*radius,5+math.sin(a)*radius,-28))*CFrame.Angles(0,0,a);segment.Parent=ring
+   end
+   ring.WorldPivot=CFrame.new(origin+Vector3.new(0,5,-28));rings[i]=ring
+  end
+  local lamps,signs={},{}
+  for i=1,7 do
+   lamps[i]=part("StationLight"..i,Vector3.new(1.6,8,1.6),Vector3.new((i-4)*5,4,-47),gold,Enum.Material.Neon)
+   signs[i]=textOn(part("StationName"..i,Vector3.new(4,1.1,.2),Vector3.new((i-4)*5,10,-47),black),tostring(i).." 站",gold)
+  end
+  local arm,head=person(Vector3.new(-9,0,-25));local shadow=part("OldShadow",Vector3.new(3.6,5.7,1.6),Vector3.new(-9,2.8,-26),Color3.fromRGB(44,3,7));shadow.Transparency=.18
+  animate=function(t)
+   local power=1-phase(t,7,12);core.Color=Color3.fromRGB(17,30,34):Lerp(Color3.fromRGB(95,231,207),power)
+   for i,ring in ipairs(rings) do ring:PivotTo(CFrame.new(origin+Vector3.new(0,5,-28))*CFrame.Angles((10-(10-math.min(t,10))^2/10)*.25,i*math.pi/3,math.pi/3));for _,p in ipairs(ring:GetChildren()) do p.Transparency=.1+.9*(1-power) end end
+   for i,p in ipairs(lamps) do local on=t<3+i*.85;p.Material=on and Enum.Material.Neon or Enum.Material.SmoothPlastic;p.Color=on and gold or Color3.fromRGB(25,29,36);signs[i].TextColor3=on and gold or Color3.fromRGB(65,69,78) end
+   shadow.Transparency=.18+.82*phase(t,9,12);arm.CFrame=CFrame.new(origin+Vector3.new(-10.15,2.6,-25))
+   local p=Vector3.new(18,8,4):Lerp(Vector3.new(-10,5,-13),phase(t,0,15));camera.CFrame=CFrame.lookAt(origin+p,origin+Vector3.new(-3*phase(t,8,12),4,-28))
+   subtitle.Text=t<5 and "你關閉核心。七座車站的燈光，開始依序熄滅。" or t<10 and "環繞核心的光停止旋轉，循環終於中斷。" or "站務員恢復原貌：「謝謝你，終於有人讓這趟列車停下來。」"
+  end
+ else
+  corridor(blue)
+  local left=part("SealedLeft",Vector3.new(12,16,1),Vector3.new(-6,8,-37),Color3.fromRGB(29,40,64),Enum.Material.Metal)
+  local right=part("SealedRight",left.Size,Vector3.new(6,8,-37),left.Color,Enum.Material.Metal)
+  local sign=textOn(part("Station08Sign",Vector3.new(23,3,.6),Vector3.new(0,19,-37),black),"01 · 02 · 03 · 04 · 05 · 06 · 07",blue)
+  local stars={}
+  for i=1,90 do
+   local a=i*2.399963;local r=5+(i%11)*1.6;local z=-42-i*.7
+   local p=part("Star",Vector3.new(.1,.1,.6),Vector3.new(math.cos(a)*r,8+math.sin(a)*r,z),i%3==0 and Color3.fromRGB(180,119,255) or blue,Enum.Material.Neon);stars[i]=p
+  end
+  textOn(part("Destination",Vector3.new(24,5,1),Vector3.new(0,9,-104),black),"STATION 08",blue)
+  for i=1,7 do part("Gateway",Vector3.new(34,1,1),Vector3.new(0,17,-44-i*8),i%2==0 and blue or Color3.fromRGB(166,99,250),Enum.Material.Neon) end
+  animate=function(t)
+   local count=math.clamp(math.floor((t-1)*1.4),0,7)
+   if t<6.5 then local names={};for i=1,7 do names[i]=i<=count and "—" or string.format("%02d",i) end;sign.Text=table.concat(names," · ") else sign.Text="STATION 08" end
+   local a=phase(t,6,10);left.CFrame=CFrame.new(origin+Vector3.new(-6-13*a,8,-37));right.CFrame=CFrame.new(origin+Vector3.new(6+13*a,8,-37))
+   for i,p in ipairs(stars) do p.Transparency=.15+.35*(.5+.5*math.sin(t*1.7+i)) end
+   camera.CFrame=CFrame.lookAt(origin+Vector3.new(0,6,8):Lerp(Vector3.new(0,7,-68),phase(t,3,15)),origin+Vector3.new(0,9,-104))
+   subtitle.Text=t<6 and "封存檔案啟動。七個站名逐一消失。" or t<10 and "密封門後，浮現一條從未出現在路線圖上的月台。" or "「歡迎回來，調查員。」第八站正在等你。"
+  end
+ end
+ started=os.clock()
+ -- Rendering only changes movie props and the local camera, never the real train or character.
+ connection=Run.RenderStepped:Connect(function()
+  if not saved or not camera.Parent then dismiss();return end
+  local t=os.clock()-started
+  if t>=duration then finish();return end
+  animate(t);skip.Visible=t>=2
+  fade.BackgroundTransparency=math.clamp(math.min(t/.8,(duration-t)/.9),0,1)
+ end)
+end
+local function handle(command)
+ if command=="Skip" and gui:GetAttribute("State")=="Playing" and os.clock()-started>=2 then finish()
+ elseif command=="Replay" and gui:GetAttribute("State")=="Card" then start(key)
+ elseif command=="Close" and gui.Enabled then dismiss() end
+end
+action.Event:Connect(handle)
+skip.Activated:Connect(function() handle("Skip") end)
+replay.Activated:Connect(function() handle("Replay") end)
+close.Activated:Connect(function() handle("Close") end)
+Input.InputBegan:Connect(function(input,processed)
+ if processed then return end
+ if input.KeyCode==Enum.KeyCode.Space then handle("Skip") elseif input.KeyCode==Enum.KeyCode.Escape then handle(gui:GetAttribute("State")=="Card" and "Close" or "Skip") end
+end)
+player.CharacterAdded:Connect(dismiss)
+shared.Remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(_,_,completed,_,_,ending)
+ if completed and titles[ending] and not seen then seen=true;task.defer(start,ending) end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="47">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -4733,6 +5186,7 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(purchaser, _p
 end)
 
 local function setShopVisible(value)
+    if value and (player:GetAttribute("PlatformTaskOpen") or player:GetAttribute("LastTrainCinematic")) then return end
     shop.Visible = value
     player:WaitForChild("PlayerGui"):SetAttribute("OpenLastTrainShop", value)
     if value then refreshShop() end
@@ -4910,7 +5364,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="46">
+      <Item class="LocalScript" referent="48">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -5255,7 +5709,210 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="47">
+      <Item class="LocalScript" referent="49">
+        <Properties>
+          <string name="Name">PlatformChallenges</string>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local UIS=game:GetService("UserInputService")
+local Run=game:GetService("RunService")
+local player=Players.LocalPlayer
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local request=remotes:WaitForChild("PlatformChallengeRequest")
+local updates=remotes:WaitForChild("PlatformChallengeUpdate")
+local gui=Instance.new("ScreenGui");gui.Name="LastTrainPlatformTasks";gui.ResetOnSpawn=false;gui.DisplayOrder=45;gui.Parent=player:WaitForChild("PlayerGui")
+local navy=Color3.fromRGB(19,30,45);local cream=Color3.fromRGB(245,242,233);local orange=Color3.fromRGB(222,119,56);local blue=Color3.fromRGB(100,213,224)
+local function round(p,r) local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,r or 8);c.Parent=p end
+local function label(parent,text,pos,size,font,color)
+ local t=Instance.new("TextLabel");t.Position=pos;t.Size=size;t.Text=text;t.BackgroundTransparency=1;t.Font=Enum.Font.GothamMedium;t.TextColor3=color or navy;t.TextSize=font or 16;t.TextWrapped=true;t.TextXAlignment=Enum.TextXAlignment.Left;t.Parent=parent;return t
+end
+local function button(parent,name,text,pos,size,color)
+ local b=Instance.new("TextButton");b.Name=name;b.Text=text;b.Position=pos;b.Size=size;b.BackgroundColor3=color or orange;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=16;b.TextWrapped=true;b.BorderSizePixel=0;b.Parent=parent;round(b);return b
+end
+local panel=Instance.new("Frame");panel.Name="TaskPanel";panel.AnchorPoint=Vector2.new(.5,.5);panel.Position=UDim2.fromScale(.5,.5);panel.Size=UDim2.fromScale(.92,.86);panel.BackgroundColor3=cream;panel.Visible=false;panel.Parent=gui;round(panel,14)
+local constraint=Instance.new("UISizeConstraint");constraint.MaxSize=Vector2.new(720,590);constraint.MinSize=Vector2.new(300,300);constraint.Parent=panel
+local title=label(panel,"",UDim2.fromOffset(22,16),UDim2.new(1,-90,0,36),23)
+local instruction=label(panel,"",UDim2.fromOffset(22,62),UDim2.new(1,-44,0,72),16)
+local closeButton=button(panel,"CloseTask","×",UDim2.new(1,-57,0,18),UDim2.fromOffset(35,32));closeButton.Modal=true
+local body=Instance.new("ScrollingFrame");body.Name="TaskContent";body.Position=UDim2.fromOffset(22,143);body.Size=UDim2.new(1,-44,1,-209);body.CanvasSize=UDim2.fromOffset(0,345);body.BackgroundTransparency=1;body.BorderSizePixel=0;body.ScrollBarThickness=4;body.Parent=panel
+local status=label(panel,"",UDim2.new(0,22,1,-57),UDim2.new(1,-44,0,48),15,Color3.fromRGB(116,67,33))
+local photo=Instance.new("Frame");photo.Name="PhotoOverlay";photo.Size=UDim2.fromScale(1,1);photo.BackgroundTransparency=1;photo.Visible=false;photo.Parent=gui
+local photoGuide=label(photo,"",UDim2.new(.12,0,0,35),UDim2.new(.76,0,0,106),17,cream);photoGuide.BackgroundColor3=navy;photoGuide.BackgroundTransparency=.12;photoGuide.TextXAlignment=Enum.TextXAlignment.Center;round(photoGuide)
+local reticle=label(photo,"＋",UDim2.new(.5,-25,.5,-25),UDim2.fromOffset(50,50),40,blue);reticle.TextXAlignment=Enum.TextXAlignment.Center
+local shutter=button(photo,"Shutter","拍攝 [C]",UDim2.new(.5,-90,1,-85),UDim2.fromOffset(180,48))
+local photoClose=button(photo,"CloseCamera","離開攝影 [Q]",UDim2.new(1,-160,1,-85),UDim2.fromOffset(145,48),navy)
+local data=nil;local busy=false;local controls=nil;local playedToken=nil;local replaying=false;local gauge=nil;local greenZone=nil;local coreLabel=nil;local connection=nil;local focusPending=false;local focusAt=0;local playbackVersion=0
+local photoNotice="";local photoNoticeUntil=0
+local render,send
+local function close(notify)
+ local previous=data;data=nil;panel.Visible=false;photo.Visible=false;playbackVersion+=1;replaying=false;gauge=nil;greenZone=nil
+ player:SetAttribute("PlatformTaskOpen",false)
+ if controls then controls:Enable();controls=nil end
+ if notify and previous then task.spawn(function() pcall(request.InvokeServer,request,previous.token,"Close") end) end
+end
+local function activate(nextData)
+ local fresh=not data or data.token~=nextData.token
+ data=nextData
+ if fresh then
+  body.CanvasPosition=Vector2.zero
+  player:SetAttribute("PlatformTaskOpen",true)
+  if nextData.station~=4 then controls=require(player.PlayerScripts:WaitForChild("PlayerModule")):GetControls();controls:Disable() end
+ end
+ panel.Visible=nextData.station~=4;photo.Visible=nextData.station==4
+ title.Text=nextData.title or "月台任務";instruction.Text=nextData.instruction or "";status.Text=nextData.message or ""
+ if data.station==4 then
+  if data.message and data.message~="" then photoNotice=data.message;photoNoticeUntil=workspace:GetServerTimeNow()+3 end
+  photoGuide.Text=data.instruction.."\n"..(data.message~="" and data.message or "尋找鏡面旁的藍色人影。")
+ else render() end
+end
+send=function(action,value,origin,direction)
+ if not data or busy then return end
+ busy=true;local token=data.token
+ task.spawn(function()
+  local ok,result=pcall(request.InvokeServer,request,token,action,value,origin,direction);busy=false
+  if not data or data.token~=token then return end
+  if not ok then status.Text="連線忙碌，請稍後再試。";photoGuide.Text="連線忙碌，請稍後再試。";return end
+  if result and result.closed then close(false) elseif result and result.ok then activate(result) end
+ end)
+end
+local function photoShot()
+ if not data or data.station~=4 then return end
+ local camera=workspace.CurrentCamera
+ send("Photo",nil,camera.CFrame.Position,camera.CFrame.LookVector)
+end
+shutter.Activated:Connect(photoShot);photoClose.Activated:Connect(function() close(true) end);closeButton.Activated:Connect(function() close(true) end)
+local function block(text,y,height)
+ local t=label(body,text,UDim2.fromOffset(0,y),UDim2.new(1,-8,0,height or 38),17);return t
+end
+render=function()
+ body:ClearAllChildren();gauge=nil;greenZone=nil;coreLabel=nil
+ if not data then return end
+ local s=data.station
+ if s==2 then
+  block(string.format("行李牌 %d / 3　（全隊共用）",data.count or 0),0,30)
+  for i,line in ipairs(data.tags or {}) do block((line:find("尚未") and "○ " or "✓ ")..line,35+(i-1)*34,32) end
+  block("乘客簿：12A、08B 已離站。哪位乘客的離站欄空白？",143,44)
+  for i,name in ipairs({"林先生 · 12A","陳小姐 · 08B","紅衣孩童 · 03C"}) do
+   local b=button(body,"Passenger"..i,name,UDim2.new((i-1)/3,0,0,204),UDim2.new(1/3,-8,0,65),(data.count or 0)==3 and orange or Color3.fromRGB(114,125,135))
+   b.Activated:Connect(function() send("Passenger",i) end)
+  end
+  block("未找齊：關閉此頁，在月台尋找三個金色行李牌標記。",281,48)
+ elseif s==3 then
+  block(string.format("已重現 %d / 4 次燈號",data.progress or 0),0,35)
+  local palette={Color3.fromRGB(41,159,182),Color3.fromRGB(193,145,39),Color3.fromRGB(190,65,66)}
+  local words={"青燈","黃燈","紅燈"};local lights={}
+  local cue=block("準備輸入燈號",42,48);cue.TextXAlignment=Enum.TextXAlignment.Center
+  for i,name in ipairs(words) do
+   local b=button(body,"Signal"..i,name,UDim2.new((i-1)/3,0,0,105),UDim2.new(1/3,-8,0,92),palette[i]);lights[i]=b
+   b.Activated:Connect(function() if not replaying then send("Signal",i) end end)
+  end
+  local function replay()
+   if replaying or not data then return end
+   playbackVersion+=1;local version=playbackVersion;local token=data.token;local sequence=table.clone(data.sequence);replaying=true
+   task.spawn(function()
+    for i,id in ipairs(sequence) do
+     if not data or data.token~=token or playbackVersion~=version or not cue.Parent then replaying=false;return end
+     cue.Text=string.format("第 %d 次：%s",i,words[id]);lights[id].BackgroundColor3=Color3.fromRGB(243,242,221)
+     task.wait(.6);if not cue.Parent then replaying=false;return end;lights[id].BackgroundColor3=palette[id];cue.Text="· · ·";task.wait(.2)
+    end
+    replaying=false;if cue.Parent then cue.Text="請依序按下四次燈號" end
+   end)
+  end
+  button(body,"ReplaySignal","重播燈號（不重設全隊進度）",UDim2.fromOffset(0,216),UDim2.new(1,-8,0,48),navy).Activated:Connect(replay)
+  if playedToken~=data.token then playedToken=data.token;task.defer(replay) end
+ elseif s==5 then
+  local display=Instance.new("Frame");display.Name="CCTVDisplay";display.Size=UDim2.new(1,-8,0,165);display.BackgroundColor3=Color3.fromRGB(12,29,32);display.BorderSizePixel=0;display.Parent=body;round(display)
+  local times={"23:38","23:41","23:44","23:47","23:50"};local camera=data.camera or 1;local frame=data.frame or 0
+  label(display,string.format("REC ●　CAM %02d　｜三天前 %s",camera,times[frame+1]),UDim2.fromOffset(10,7),UDim2.new(1,-20,0,27),15,blue)
+  local floor=Instance.new("Frame");floor.Position=UDim2.fromScale(.07,.75);floor.Size=UDim2.fromScale(.86,.025);floor.BackgroundColor3=blue;floor.BorderSizePixel=0;floor.Parent=display
+  local evidence=camera==2 and frame==3
+  for i=1,evidence and 4 or 3 do
+   local x=.15+(i-1)*.19+(frame%2)*.025
+   local person=Instance.new("Frame");person.Size=UDim2.fromScale(.055,.26);person.Position=UDim2.fromScale(x,.45);person.BackgroundColor3=(evidence and i==4) and Color3.fromRGB(219,91,85) or Color3.fromRGB(147,171,162);person.BorderSizePixel=0;person.Parent=display
+   local head=Instance.new("Frame");head.Size=UDim2.fromScale(.045,.12);head.Position=UDim2.fromScale(x+.005,.30);head.BackgroundColor3=person.BackgroundColor3;head.BorderSizePixel=0;head.Parent=display;round(head,20)
+  end
+  label(display,evidence and "異常：多出一名面向鏡頭的乘客" or "影像正常，繼續調整鏡頭與時間",UDim2.new(0,10,1,-30),UDim2.new(1,-20,0,24),14,evidence and Color3.fromRGB(255,172,132) or cream)
+  for i=1,3 do local b=button(body,"Camera"..i,i.." 號鏡頭",UDim2.new((i-1)/3,0,0,178),UDim2.new(1/3,-8,0,40),i==camera and orange or navy);b.Activated:Connect(function() send("Camera",i) end) end
+  button(body,"Rewind","◀ 倒帶",UDim2.fromOffset(0,231),UDim2.new(.28,-6,0,40),navy).Activated:Connect(function() send("Frame",math.max(0,frame-1)) end)
+  local timeLabel=label(body,times[frame+1],UDim2.new(.28,0,0,231),UDim2.new(.44,-8,0,40),25);timeLabel.TextXAlignment=Enum.TextXAlignment.Center
+  button(body,"Forward","前進 ▶",UDim2.new(.72,0,0,231),UDim2.new(.28,-8,0,40),navy).Activated:Connect(function() send("Frame",math.min(4,frame+1)) end)
+  button(body,"SaveEvidence","截存這一格證據",UDim2.fromOffset(0,286),UDim2.new(1,-8,0,45)).Activated:Connect(function() send("Evidence") end)
+ elseif s==6 then
+  block("接線圖：1 號 →　　2 號 ←　　3 號 ↓",0,48)
+  local arrows={"↑","→","↓","←"}
+  for i=1,3 do
+   local b=button(body,"CircuitDial"..i,string.format("%d 號旋鈕\n%s\n點擊轉動 90°",i,arrows[(data.dials[i] or 0)+1]),UDim2.new((i-1)/3,0,0,68),UDim2.new(1/3,-8,0,122),data.ready and Color3.fromRGB(54,142,111) or navy)
+   b.TextSize=21;b.Activated:Connect(function() send("Dial",i) end)
+  end
+  if data.ready then
+   block("供電恢復。你選擇：",203,35)
+   button(body,"TrustConductor","相信站務員",UDim2.fromOffset(0,253),UDim2.new(.5,-6,0,61)).Activated:Connect(function() send("Choice","Conductor") end)
+   button(body,"ReadAccidentLog","讀取事故紀錄",UDim2.new(.5,0,0,253),UDim2.new(.5,-8,0,61)).Activated:Connect(function() send("Choice","Records") end)
+  else block("旋鈕轉對時，全隊共用的電路會接通。",213,50) end
+ elseif s==7 then
+  coreLabel=block(string.format("已穩定 %d / 3 個核心節點",data.progress or 0),0,45)
+  if not data.ready then
+   local track=Instance.new("Frame");track.Name="CoreGauge";track.Size=UDim2.new(1,-16,0,44);track.Position=UDim2.fromOffset(4,80);track.BackgroundColor3=navy;track.BorderSizePixel=0;track.Parent=body;round(track)
+   greenZone=Instance.new("Frame");greenZone.Name="SafeZone";greenZone.Size=UDim2.fromScale(.28,1);greenZone.BackgroundColor3=Color3.fromRGB(76,180,128);greenZone.BorderSizePixel=0;greenZone.Parent=track
+   gauge=Instance.new("Frame");gauge.Name="Cursor";gauge.Size=UDim2.new(0,5,1,14);gauge.Position=UDim2.fromOffset(0,-7);gauge.BackgroundColor3=cream;gauge.BorderSizePixel=0;gauge.Parent=track
+   button(body,"Stabilize","穩定這個節點 [空白鍵]",UDim2.fromOffset(0,156),UDim2.new(1,-8,0,61)).Activated:Connect(function() send("Stabilize") end)
+   block("失誤可再試；已完成的節點會保留。",236,40)
+  else
+   block("核心已穩定。這次由你決定旅程如何結束。",58,50)
+   for i,ending in ipairs({{Key="Conductor",Name="相信列車長，離開"},{Key="Truth",Name="關閉核心，終止循環"},{Key="Station08",Name=data.secret and "啟動封存系統（隱藏結局）" or "封存系統未解鎖：第六站需讀事故紀錄"}}) do
+    local b=button(body,"Ending"..ending.Key,ending.Name,UDim2.fromOffset(0,119+(i-1)*67),UDim2.new(1,-8,0,56),ending.Key=="Station08" and not data.secret and Color3.fromRGB(116,124,135) or navy)
+    b.Activated:Connect(function() send("Ending",ending.Key) end)
+   end
+  end
+ end
+end
+updates.OnClientEvent:Connect(function(nextData)
+ if type(nextData)~="table" then return end
+ if nextData.closed then close(false) elseif nextData.ok then activate(nextData) end
+end)
+UIS.InputBegan:Connect(function(input,processed)
+ if not data then return end
+ if input.KeyCode==Enum.KeyCode.Escape then close(true);return end
+ if processed then return end
+ if input.KeyCode==Enum.KeyCode.Q then close(true);return end
+ if data.station==4 and input.KeyCode==Enum.KeyCode.C then photoShot()
+ elseif data.station==7 and not data.ready and input.KeyCode==Enum.KeyCode.Space then send("Stabilize") end
+end)
+player.CharacterAdded:Connect(function() close(true) end)
+local lastDistanceCheck=0
+Run.RenderStepped:Connect(function()
+ if not data then return end
+ local now=workspace:GetServerTimeNow()
+ if now-lastDistanceCheck>.25 then
+  lastDistanceCheck=now
+  local c=player.Character;local root=c and c:FindFirstChild("HumanoidRootPart");local h=c and c:FindFirstChildOfClass("Humanoid")
+  if not root or not h or h.Health<=0 or (root.Position-data.anchor).Magnitude>19 or workspace:GetAttribute("LastTrainStation")~=data.station or workspace:GetAttribute("LastTrainTraveling") then close(true);return end
+ end
+ if data.station==7 and gauge and greenZone then
+  local centers={.25,.65,.45};local center=centers[(data.progress or 0)+1] or .45
+  greenZone.Position=UDim2.fromScale(center-.14,0)
+  gauge.Position=UDim2.new(((now-data.epoch)%4)/4,-2,0,-7)
+ elseif data.station==4 and data.target then
+  local camera=workspace.CurrentCamera;local delta=data.target-camera.CFrame.Position
+  local aligned=delta.Magnitude>0 and camera.CFrame.LookVector:Dot(delta.Unit)>math.cos(math.rad(7))
+  reticle.TextColor3=aligned and Color3.fromRGB(108,241,164) or blue
+  local focus=data.focus or 0
+  photoGuide.Text=data.instruction..string.format("\n對準狀態：%s　穩定 %.1f / 2 秒",aligned and "已對準" or "請轉動視角尋找藍色人影",focus)..(now<photoNoticeUntil and ("\n"..photoNotice) or "")
+  if now-focusAt>.35 and not focusPending and not busy then
+   focusAt=now;focusPending=true;local token=data.token;local origin=camera.CFrame.Position;local direction=camera.CFrame.LookVector
+   task.spawn(function()
+    local ok,result=pcall(request.InvokeServer,request,token,"Focus",nil,origin,direction);focusPending=false
+    if data and data.token==token and ok and result then
+     if result.closed then close(false) elseif result.ok then data.focus=result.focus;data.message=result.message end
+    end
+   end)
+  end
+ end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="50">
         <Properties>
           <string name="Name">PremiumFlashlight</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -5288,7 +5945,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="48">
+      <Item class="LocalScript" referent="51">
         <Properties>
           <string name="Name">PremiumShop</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -5456,6 +6113,7 @@ for i,key in ipairs(Catalog.Order) do
  b.Activated:Connect(function() selected=key;optionIndex=1;render(true) end)
 end
 local function visible(on)
+ if on and (p:GetAttribute("PlatformTaskOpen") or p:GetAttribute("LastTrainCinematic")) then return end
  panel.Visible=on
  if on then refresh();render(true) else dragging=false end
 end
@@ -5567,7 +6225,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="49">
+      <Item class="LocalScript" referent="52">
         <Properties>
           <string name="Name">RidePresentation</string>
           <string name="Source"><![CDATA[local RS=game:GetService("ReplicatedStorage")
@@ -5618,7 +6276,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="50">
+      <Item class="LocalScript" referent="53">
         <Properties>
           <string name="Name">TravelScenery</string>
           <string name="Source"><![CDATA[-- The passenger carriage and camera never receive travel transforms.
@@ -5641,7 +6299,7 @@ local motion=nil
 local function effects(index,on)
  for _,p in ipairs(scenes[index] or {}) do
   for _,d in ipairs(p:GetDescendants()) do
-   if d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=on end
+   if (d:IsA("SurfaceGui") or d:IsA("BillboardGui")) or d:IsA("Light") then d.Enabled=on end
   end
  end
 end
@@ -5688,13 +6346,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="51">
+  <Item class="Workspace" referent="54">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="52">
+    <Item class="SpawnLocation" referent="55">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

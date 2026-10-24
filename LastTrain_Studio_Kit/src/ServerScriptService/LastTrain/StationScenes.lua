@@ -26,7 +26,7 @@ function Scenes:Dock(index)
    p.CanCollide=active and p:GetAttribute("StationCollision")==true
    p.CanQuery=active and p:GetAttribute("StationQuery")==true
    for _,d in ipairs(p:GetDescendants()) do
-    if d:IsA("ProximityPrompt") or d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=active end
+    if d:IsA("ProximityPrompt") or (d:IsA("SurfaceGui") or d:IsA("BillboardGui")) or d:IsA("Light") then d.Enabled=active end
    end
   end
  end

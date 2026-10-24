@@ -163,6 +163,7 @@ for i,key in ipairs(Catalog.Order) do
  b.Activated:Connect(function() selected=key;optionIndex=1;render(true) end)
 end
 local function visible(on)
+ if on and (p:GetAttribute("PlatformTaskOpen") or p:GetAttribute("LastTrainCinematic")) then return end
  panel.Visible=on
  if on then refresh();render(true) else dragging=false end
 end

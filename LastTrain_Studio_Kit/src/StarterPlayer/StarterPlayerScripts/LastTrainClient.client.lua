@@ -566,6 +566,7 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(purchaser, _p
 end)
 
 local function setShopVisible(value)
+    if value and (player:GetAttribute("PlatformTaskOpen") or player:GetAttribute("LastTrainCinematic")) then return end
     shop.Visible = value
     player:WaitForChild("PlayerGui"):SetAttribute("OpenLastTrainShop", value)
     if value then refreshShop() end

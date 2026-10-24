@@ -242,6 +242,43 @@ prompt("ReadAccidentLog",5,Vector3.new(spacing*5+40,2.2,-27),"讀取事故紀錄
 prompt("LeaveEnding",6,Vector3.new(spacing*6-50,2.2,-27),"相信列車長，離開","結局：回到城市",{Ending="Conductor"})
 prompt("TruthEnding",6,Vector3.new(spacing*6,2.2,-27),"關閉核心，終止循環","真相結局：讓列車停下",{Ending="Truth"})
 prompt("SecretEnding",6,Vector3.new(spacing*6+50,2.2,-27),"啟動封存系統","隱藏結局：STATION 08",{Ending="Station08"})
+-- Physical task stations make the next interaction visible from the platform.
+local taskNames={PassengerLedger="乘客紀錄台",TrueRecording="廣播燈號台",MirrorReport="倒影攝影點",CCTVEvidence="監視器調閱台",TrustConductor="事故配電台",ReadAccidentLog="事故配電台",LeaveEnding="終點核心台",TruthEnding="終點核心台",SecretEnding="終點核心台"}
+local function marker(anchor,text)
+ local gui=Instance.new("BillboardGui");gui.Name="TaskMarker";gui.Size=UDim2.fromOffset(220,54);gui.StudsOffset=Vector3.new(0,4,0);gui.AlwaysOnTop=true;gui.MaxDistance=100;gui.Parent=anchor
+ local t=Instance.new("TextLabel");t.Size=UDim2.fromScale(1,1);t.BackgroundColor3=Color3.fromRGB(18,29,43);t.BackgroundTransparency=.15;t.TextColor3=Color3.fromRGB(252,211,147);t.Font=Enum.Font.GothamBold;t.TextSize=18;t.TextWrapped=true;t.Text=text;t.Parent=gui
+ local corner=Instance.new("UICorner");corner.CornerRadius=UDim.new(0,8);corner.Parent=t
+end
+for name,title in pairs(taskNames) do
+ local anchor=objectives:FindFirstChild(name)
+ if anchor then
+  buildingStation=anchor:GetAttribute("StationIndex")
+  local p=anchor:FindFirstChildOfClass("ProximityPrompt");p.ActionText="開啟任務";p.ObjectText=title;p.HoldDuration=.3
+  local at=anchor.Position
+  local desk=part(props,"PlatformTaskDesk",Vector3.new(4.8,1.6,2.2),Vector3.new(at.X,1,at.Z+.6),C.dark,Enum.Material.Metal)
+  local screen=part(props,"PlatformTaskScreen",Vector3.new(4.2,2.4,.18),Vector3.new(at.X,3.25,at.Z-.8),C.dark,Enum.Material.SmoothPlastic,0,false)
+  label(screen,title.."\n按 E / 點擊互動",Color3.fromRGB(159,221,221),nil,nil,Enum.NormalId.Back)
+  marker(anchor,title)
+  if buildingStation==2 or buildingStation==3 then
+   local safe=part(props,"TaskSafeZone",Vector3.new(16,.025,16),Vector3.new(at.X,.14,at.Z+3),Color3.fromRGB(61,178,181),Enum.Material.Neon,.82,false)
+   safe.CanQuery=false;safe.CanTouch=false;safe:SetAttribute("TaskSafeZone",true);safe:SetAttribute("SafeRadius",8)
+  end
+ end
+end
+for index,at in ipairs({Vector3.new(spacing-112,1.8,-22),Vector3.new(spacing-22,1.8,-29),Vector3.new(spacing+58,1.8,-23)}) do
+ buildingStation=2
+ local tag=prompt("MissingLuggageTag"..index,1,at,"登記行李牌","找回失蹤乘客的身分",{LuggageTagIndex=index})
+ tag.Transparency=0;tag.Size=Vector3.new(1.4,.9,.14);tag.Color=Color3.fromRGB(239,182,82);tag.CanQuery=true
+ local bag=part(props,"LostLuggage",Vector3.new(2.1,1.8,1.3),at+Vector3.new(0,-.7,.8),Color3.fromRGB(72,89,112),Enum.Material.Fabric)
+ marker(tag,"行李牌 "..index.." / 3")
+end
+buildingStation=4
+local witnessAt=Vector3.new(spacing*3-75,3.5,-29.2)
+local witness=part(props,"MirrorWitnessTarget",Vector3.new(1.8,2.6,.45),witnessAt,Color3.fromRGB(81,191,224),Enum.Material.Neon,.15,false)
+witness:SetAttribute("MirrorWitness",true);witness.CanQuery=true
+for _,item in ipairs({{Name="MirrorWitnessHead",Size=Vector3.new(1.1,1.1,.5),Offset=Vector3.new(0,1.8,0)},{Name="MirrorWitnessArm",Size=Vector3.new(.5,1.9,.45),Offset=Vector3.new(-1.2,.5,0)},{Name="MirrorWitnessArm",Size=Vector3.new(.5,1.3,.45),Offset=Vector3.new(1.2,-.5,0)}}) do
+ local p=part(props,item.Name,item.Size,witnessAt+item.Offset,witness.Color,Enum.Material.Neon,.2,false);p:SetAttribute("MirrorWitness",true)
+end
 buildingStation=nil
 local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(118,0.15,-22),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
 local ambience=Instance.new("Sound"); ambience.Name="StationAmbience"; ambience.SoundId=""; ambience.Looped=true; ambience.Volume=.12; ambience.RollOffMaxDistance=200; ambience.Parent=world

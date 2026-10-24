@@ -138,9 +138,41 @@ completeFirstBoarding=function(player)
  broadcast(); task.spawn(moveToNextStation)
 end
 
+-- A puzzle can request completion, but this controller still owns the stage,
+-- branch, reward and all-passengers-aboard departure gate.
+local function finishObjective(player,anchor,override)
+ if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return false end
+ local character=player.Character;local root=character and character:FindFirstChild("HumanoidRootPart");local h=character and character:FindFirstChildOfClass("Humanoid")
+ local prompt=anchor:FindFirstChildOfClass("ProximityPrompt")
+ if not root or not h or h.Health<=0 or not prompt or (root.Position-anchor.Position).Magnitude>prompt.MaxActivationDistance+5 then return false end
+ if stage==5 then
+  local selected=override or anchor:GetAttribute("Choice")
+  if selected~="Conductor" and selected~="Records" then return false end
+  choice=selected
+ end
+ if stage==6 then
+  local endingKey=override or anchor:GetAttribute("Ending")
+  if not GameConfig.Endings[endingKey] then return false end
+  if endingKey=="Station08" and choice~="Records" then
+   objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station));return false
+  end
+  completed=true;Workspace:SetAttribute("LastTrainRoundStage",stage);Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
+  objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey],true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station);return true
+ end
+ departurePending=true;boardingText="任務完成，請所有乘客返回列車。"
+ stage+=1;Workspace:SetAttribute("LastTrainRoundStage",stage);Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
+ broadcast();task.spawn(moveToNextStation);return true
+end
+local challenges=require(script.Parent.PlatformChallenges).new(world,function()
+ return stage,station,completed,traveling,departurePending,choice
+end,finishObjective,function(text,recipient)
+ if recipient then objectiveEvent:FireClient(recipient,stage,text,false,GameConfig.Stations[station].Name,"",nil,"Challenge",station)
+ else publish(text,"",nil,"Challenge") end
+end)
+
 -- Initial carriage is already docked at NEW MOON with its doors open.
-setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:SetAttribute("LastTrainTraveling",false); updateDisplays(false); broadcast()
- for _,anchor in ipairs(objectiveFolder:GetChildren()) do
+setDoors(true,true);Workspace:SetAttribute("LastTrainStation",1);Workspace:SetAttribute("LastTrainTraveling",false);updateDisplays(false);broadcast()
+for _,anchor in ipairs(objectiveFolder:GetChildren()) do
  local p=anchor:FindFirstChildOfClass("ProximityPrompt")
  if p then p.Triggered:Connect(function(player)
   if anchor:GetAttribute("PromptType")=="CollectTicket" or anchor:GetAttribute("PromptType")=="TicketReader" then return end
@@ -151,21 +183,8 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
    return
   end
   if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return end
-  local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
-  if not root or not humanoid or humanoid.Health<=0 or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+4 then return end
-  if stage==5 then choice=anchor:GetAttribute("Choice") end
-  if stage==6 then
-   local endingKey=anchor:GetAttribute("Ending")
-   if endingKey=="Station08" and choice~="Records" then objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station)); return end
-   completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
-   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station); return
-  end
-  departurePending=true -- Lock rewards/objectives while still allowing boarding.
-  boardingText="任務完成，請所有乘客返回列車。"
-  stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
-  if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
-  broadcast()
-  task.spawn(moveToNextStation)
+  if challenges:Open(player,anchor) then return end
+  -- All platform objectives are puzzle-backed; unknown anchors cannot advance.
  end) end
 end
 for _,anchor in ipairs(train:GetDescendants()) do

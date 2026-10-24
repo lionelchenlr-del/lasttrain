@@ -1,6 +1,7 @@
 """Build an isolated real-client story repro. Start it with Studio Test (F5)."""
 from pathlib import Path
 import subprocess
+import re
 import sys
 import xml.etree.ElementTree as E
 repo=Path(__file__).resolve().parents[1]
@@ -20,6 +21,10 @@ names={p.text:i for i in root.iter('Item') if (p:=i.find('Properties/string[@nam
 names['ExperienceMode'].find('Properties/string[@name="Source"]').text='''local c=require(game.ReplicatedStorage.LastTrain.Shared.GameConfig)
 c.TravelDuration=TRAVEL; c.MinimumStopDuration=.3; c.DepartureCountdown=.8
 workspace:SetAttribute("LastTrainMode","MODE")'''.replace('MODE','Lobby' if lobby else 'Game').replace('TRAVEL',str(travel))
+# Isolate creator-owned live products from fixture entitlement grants.
+for key in ['PremiumCatalog','ReleaseSettings']:
+ prop=names[key].find('Properties/string[@name="Source"]')
+ prop.text=re.sub(r'(PassId|ProductId)=\d+',r'\1=0',prop.text).replace('BillingEnabled = true','BillingEnabled = false')
 if not live_monster: names['StationmasterAI'].find('Properties/string[@name="Source"]').text='-- Disabled only in the temporary story fixture.'
 for parent,kind,name,file in [('ServerScriptService','Script','BoardingStoryTest','StudioBoardingStory.server.lua'),('StarterPlayerScripts','LocalScript','BoardingStoryInput','StudioBoardingStory.client.lua')]:
  i=E.SubElement(names[parent],'Item',{'class':kind,'referent':name})
