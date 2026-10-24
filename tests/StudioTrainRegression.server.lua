@@ -79,6 +79,55 @@ end
 checkConnections()
 local visible=RaycastParams.new(); visible.FilterType=Enum.RaycastFilterType.Include
 visible.FilterDescendantsInstances={train}
+-- Trace the actual generated shell, independently of the shape function.
+-- Include only cab parts so a body panel cannot hide a hole in the transition.
+for _,cab in ipairs({{train.RearCarriage,"Rear",-34,-1},{train.FrontCarriage,"Front",104,1}}) do
+ local surfaces={}
+ for _,p in ipairs(cab[1]:GetChildren()) do
+  if p:IsA("BasePart") and p:GetAttribute("CabEnd")==cab[2] then table.insert(surfaces,p) end
+ end
+ local filter=RaycastParams.new(); filter.FilterType=Enum.RaycastFilterType.Include
+ filter.FilterDescendantsInstances=surfaces
+ for _,dx in ipairs({-.3,0,.3,.8,1.5,2.5,4,5.5}) do
+  for i=0,31 do
+   local a=(i+.37)*math.pi/16
+   local start=Vector3.new(cab[3]+cab[4]*dx,3.9,Config.TrainCenterZ)
+   local ray=Vector3.new(0,math.sin(a),math.cos(a))*12
+   check(workspace:Raycast(start,ray,filter)~=nil,"Cab transition shell opening")
+  end
+ end
+ for i=0,31 do
+  local a=(i+.37)*math.pi/16
+  local start=Vector3.new(cab[3]-cab[4]*2,3.9+2.8*math.sin(a),Config.TrainCenterZ+3.8*math.cos(a))
+  local hit=workspace:Raycast(start,Vector3.new(cab[4]*3,0,0),filter)
+  check(hit and hit.Instance.Name=="CabRootSeal_"..cab[2],"Unsealed cab root")
+ end
+end
+local function setDoorsChecked(open)
+ local samples=0
+ local fault=nil
+ local overlap=OverlapParams.new(); overlap.FilterType=Enum.RaycastFilterType.Include
+ overlap.FilterDescendantsInstances={train}
+ local connection=RunService.Heartbeat:Connect(function()
+  samples+=1
+  for _,door in ipairs(op.Doors) do
+   local p=door.Part
+   local localPose=train:GetPivot():ToObjectSpace(p.CFrame)
+   if math.abs(localPose.Y-door.Closed.Y)>.005 or math.abs(localPose.Z-door.Closed.Z)>.005 then fault="Door left its track" end
+   if p.Material~=Enum.Material.SmoothPlastic or math.abs(p.Transparency-.58)>.001 then fault="Unstable door glazing" end
+   for _,fixed in ipairs(workspace:GetPartsInPart(p,overlap)) do
+    if fixed~=p and fixed.Name~="SlidingDoor" and fixed.Transparency<.95 and fixed.Position.Y>.3 then
+     fault="Door intersects fixed trim: "..fixed.Name
+    end
+   end
+  end
+ end)
+ local ok,err=pcall(function() op:SetDoors(open) end)
+ connection:Disconnect()
+ check(ok,"Door operation failed: "..tostring(err))
+ check(samples>2,"Door animation not observed")
+ check(fault==nil,fault or "Door rendering clearance")
+end
 for _,p in ipairs(train:GetDescendants()) do
  if p.Name=="GangwayCeilingLight" then
   local hit=workspace:Raycast(p.Position-Vector3.new(0,.8,0),Vector3.new(0,.9,0),visible)
@@ -112,14 +161,14 @@ local initial=train:GetPivot()
 -- Six stops, return, then repeat the full route: doors must remain local each time.
 for cycle=1,2 do
  for stop=1,6 do
-  op:SetDoors(false)
+  setDoorsChecked(false)
   local before=standing:GetPivot().Position
   op:Move(Config.StationSpacing,.7,{standing,seated})
   task.wait(.15)
   check(math.abs(standing:GetPivot().Position.X-before.X-Config.StationSpacing)<.05,"Standing rider slipped")
   check(h.SeatPart==seats[1],"Seat detached during motion")
   check((seated.HumanoidRootPart.Position-seats[1].Position).Magnitude<5,"Seated rider did not move")
-  op:SetDoors(true)
+  setDoorsChecked(true)
   checkConnections()
   for _,door in ipairs(op.Doors) do
    local expected=train:GetPivot()*(door.Part:GetAttribute("Side")==-1 and door.Open or door.Closed)
@@ -127,11 +176,11 @@ for cycle=1,2 do
   end
   print("LASTTRAIN_REGRESSION_STOP_PASS",cycle,stop)
  end
- op:SetDoors(false)
+ setDoorsChecked(false)
  op:Move(-Config.StationSpacing*6,1,{standing,seated})
  check((train:GetPivot().Position-initial.Position).Magnitude<.02,"Return drift")
 end
-op:SetDoors(true)
+setDoorsChecked(true)
 h.Sit=false
 local weld=seats[1]:FindFirstChild("SeatWeld"); if weld then weld:Destroy() end
 seated:PivotTo(Operations.Frame(train)*CFrame.new(0,3.2,0)); task.wait(.15)

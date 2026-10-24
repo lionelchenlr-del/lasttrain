@@ -4,6 +4,8 @@
 
 ## 開始遊玩
 
+車門閃爍與車頭接合補修：門框、腰線退出滑門軌道；車頭根部改為封閉的過渡曲面並深入車身。詳見 `TRAIN_FIX_DOOR_CAB_2026-10-24.md`。
+
 2026-10-24 更新：兩處車廂接點新增同高結構底板與外側摺棚，修正通道燈與車廂編號。內裝升級為深藍、象牙白、胡桃木及香檳金配色，外觀採明亮銀色金屬與深色駕駛窗。詳見 `TRAIN_UPDATE_2026-10-24.md`。內裝飾面由 `src/ReplicatedStorage/LastTrain/Shared/TrainLuxury.lua` 管理。
 
 1. 開啟 `LastTrain.rbxlx`。

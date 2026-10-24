@@ -29,8 +29,10 @@ function Finish.Apply(model)
     p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.Glass
     p.Reflectance=0.04; p.Transparency=0.72
    elseif p.Name=="SlidingDoor" then
-    p.Color=Color3.fromRGB(174,197,204); p.Material=Enum.Material.Glass
-    p.Reflectance=0.04; p.Transparency=0.58
+    -- A single translucent layer avoids refractive Glass sorting against the
+    -- stationary passenger glazing while the leaf slides across the body.
+    p.Color=Color3.fromRGB(174,197,204); p.Material=Enum.Material.SmoothPlastic
+    p.Reflectance=0; p.Transparency=0.58
    end
   end
  end

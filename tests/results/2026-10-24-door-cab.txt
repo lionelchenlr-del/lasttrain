@@ -1,0 +1,24 @@
+Roblox Studio 0.744; 2026-10-24 Asia/Taipei.
+Final door/cab fixture from repository source: /tmp/LastTrain-door-cab-final.rbxlx.
+576 cab surface/seal rays and 27 animated door operations in addition to prior coverage.
+23 Luau files compiled.
+
+2026-10-24T02:04:17.113Z,30.113245,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 1
+2026-10-24T02:04:19.710Z,32.710449,6c367000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 2
+2026-10-24T02:04:22.292Z,35.292198,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 3
+2026-10-24T02:04:24.861Z,37.861530,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 4
+2026-10-24T02:04:27.459Z,40.459747,6b94b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 5
+2026-10-24T02:04:30.026Z,43.026993,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 1 6
+2026-10-24T02:04:34.479Z,47.479866,6b94b000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 1
+2026-10-24T02:04:37.044Z,50.044037,6c77f000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 2
+2026-10-24T02:04:39.628Z,52.628307,6c367000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 3
+2026-10-24T02:04:42.209Z,55.209400,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 4
+2026-10-24T02:04:44.778Z,57.778557,6bb57000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 5
+2026-10-24T02:04:47.357Z,60.357716,6c367000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_STOP_PASS 2 6
+2026-10-24T02:04:50.256Z,63.256336,6c367000,6,Info [FLog::CreatorOutput] LASTTRAIN_REGRESSION_ALL_PASS 6305 assertions; two full routes; seated and standing riders; 12 arrivals
+2026-10-24T02:04:50.256Z,63.256401,6c367000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Exterior
+2026-10-24T02:05:02.272Z,75.272354,6c77f000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Interior
+2026-10-24T02:05:14.289Z,87.289986,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Gangway
+2026-10-24T02:05:26.304Z,99.304451,6c573000,6,Info [FLog::CreatorOutput] LASTTRAIN_VISUAL_VIEW Rail contact
+
+Limits: geometric/running-animation checks and local Studio visual review; accelerated routes, anchored standing rig, unanchored seated rig. Not a four-client latency or pixel-complete rendering test.

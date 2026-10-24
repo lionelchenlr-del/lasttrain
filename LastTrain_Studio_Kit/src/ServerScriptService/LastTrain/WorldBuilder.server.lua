@@ -168,13 +168,15 @@ TrainGeometry.BuildCab(train,"Rear",26,-1)
 TrainGeometry.BuildCab(train,"Front",44,1)
 for _,side in ipairs({-1,1}) do
  part(train,"ContinuousLowerSkirt",Vector3.new(46,.62,.3),Vector3.new(35,.62,side*5.5),Color3.fromRGB(65,83,92),Enum.Material.Metal,0,false)
- part(train,"BeltlineAccent_Front",Vector3.new(20,.24,.2),Vector3.new(22,2.25,side*5.75),Color3.fromRGB(19,109,145),Enum.Material.Metal,0,false)
- part(train,"BeltlineAccent_Rear",Vector3.new(20,.24,.2),Vector3.new(48,2.25,side*5.75),Color3.fromRGB(19,109,145),Enum.Material.Metal,0,false)
+ part(train,"BeltlineAccent_Front",Vector3.new(20,.24,.08),Vector3.new(22,2.25,side*5.72),Color3.fromRGB(19,109,145),Enum.Material.Metal,0,false)
+ part(train,"BeltlineAccent_Rear",Vector3.new(20,.24,.08),Vector3.new(48,2.25,side*5.72),Color3.fromRGB(19,109,145),Enum.Material.Metal,0,false)
  part(train,"LowerSidePanel_Front",Vector3.new(20,.42,.12),Vector3.new(18,1.45,side*5.62),Color3.fromRGB(220,227,224),Enum.Material.SmoothPlastic,0,false)
  part(train,"LowerSidePanel_Rear",Vector3.new(20,.42,.12),Vector3.new(52,1.45,side*5.62),Color3.fromRGB(220,227,224),Enum.Material.SmoothPlastic,0,false)
  part(train,"SideHeader",Vector3.new(42,.32,.18),Vector3.new(35,7.98,side*5.66),Color3.fromRGB(196,209,208),Enum.Material.SmoothPlastic,0,false)
  for _,x in ipairs({32,38}) do
-  part(train,"DoorFrame",Vector3.new(.24,6.35,.26),Vector3.new(x,3.25,side*5.95),C.metal,Enum.Material.SmoothPlastic,0,false)
+  -- Keep the entire fixed frame behind the sliding leaf's inner face (5.80).
+  -- The former frame occupied the door track and shimmered as glass crossed it.
+  part(train,"DoorFrame",Vector3.new(.24,6.35,.10),Vector3.new(x,3.25,side*5.72),C.metal,Enum.Material.SmoothPlastic,0,false)
  end
  for _,x in ipairs({33.55,36.45}) do
   local d=part(train,"SlidingDoor",Vector3.new(2.9,6.1,.32),Vector3.new(x,2.65,side*5.96),Color3.fromRGB(133,171,178),Enum.Material.Glass,.12,false)
