@@ -3,6 +3,7 @@
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Operations=require(script.Parent:WaitForChild("TrainOperations"))
+local DepartureGate=require(script.Parent:WaitForChild("DepartureGate"))
 local RunService=game:GetService("RunService")
 local Workspace=game:GetService("Workspace")
 local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -19,6 +20,9 @@ while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"
 local objectiveFolder=world:WaitForChild("Objectives")
 local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
 local stage,completed,choice,traveling=0,false,nil,false
+local departurePending=false
+local boardingText=nil
+local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
 local operations=Operations.new(train)
@@ -26,7 +30,7 @@ local operations=Operations.new(train)
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
 local function broadcast(endingKey)
  local data=GameConfig.Stations[station]
- objectiveEvent:FireAllClients(stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",storyFor(station),endingKey)
+ objectiveEvent:FireAllClients(stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked",station)
 end
 local function setDoors(open,instant) operations:SetDoors(open,instant) end
 local function updateDisplays(moving)
@@ -56,16 +60,49 @@ RunService.Heartbeat:Connect(function()
  end
 end)
 local function moveToNextStation()
+ local gate=DepartureGate.new(arrivedAt,GameConfig.MinimumStopDuration,GameConfig.DepartureCountdown)
+ Workspace:SetAttribute("LastTrainBoardingPending",true)
+ local lastMessage=nil
+ local function readiness()
+  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return Operations.Contains(train,p.Character) end)
+ end
+ while true do
+  local state=readiness()
+  boardingText=state.State=="Countdown" and string.format("全員已上車，%d 秒後關門。",state.Seconds)
+   or state.Ready and "車門即將關閉，請遠離車門。"
+   or state.State=="Dwell" and "全員已上車，列車停站準備中。"
+   or string.format("任務完成，請返回列車（已上車 %d / %d 人）。",state.Boarded,state.Total)
+  Workspace:SetAttribute("LastTrainBoardedCount",state.Boarded)
+  Workspace:SetAttribute("LastTrainPassengerCount",state.Total)
+  if boardingText~=lastMessage then
+   objectiveEvent:FireAllClients(stage,boardingText,false,GameConfig.Stations[station].Name,"",nil,state.State=="Countdown" and "Countdown" or "Boarding",station)
+   lastMessage=boardingText
+  end
+  if state.Ready then
+   traveling=true
+   objectiveEvent:FireAllClients(stage,"全員已上車，車門關閉中。",false,GameConfig.Stations[station].Name,"",nil,"Closing",station)
+   setDoors(false)
+   -- Check real positions again after the door animation. Someone can walk
+   -- out while it closes, die, respawn, or join during that animation.
+   if readiness().Ready then break end
+   gate:ResetCountdown()
+   setDoors(true)
+   traveling=false
+   lastMessage=nil
+  end
+  task.wait(.15)
+ end
+ Workspace:SetAttribute("LastTrainBoardingPending",false)
  Workspace:SetAttribute("LastTrainTraveling",true)
+ boardingText=nil
  updateDisplays(true)
- objectiveEvent:FireAllClients(stage,"車門即將關閉，請遠離車門。",false,GameConfig.Stations[station].Name,storyFor(station))
- task.wait(2)
- setDoors(false)
+ objectiveEvent:FireAllClients(stage,"列車開往下一站。",false,GameConfig.Stations[station].Name,"",nil,"Moving",station)
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
  Workspace:SetAttribute("LastTrainStation",station)
  Workspace:SetAttribute("LastTrainTraveling",false)
- updateDisplays(false); setDoors(true); traveling=false; broadcast()
+ arrivedAt=os.clock()
+ updateDisplays(false); setDoors(true); traveling=false; departurePending=false; broadcast()
 end
 
 -- Initial carriage is already docked at NEW MOON with its doors open.
@@ -76,10 +113,10 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
   if anchor.Name:match("^BoardTrain_") then
    local requiredStation=anchor:GetAttribute("StationIndex")
    local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-   if not traveling and requiredStation==station and root and (root.Position-anchor.Position).Magnitude<=p.MaxActivationDistance+4 then boardPlayer(player) end
+   if not traveling and train:GetAttribute("DoorsOpen") and requiredStation==station and root and (root.Position-anchor.Position).Magnitude<=p.MaxActivationDistance+4 then boardPlayer(player) end
    return
   end
-  if completed or traveling or anchor:GetAttribute("ObjectiveStage")~=stage then return end
+  if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return end
   local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
   if not root or not humanoid or humanoid.Health<=0 or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+4 then return end
   if stage==5 then choice=anchor:GetAttribute("Choice") end
@@ -87,9 +124,10 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
    local endingKey=anchor:GetAttribute("Ending")
    if endingKey=="Station08" and choice~="Records" then objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station)); return end
    completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
-   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey); return
+   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station); return
   end
-  traveling=true -- Lock before currency persistence or any other yielding work.
+  departurePending=true -- Lock rewards/objectives while still allowing boarding.
+  boardingText="任務完成，請所有乘客返回列車。"
   stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
   if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
   broadcast()
@@ -129,7 +167,7 @@ for _,item in ipairs(train:GetDescendants()) do
  end) end
 end
 Players.PlayerAdded:Connect(function(player)
- task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",storyFor(station)) end end)
+ task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station) end end)
 end)
 
 for _,seat in ipairs(train:GetDescendants()) do

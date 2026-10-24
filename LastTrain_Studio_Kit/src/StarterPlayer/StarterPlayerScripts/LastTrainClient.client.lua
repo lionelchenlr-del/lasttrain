@@ -644,18 +644,23 @@ end
 player:GetAttributeChangedSignal("FlashlightMultiplier"):Connect(applyFlashlightAbility)
 applyFlashlightAbility()
 
-objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationName, storyText, endingKey)
-    local stopNumber = math.clamp(tonumber(stage) or 0, 0, #GameConfig.Stations - 1) + 1
+local lastRideState=nil
+objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationName, storyText, endingKey,rideState,stationIndex)
+    local stopNumber = stationIndex or math.clamp(tonumber(stage) or 0, 0, #GameConfig.Stations - 1) + 1
     eyebrow.Text = string.format("第 %d / 7 站   /   %s", stopNumber, tostring(stationName or "末班車"))
     if completed then
         objectiveLabel.Text = tostring(text or "旅程結束。")
         showToast(tostring(text or "旅程結束。"), 9)
+    elseif rideState=="Boarding" or rideState=="Countdown" or rideState=="Closing" or rideState=="Moving" then
+        objectiveLabel.Text=tostring(text or "請返回列車")
+        if rideState~=lastRideState then showToast(objectiveLabel.Text,3) end
     else
         local objectiveNo = math.clamp((tonumber(stage) or 0) + 1, 1, #GameConfig.Objectives)
         objectiveLabel.Text = string.format("任務 %d / 7\n%s", objectiveNo, tostring(text or "等待下一個指示"))
         if storyText and storyText ~= "" then showToast(tostring(storyText), 6)
-        elseif stage and stage > 0 then showToast("車門緩緩關上。列車正駛向下一站……", 4) end
+        end
     end
+    lastRideState=rideState
     if shop.Visible then refreshShop() end
 end)
 

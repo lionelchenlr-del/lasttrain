@@ -1,97 +1,103 @@
--- A continuous tapered cab skin made from adjoining native triangles. The
--- windshield and livery follow the same surface, so no flat mask floats ahead
--- of the nose. No external mesh permissions or third-party assets are required.
-local Finish = require(script.Parent.TrainFinish)
-local Geometry = {}
-local function triangle(parent,a,b,c,color,material,endName,rootSeal)
+-- Closed, asset-free high-speed cabs. Paint, glazing and lamps are part of the
+-- same lofted skin; no separate balls, plates or trim project from the nose.
+local Finish=require(script.Parent.TrainFinish)
+local Geometry={}
+local function triangle(parent,a,b,c,color,material,endName,section,glazing)
  local ab,ac,bc=b-a,c-a,c-b
  if ab:Dot(ab)>ac:Dot(ac) and ab:Dot(ab)>bc:Dot(bc) then a,c=c,a
  elseif ac:Dot(ac)>bc:Dot(bc) then a,b=b,a end
  ab,ac,bc=b-a,c-a,c-b
- local cross=ac:Cross(ab)
- if cross.Magnitude<0.00001 then return end
- local right=cross.Unit
+ if ac:Cross(ab).Magnitude<.00001 then return end
+ local right=ac:Cross(ab).Unit
  local back=bc.Unit
  local up=bc:Cross(right).Unit
  local height=math.abs(ab:Dot(up))
- for i,data in ipairs({{(a+b)/2,right,back,math.abs(ab:Dot(back))},{(a+c)/2,-right,-back,math.abs(ac:Dot(back))}}) do
-  if data[4]>0.0001 and height>0.0001 then
+ for _,d in ipairs({{(a+b)/2,right,back,math.abs(ab:Dot(back))},{(a+c)/2,-right,-back,math.abs(ac:Dot(back))}}) do
+  if d[4]>.0001 and height>.0001 then
    local p=Instance.new("WedgePart")
-   p.Name=(rootSeal and "CabRootSeal_" or "CabSurface_")..endName
-   p.Size=Vector3.new(0.04,height,data[4])
-   p.CFrame=CFrame.fromMatrix(data[1],data[2],up,data[3])
+   p.Name=(section and "Cab"..section.."_" or "CabSurface_")..endName
+   p.Size=Vector3.new(.04,height,d[4]); p.CFrame=CFrame.fromMatrix(d[1],d[2],up,d[3])
    p.Anchored=true; p.CanCollide=false; p.CanTouch=false; p.CastShadow=false
-   p.Color=color; p.Material=material
-   p.Reflectance=material==Enum.Material.Metal and 0.2 or 0.06
-   p:SetAttribute("CabEnd",endName)
-   p:SetAttribute("CabGlazing",material==Enum.Material.SmoothPlastic)
+   p.Color=color; p.Material=material; p.Reflectance=material==Enum.Material.Neon and 0 or .08
+   p:SetAttribute("CabEnd",endName); p:SetAttribute("CabGlazing",glazing==true)
+   p:SetAttribute("IntegratedHeadlamp",material==Enum.Material.Neon)
    p.Parent=parent
   end
  end
 end
+local function clip(polygon,height,above)
+ local result={}
+ for i,a in ipairs(polygon) do
+  local b=polygon[i%#polygon+1]
+  local insideA=above and a.Y>=height or not above and a.Y<=height
+  local insideB=above and b.Y>=height or not above and b.Y<=height
+  if insideA then table.insert(result,a) end
+  if insideA~=insideB then table.insert(result,a:Lerp(b,(height-a.Y)/(b.Y-a.Y))) end
+ end
+ return result
+end
+local bands={
+ {-20,1.66,"White"},{1.66,1.80,"Black"},{1.80,2.10,"White"},
+ {2.10,2.40,"Orange"},{2.40,20,"White"},
+}
+local function paint(parent,a,b,c,endName,glazing,lamp)
+ if glazing or lamp then
+  triangle(parent,a,b,c,lamp and Color3.fromRGB(255,235,203) or Finish.Graphite,lamp and Enum.Material.Neon or Enum.Material.SmoothPlastic,endName,nil,glazing)
+  return
+ end
+ -- Split at the paint boundaries instead of adding raised stripe panels.
+ for _,band in ipairs(bands) do
+  local poly=clip(clip({a,b,c},band[1],true),band[2],false)
+  local color=band[3]=="Orange" and Finish.Orange or band[3]=="Black" and Finish.Graphite or Finish.Silver
+  for i=2,#poly-1 do triangle(parent,poly[1],poly[i],poly[i+1],color,Enum.Material.SmoothPlastic,endName) end
+ end
+end
 function Geometry.BuildCab(parent,endName,shoulderX,direction)
- local rings,sides,length=16,32,26.7
- -- Match the body's flat crown and broad shoulders with a rounded rectangle.
- -- The small allowance covers the roof/skin edges; the root sits 0.45 studs
- -- inside the body, so it cannot expose a butt joint against separate panels.
+ local rings,sides,length=20,40,26.7
+ local profile={}
  local function bodyProfile(angle)
+  local key=string.format("%.8f",angle)
+  if profile[key] then return profile[key] end
   local co,si=math.cos(angle),math.sin(angle)
   local low,high=0,10
-  local width,height,radius=5.89,4.44,.85
   for _=1,22 do
    local r=(low+high)/2
-   local z=math.max(math.abs(co)*r-(width-radius),0)
-   local y=math.max(math.abs(si)*r-(height-radius),0)
-   if z*z+y*y<=radius*radius then low=r else high=r end
+   local z=math.max(math.abs(co)*r-5,0)
+   local y=math.max(math.abs(si)*r-3.55,0)
+   if z*z+y*y<=.85*.85 then low=r else high=r end
   end
-  return Vector3.new(0,3.9+si*low,co*low)
+  local y=3.9+si*low
+  -- Broad roof shoulders are retained, while the waist meets the actual side
+  -- skin. The former oversize rectangular root created a projecting collar.
+  local sideScale=y<6.6 and 5.6/5.85 or y<7.45 and (5.6+(y-6.6)/.85*.25)/5.85 or 1
+  local p=Vector3.new(0,y,co*low*sideScale); profile[key]=p; return p
  end
  local function surface(t,angle)
-  local width=5.85*math.cos(t*math.pi/2)^0.72+0.035
-  local height=4.15*(1-0.88*t^1.45)
-  local y=4.1-1.45*t
-  local round=Vector3.new(0,y+height*math.sin(angle),width*math.cos(angle))
-  local u=math.clamp(t/.22,0,1)
-  local blend=u*u*(3-2*u)
-  local cross=bodyProfile(angle):Lerp(round,blend)
-  return Vector3.new(shoulderX+direction*(length*t-.45*(1-blend)),cross.Y,cross.Z)
+  local width=5.565*math.cos(t*math.pi/2)^.72+.035
+  local height=4.15*(1-.88*t^1.45)
+  if t>.88 then height*=.1+.9*(1-t)/.12 end
+  local round=Vector3.new(0,4.1-1.45*t+height*math.sin(angle),width*math.cos(angle))
+  local u=math.clamp(t/.22,0,1); local blend=u*u*(3-2*u)
+  local p=bodyProfile(angle):Lerp(round,blend)
+  return Vector3.new(shoulderX+direction*(length*t-.45*(1-blend)),p.Y,p.Z)
  end
- -- Close the rear of the shell as well as its outer surface. This seal is
- -- behind the existing cab bulkhead and cannot obstruct passenger circulation.
- local rootCenter=Vector3.new(shoulderX-direction*.45,3.9,0)
+ local root=Vector3.new(shoulderX-direction*.45,3.9,0)
+ local tip=Vector3.new(shoulderX+direction*length,2.65,0)
  for side=0,sides-1 do
-  triangle(parent,rootCenter,surface(0,2*math.pi*side/sides),surface(0,2*math.pi*(side+1)/sides),Finish.Silver,Enum.Material.Metal,endName,true)
+  local a,b=2*math.pi*side/sides,2*math.pi*(side+1)/sides
+  triangle(parent,root,surface(0,a),surface(0,b),Finish.Silver,Enum.Material.SmoothPlastic,endName,"RootSeal")
+  triangle(parent,tip,surface(1,a),surface(1,b),Finish.Silver,Enum.Material.SmoothPlastic,endName,"TipSeal")
  end
  for ring=0,rings-1 do
   local t0,t1=ring/rings,(ring+1)/rings
   for side=0,sides-1 do
-   local angle0,angle1=2*math.pi*side/sides,2*math.pi*(side+1)/sides
-   local mid=(angle0+angle1)/2
-   local windshield=ring>=1 and ring<=5 and math.sin(mid)>0.78
-   local orange=math.sin(mid)>-0.62 and math.sin(mid)<-0.38
-   local color=windshield and Finish.Graphite or (orange and Finish.Orange or Finish.Silver)
-   -- Opaque glazing over a sealed cab keeps its dark visor under strong
-   -- station reflections; native Glass can wash this curved surface white.
-   local material=windshield and Enum.Material.SmoothPlastic or Enum.Material.Metal
-   local a,b,c,d=surface(t0,angle0),surface(t1,angle0),surface(t0,angle1),surface(t1,angle1)
-   triangle(parent,a,b,c,color,material,endName)
-   triangle(parent,b,d,c,color,material,endName)
+   local a0,a1=2*math.pi*side/sides,2*math.pi*(side+1)/sides
+   local mid=(a0+a1)/2
+   local glazing=t0>=.05 and t1<=.35 and math.sin(mid)>.78
+   local lamp=ring==13 and math.abs(math.sin(mid))<.09
+   local a,b,c,d=surface(t0,a0),surface(t1,a0),surface(t0,a1),surface(t1,a1)
+   paint(parent,a,b,c,endName,glazing,lamp); paint(parent,b,d,c,endName,glazing,lamp)
   end
- end
- local tip=Instance.new("Part")
- tip.Name="CabTip_"..endName; tip.Shape=Enum.PartType.Ball
- tip.Size=Vector3.new(0.18,1.0,0.18)
- tip.Position=Vector3.new(shoulderX+direction*length,2.65,0)
- tip.Color=Finish.Silver; tip.Material=Enum.Material.Metal; tip.Reflectance=0.2
- tip.Anchored=true; tip.CanCollide=false; tip:SetAttribute("CabEnd",endName); tip.Parent=parent
- for _,side in ipairs({-1,1}) do
-  local t=0.66
-  local position=surface(t,side==1 and 0.05 or math.pi-0.05)
-  local lamp=Instance.new("Part"); lamp.Name="CabHeadlamp_"..endName
-  lamp.Shape=Enum.PartType.Ball; lamp.Size=Vector3.new(1.5,0.28,0.18)
-  lamp.Position=position+Vector3.new(0,0,side*0.04)
-  lamp.Color=Color3.fromRGB(255,234,194); lamp.Material=Enum.Material.Neon
-  lamp.Anchored=true; lamp.CanCollide=false; lamp:SetAttribute("CabEnd",endName); lamp.Parent=parent
  end
 end
 return Geometry

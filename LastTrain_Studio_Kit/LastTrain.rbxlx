@@ -216,6 +216,8 @@ GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
 -- Shared geometry and timing: wheel contact, doors and safety use one layout.
 GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
+GameConfig.MinimumStopDuration = 8
+GameConfig.DepartureCountdown = 3
 GameConfig.TrainCenterZ = -6.35
 GameConfig.TrackHalfGauge = 4.05
 GameConfig.RailTop = -1.55
@@ -316,8 +318,10 @@ return GameConfig
             <string name="Name">TrainFinish</string>
             <string name="Source"><![CDATA[-- A shared finish keeps lobby and playable stock in the same silver livery.
 local Finish = {}
-Finish.Silver = Color3.fromRGB(184, 192, 203)
-Finish.Roof = Color3.fromRGB(197, 204, 213)
+-- Keep the shared field name for existing builders; the current livery is
+-- warm white with orange/black lines, following Taiwan high-speed stock.
+Finish.Silver = Color3.fromRGB(241, 243, 241)
+Finish.Roof = Color3.fromRGB(236, 239, 238)
 Finish.Orange = Color3.fromRGB(219, 106, 38)
 Finish.Graphite = Color3.fromRGB(25, 29, 35)
 local bodyNames = {
@@ -326,17 +330,18 @@ local bodyNames = {
  DoorJambHeaderSkin=true, DoorJambMiddleSkin=true, CoachEndSideSkin=true,
  LowerSidePanel_Front=true, LowerSidePanel_Rear=true, SideHeader=true,
  FlushServicePanel=true, DoorFrame=true, ConnectedCeiling=true,
+ CyanBeltline=true, RoofHVACPod=true,
  DisplayCarBody=true, DisplayShoulderBody=true, DisplaySculptedNose=true, DisplayPassengerDoor=true,
 }
-local orangeNames = {CyanBeltline=true,BeltlineAccent_Front=true,BeltlineAccent_Rear=true,DisplayCyanStripe=true}
+local orangeNames = {BeltlineAccent_Front=true,BeltlineAccent_Rear=true,DisplayCyanStripe=true}
 local blackNames = {GoldBeltline=true,ContinuousLowerSkirt=true,DisplayLowerBlueStripe=true,DisplayContinuousSkirt=true}
 function Finish.Apply(model)
  for _,p in ipairs(model:GetDescendants()) do
   if p:IsA("BasePart") then
    if bodyNames[p.Name] then
     p.Color = p.Name=="ContinuousCoachRoof" and Finish.Roof or Finish.Silver
-    p.Material = Enum.Material.Metal
-    p.Reflectance = 0.2
+    p.Material = Enum.Material.SmoothPlastic
+    p.Reflectance = 0.08
    elseif orangeNames[p.Name] then
     p.Color=Finish.Orange; p.Material=Enum.Material.Metal; p.Reflectance=0.08
    elseif blackNames[p.Name] then
@@ -360,100 +365,106 @@ return Finish
         <Item class="ModuleScript" referent="7">
           <Properties>
             <string name="Name">TrainGeometry</string>
-            <string name="Source"><![CDATA[-- A continuous tapered cab skin made from adjoining native triangles. The
--- windshield and livery follow the same surface, so no flat mask floats ahead
--- of the nose. No external mesh permissions or third-party assets are required.
-local Finish = require(script.Parent.TrainFinish)
-local Geometry = {}
-local function triangle(parent,a,b,c,color,material,endName,rootSeal)
+            <string name="Source"><![CDATA[-- Closed, asset-free high-speed cabs. Paint, glazing and lamps are part of the
+-- same lofted skin; no separate balls, plates or trim project from the nose.
+local Finish=require(script.Parent.TrainFinish)
+local Geometry={}
+local function triangle(parent,a,b,c,color,material,endName,section,glazing)
  local ab,ac,bc=b-a,c-a,c-b
  if ab:Dot(ab)>ac:Dot(ac) and ab:Dot(ab)>bc:Dot(bc) then a,c=c,a
  elseif ac:Dot(ac)>bc:Dot(bc) then a,b=b,a end
  ab,ac,bc=b-a,c-a,c-b
- local cross=ac:Cross(ab)
- if cross.Magnitude<0.00001 then return end
- local right=cross.Unit
+ if ac:Cross(ab).Magnitude<.00001 then return end
+ local right=ac:Cross(ab).Unit
  local back=bc.Unit
  local up=bc:Cross(right).Unit
  local height=math.abs(ab:Dot(up))
- for i,data in ipairs({{(a+b)/2,right,back,math.abs(ab:Dot(back))},{(a+c)/2,-right,-back,math.abs(ac:Dot(back))}}) do
-  if data[4]>0.0001 and height>0.0001 then
+ for _,d in ipairs({{(a+b)/2,right,back,math.abs(ab:Dot(back))},{(a+c)/2,-right,-back,math.abs(ac:Dot(back))}}) do
+  if d[4]>.0001 and height>.0001 then
    local p=Instance.new("WedgePart")
-   p.Name=(rootSeal and "CabRootSeal_" or "CabSurface_")..endName
-   p.Size=Vector3.new(0.04,height,data[4])
-   p.CFrame=CFrame.fromMatrix(data[1],data[2],up,data[3])
+   p.Name=(section and "Cab"..section.."_" or "CabSurface_")..endName
+   p.Size=Vector3.new(.04,height,d[4]); p.CFrame=CFrame.fromMatrix(d[1],d[2],up,d[3])
    p.Anchored=true; p.CanCollide=false; p.CanTouch=false; p.CastShadow=false
-   p.Color=color; p.Material=material
-   p.Reflectance=material==Enum.Material.Metal and 0.2 or 0.06
-   p:SetAttribute("CabEnd",endName)
-   p:SetAttribute("CabGlazing",material==Enum.Material.SmoothPlastic)
+   p.Color=color; p.Material=material; p.Reflectance=material==Enum.Material.Neon and 0 or .08
+   p:SetAttribute("CabEnd",endName); p:SetAttribute("CabGlazing",glazing==true)
+   p:SetAttribute("IntegratedHeadlamp",material==Enum.Material.Neon)
    p.Parent=parent
   end
  end
 end
+local function clip(polygon,height,above)
+ local result={}
+ for i,a in ipairs(polygon) do
+  local b=polygon[i%#polygon+1]
+  local insideA=above and a.Y>=height or not above and a.Y<=height
+  local insideB=above and b.Y>=height or not above and b.Y<=height
+  if insideA then table.insert(result,a) end
+  if insideA~=insideB then table.insert(result,a:Lerp(b,(height-a.Y)/(b.Y-a.Y))) end
+ end
+ return result
+end
+local bands={
+ {-20,1.66,"White"},{1.66,1.80,"Black"},{1.80,2.10,"White"},
+ {2.10,2.40,"Orange"},{2.40,20,"White"},
+}
+local function paint(parent,a,b,c,endName,glazing,lamp)
+ if glazing or lamp then
+  triangle(parent,a,b,c,lamp and Color3.fromRGB(255,235,203) or Finish.Graphite,lamp and Enum.Material.Neon or Enum.Material.SmoothPlastic,endName,nil,glazing)
+  return
+ end
+ -- Split at the paint boundaries instead of adding raised stripe panels.
+ for _,band in ipairs(bands) do
+  local poly=clip(clip({a,b,c},band[1],true),band[2],false)
+  local color=band[3]=="Orange" and Finish.Orange or band[3]=="Black" and Finish.Graphite or Finish.Silver
+  for i=2,#poly-1 do triangle(parent,poly[1],poly[i],poly[i+1],color,Enum.Material.SmoothPlastic,endName) end
+ end
+end
 function Geometry.BuildCab(parent,endName,shoulderX,direction)
- local rings,sides,length=16,32,26.7
- -- Match the body's flat crown and broad shoulders with a rounded rectangle.
- -- The small allowance covers the roof/skin edges; the root sits 0.45 studs
- -- inside the body, so it cannot expose a butt joint against separate panels.
+ local rings,sides,length=20,40,26.7
+ local profile={}
  local function bodyProfile(angle)
+  local key=string.format("%.8f",angle)
+  if profile[key] then return profile[key] end
   local co,si=math.cos(angle),math.sin(angle)
   local low,high=0,10
-  local width,height,radius=5.89,4.44,.85
   for _=1,22 do
    local r=(low+high)/2
-   local z=math.max(math.abs(co)*r-(width-radius),0)
-   local y=math.max(math.abs(si)*r-(height-radius),0)
-   if z*z+y*y<=radius*radius then low=r else high=r end
+   local z=math.max(math.abs(co)*r-5,0)
+   local y=math.max(math.abs(si)*r-3.55,0)
+   if z*z+y*y<=.85*.85 then low=r else high=r end
   end
-  return Vector3.new(0,3.9+si*low,co*low)
+  local y=3.9+si*low
+  -- Broad roof shoulders are retained, while the waist meets the actual side
+  -- skin. The former oversize rectangular root created a projecting collar.
+  local sideScale=y<6.6 and 5.6/5.85 or y<7.45 and (5.6+(y-6.6)/.85*.25)/5.85 or 1
+  local p=Vector3.new(0,y,co*low*sideScale); profile[key]=p; return p
  end
  local function surface(t,angle)
-  local width=5.85*math.cos(t*math.pi/2)^0.72+0.035
-  local height=4.15*(1-0.88*t^1.45)
-  local y=4.1-1.45*t
-  local round=Vector3.new(0,y+height*math.sin(angle),width*math.cos(angle))
-  local u=math.clamp(t/.22,0,1)
-  local blend=u*u*(3-2*u)
-  local cross=bodyProfile(angle):Lerp(round,blend)
-  return Vector3.new(shoulderX+direction*(length*t-.45*(1-blend)),cross.Y,cross.Z)
+  local width=5.565*math.cos(t*math.pi/2)^.72+.035
+  local height=4.15*(1-.88*t^1.45)
+  if t>.88 then height*=.1+.9*(1-t)/.12 end
+  local round=Vector3.new(0,4.1-1.45*t+height*math.sin(angle),width*math.cos(angle))
+  local u=math.clamp(t/.22,0,1); local blend=u*u*(3-2*u)
+  local p=bodyProfile(angle):Lerp(round,blend)
+  return Vector3.new(shoulderX+direction*(length*t-.45*(1-blend)),p.Y,p.Z)
  end
- -- Close the rear of the shell as well as its outer surface. This seal is
- -- behind the existing cab bulkhead and cannot obstruct passenger circulation.
- local rootCenter=Vector3.new(shoulderX-direction*.45,3.9,0)
+ local root=Vector3.new(shoulderX-direction*.45,3.9,0)
+ local tip=Vector3.new(shoulderX+direction*length,2.65,0)
  for side=0,sides-1 do
-  triangle(parent,rootCenter,surface(0,2*math.pi*side/sides),surface(0,2*math.pi*(side+1)/sides),Finish.Silver,Enum.Material.Metal,endName,true)
+  local a,b=2*math.pi*side/sides,2*math.pi*(side+1)/sides
+  triangle(parent,root,surface(0,a),surface(0,b),Finish.Silver,Enum.Material.SmoothPlastic,endName,"RootSeal")
+  triangle(parent,tip,surface(1,a),surface(1,b),Finish.Silver,Enum.Material.SmoothPlastic,endName,"TipSeal")
  end
  for ring=0,rings-1 do
   local t0,t1=ring/rings,(ring+1)/rings
   for side=0,sides-1 do
-   local angle0,angle1=2*math.pi*side/sides,2*math.pi*(side+1)/sides
-   local mid=(angle0+angle1)/2
-   local windshield=ring>=1 and ring<=5 and math.sin(mid)>0.78
-   local orange=math.sin(mid)>-0.62 and math.sin(mid)<-0.38
-   local color=windshield and Finish.Graphite or (orange and Finish.Orange or Finish.Silver)
-   -- Opaque glazing over a sealed cab keeps its dark visor under strong
-   -- station reflections; native Glass can wash this curved surface white.
-   local material=windshield and Enum.Material.SmoothPlastic or Enum.Material.Metal
-   local a,b,c,d=surface(t0,angle0),surface(t1,angle0),surface(t0,angle1),surface(t1,angle1)
-   triangle(parent,a,b,c,color,material,endName)
-   triangle(parent,b,d,c,color,material,endName)
+   local a0,a1=2*math.pi*side/sides,2*math.pi*(side+1)/sides
+   local mid=(a0+a1)/2
+   local glazing=t0>=.05 and t1<=.35 and math.sin(mid)>.78
+   local lamp=ring==13 and math.abs(math.sin(mid))<.09
+   local a,b,c,d=surface(t0,a0),surface(t1,a0),surface(t0,a1),surface(t1,a1)
+   paint(parent,a,b,c,endName,glazing,lamp); paint(parent,b,d,c,endName,glazing,lamp)
   end
- end
- local tip=Instance.new("Part")
- tip.Name="CabTip_"..endName; tip.Shape=Enum.PartType.Ball
- tip.Size=Vector3.new(0.18,1.0,0.18)
- tip.Position=Vector3.new(shoulderX+direction*length,2.65,0)
- tip.Color=Finish.Silver; tip.Material=Enum.Material.Metal; tip.Reflectance=0.2
- tip.Anchored=true; tip.CanCollide=false; tip:SetAttribute("CabEnd",endName); tip.Parent=parent
- for _,side in ipairs({-1,1}) do
-  local t=0.66
-  local position=surface(t,side==1 and 0.05 or math.pi-0.05)
-  local lamp=Instance.new("Part"); lamp.Name="CabHeadlamp_"..endName
-  lamp.Shape=Enum.PartType.Ball; lamp.Size=Vector3.new(1.5,0.28,0.18)
-  lamp.Position=position+Vector3.new(0,0,side*0.04)
-  lamp.Color=Color3.fromRGB(255,234,194); lamp.Material=Enum.Material.Neon
-  lamp.Anchored=true; lamp.CanCollide=false; lamp:SetAttribute("CabEnd",endName); lamp.Parent=parent
  end
 end
 return Geometry
@@ -850,7 +861,40 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="14">
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">DepartureGate</string>
+          <string name="Source"><![CDATA[-- Server-owned departure decision. Missing/dead characters stay in the roster
+-- until they respawn and board, or their player leaves the server.
+local Gate={}
+Gate.__index=Gate
+function Gate.new(arrivalTime,minimumStop,countdown)
+ return setmetatable({Arrival=arrivalTime,MinimumStop=minimumStop,Countdown=countdown,ReadySince=nil,Total=nil},Gate)
+end
+function Gate:ResetCountdown()
+ self.ReadySince=nil
+end
+function Gate:Step(now,passengers,isAboard)
+ local total,boarded=#passengers,0
+ for _,passenger in ipairs(passengers) do if isAboard(passenger) then boarded+=1 end end
+ if total~=self.Total then self.ReadySince=nil; self.Total=total end
+ if total==0 or boarded~=total then
+  self.ReadySince=nil
+  return {State="Boarding",Ready=false,Boarded=boarded,Total=total}
+ end
+ if now<self.Arrival+self.MinimumStop then
+  self.ReadySince=nil
+  return {State="Dwell",Ready=false,Boarded=boarded,Total=total}
+ end
+ self.ReadySince=self.ReadySince or now
+ local seconds=math.max(0,math.ceil(self.Countdown-(now-self.ReadySince)))
+ return {State=seconds==0 and "Ready" or "Countdown",Ready=seconds==0,Seconds=seconds,Boarded=boarded,Total=total}
+end
+return Gate
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="15">
         <Properties>
           <string name="Name">ExperienceMode</string>
           <token name="RunContext">0</token>
@@ -861,7 +905,7 @@ Workspace:SetAttribute("LastTrainMode", mode)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="15">
+      <Item class="Script" referent="16">
         <Properties>
           <string name="Name">LobbyWorldBuilder</string>
           <token name="RunContext">0</token>
@@ -1311,7 +1355,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="16">
+      <Item class="Script" referent="17">
         <Properties>
           <string name="Name">Matchmaking</string>
           <token name="RunContext">0</token>
@@ -1617,7 +1661,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="17">
+      <Item class="Script" referent="18">
         <Properties>
           <string name="Name">PlayerSpawn</string>
           <token name="RunContext">0</token>
@@ -1686,7 +1730,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="18">
+      <Item class="Script" referent="19">
         <Properties>
           <string name="Name">ProfileLoader</string>
           <token name="RunContext">0</token>
@@ -1707,7 +1751,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">ProfileService</string>
           <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
@@ -1965,7 +2009,7 @@ return Profiles
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="20">
+      <Item class="Script" referent="21">
         <Properties>
           <string name="Name">RecoveryGuard</string>
           <token name="RunContext">0</token>
@@ -2017,7 +2061,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="21">
+      <Item class="Script" referent="22">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -2026,6 +2070,7 @@ end)
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Operations=require(script.Parent:WaitForChild("TrainOperations"))
+local DepartureGate=require(script.Parent:WaitForChild("DepartureGate"))
 local RunService=game:GetService("RunService")
 local Workspace=game:GetService("Workspace")
 local GameConfig=require(ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -2042,6 +2087,9 @@ while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"
 local objectiveFolder=world:WaitForChild("Objectives")
 local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
 local stage,completed,choice,traveling=0,false,nil,false
+local departurePending=false
+local boardingText=nil
+local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
 local operations=Operations.new(train)
@@ -2049,7 +2097,7 @@ local operations=Operations.new(train)
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
 local function broadcast(endingKey)
  local data=GameConfig.Stations[station]
- objectiveEvent:FireAllClients(stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",storyFor(station),endingKey)
+ objectiveEvent:FireAllClients(stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,data and data.Name or "",departurePending and "" or storyFor(station),endingKey,departurePending and "Boarding" or "Docked",station)
 end
 local function setDoors(open,instant) operations:SetDoors(open,instant) end
 local function updateDisplays(moving)
@@ -2079,16 +2127,49 @@ RunService.Heartbeat:Connect(function()
  end
 end)
 local function moveToNextStation()
+ local gate=DepartureGate.new(arrivedAt,GameConfig.MinimumStopDuration,GameConfig.DepartureCountdown)
+ Workspace:SetAttribute("LastTrainBoardingPending",true)
+ local lastMessage=nil
+ local function readiness()
+  return gate:Step(os.clock(),Players:GetPlayers(),function(p) return Operations.Contains(train,p.Character) end)
+ end
+ while true do
+  local state=readiness()
+  boardingText=state.State=="Countdown" and string.format("全員已上車，%d 秒後關門。",state.Seconds)
+   or state.Ready and "車門即將關閉，請遠離車門。"
+   or state.State=="Dwell" and "全員已上車，列車停站準備中。"
+   or string.format("任務完成，請返回列車（已上車 %d / %d 人）。",state.Boarded,state.Total)
+  Workspace:SetAttribute("LastTrainBoardedCount",state.Boarded)
+  Workspace:SetAttribute("LastTrainPassengerCount",state.Total)
+  if boardingText~=lastMessage then
+   objectiveEvent:FireAllClients(stage,boardingText,false,GameConfig.Stations[station].Name,"",nil,state.State=="Countdown" and "Countdown" or "Boarding",station)
+   lastMessage=boardingText
+  end
+  if state.Ready then
+   traveling=true
+   objectiveEvent:FireAllClients(stage,"全員已上車，車門關閉中。",false,GameConfig.Stations[station].Name,"",nil,"Closing",station)
+   setDoors(false)
+   -- Check real positions again after the door animation. Someone can walk
+   -- out while it closes, die, respawn, or join during that animation.
+   if readiness().Ready then break end
+   gate:ResetCountdown()
+   setDoors(true)
+   traveling=false
+   lastMessage=nil
+  end
+  task.wait(.15)
+ end
+ Workspace:SetAttribute("LastTrainBoardingPending",false)
  Workspace:SetAttribute("LastTrainTraveling",true)
+ boardingText=nil
  updateDisplays(true)
- objectiveEvent:FireAllClients(stage,"車門即將關閉，請遠離車門。",false,GameConfig.Stations[station].Name,storyFor(station))
- task.wait(2)
- setDoors(false)
+ objectiveEvent:FireAllClients(stage,"列車開往下一站。",false,GameConfig.Stations[station].Name,"",nil,"Moving",station)
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
  Workspace:SetAttribute("LastTrainStation",station)
  Workspace:SetAttribute("LastTrainTraveling",false)
- updateDisplays(false); setDoors(true); traveling=false; broadcast()
+ arrivedAt=os.clock()
+ updateDisplays(false); setDoors(true); traveling=false; departurePending=false; broadcast()
 end
 
 -- Initial carriage is already docked at NEW MOON with its doors open.
@@ -2099,10 +2180,10 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
   if anchor.Name:match("^BoardTrain_") then
    local requiredStation=anchor:GetAttribute("StationIndex")
    local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-   if not traveling and requiredStation==station and root and (root.Position-anchor.Position).Magnitude<=p.MaxActivationDistance+4 then boardPlayer(player) end
+   if not traveling and train:GetAttribute("DoorsOpen") and requiredStation==station and root and (root.Position-anchor.Position).Magnitude<=p.MaxActivationDistance+4 then boardPlayer(player) end
    return
   end
-  if completed or traveling or anchor:GetAttribute("ObjectiveStage")~=stage then return end
+  if completed or traveling or departurePending or anchor:GetAttribute("ObjectiveStage")~=stage then return end
   local character=player.Character; local root=character and character:FindFirstChild("HumanoidRootPart"); local humanoid=character and character:FindFirstChildWhichIsA("Humanoid")
   if not root or not humanoid or humanoid.Health<=0 or (root.Position-anchor.Position).Magnitude>p.MaxActivationDistance+4 then return end
   if stage==5 then choice=anchor:GetAttribute("Choice") end
@@ -2110,9 +2191,10 @@ setDoors(true,true); Workspace:SetAttribute("LastTrainStation",1); Workspace:Set
    local endingKey=anchor:GetAttribute("Ending")
    if endingKey=="Station08" and choice~="Records" then objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station)); return end
    completed=true; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
-   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey); return
+   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey] or "旅程結束。",true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station); return
   end
-  traveling=true -- Lock before currency persistence or any other yielding work.
+  departurePending=true -- Lock rewards/objectives while still allowing boarding.
+  boardingText="任務完成，請所有乘客返回列車。"
   stage+=1; Workspace:SetAttribute("LastTrainRoundStage",stage); Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage] or 0)
   if stage==5 then choice=anchor:GetAttribute("Choice") or choice end
   broadcast()
@@ -2152,7 +2234,7 @@ for _,item in ipairs(train:GetDescendants()) do
  end) end
 end
 Players.PlayerAdded:Connect(function(player)
- task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",storyFor(station)) end end)
+ task.delay(2,function() if player.Parent then local d=GameConfig.Stations[station]; objectiveEvent:FireClient(player,stage,boardingText or GameConfig.Objectives[math.min(stage+1,#GameConfig.Objectives)],completed,d and d.Name or "",departurePending and "" or storyFor(station),nil,departurePending and "Boarding" or "Docked",station) end end)
 end)
 
 for _,seat in ipairs(train:GetDescendants()) do
@@ -2174,7 +2256,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
@@ -2190,7 +2272,7 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="23">
+      <Item class="Script" referent="24">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -2359,7 +2441,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
@@ -2467,7 +2549,7 @@ return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="25">
+      <Item class="Script" referent="26">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -2808,6 +2890,9 @@ local function makeCarriage(name,offset,keepCab)
  local car=Instance.new("Model"); car.Name=name; car.Parent=train
  local omit={ConductorRecorder=true,RecorderStatus=true,PantographInsulator=true,PantographArm=true,PantographContactBar=true}
  local trimNames={CarFloor=true,CarInteriorCeiling=true,ContinuousCoachRoof=true,RoofShoulder=true,AisleRunner=true,ContinuousLowerSkirt=true,BeltlineAccent_Front=true,BeltlineAccent_Rear=true,LowerSidePanel_Front=true,LowerSidePanel_Rear=true,SideHeader=true,CoachLowerSideSkin=true,CoachUpperSideSkin=true,CoachEndSideSkin=true}
+ -- Flat fittings must end at the cab shoulder too. Previously short stripes
+ -- and glazing were kept by their centers and could stick out over the nose.
+ for _,n in ipairs({"CyanBeltline","GoldBeltline","PanoramicWindowBand","WindowMullion","FlushServicePanel","WindowSill","WindowTopFrame","IndirectCeilingStrip","LuggageShelf","LuggageShelfLip"}) do trimNames[n]=true end
  local minX,maxX=keepCab=="Rear" and 26 or 5,keepCab=="Front" and 44 or 65
  for _,source in ipairs(originalParts) do
   local cabEnd=source:GetAttribute("CabEnd")
@@ -3042,15 +3127,15 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="26">
+  <Item class="StarterPlayer" referent="27">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="27">
+    <Item class="StarterPlayerScripts" referent="28">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="28">
+      <Item class="LocalScript" referent="29">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -3699,18 +3784,23 @@ end
 player:GetAttributeChangedSignal("FlashlightMultiplier"):Connect(applyFlashlightAbility)
 applyFlashlightAbility()
 
-objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationName, storyText, endingKey)
-    local stopNumber = math.clamp(tonumber(stage) or 0, 0, #GameConfig.Stations - 1) + 1
+local lastRideState=nil
+objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationName, storyText, endingKey,rideState,stationIndex)
+    local stopNumber = stationIndex or math.clamp(tonumber(stage) or 0, 0, #GameConfig.Stations - 1) + 1
     eyebrow.Text = string.format("第 %d / 7 站   /   %s", stopNumber, tostring(stationName or "末班車"))
     if completed then
         objectiveLabel.Text = tostring(text or "旅程結束。")
         showToast(tostring(text or "旅程結束。"), 9)
+    elseif rideState=="Boarding" or rideState=="Countdown" or rideState=="Closing" or rideState=="Moving" then
+        objectiveLabel.Text=tostring(text or "請返回列車")
+        if rideState~=lastRideState then showToast(objectiveLabel.Text,3) end
     else
         local objectiveNo = math.clamp((tonumber(stage) or 0) + 1, 1, #GameConfig.Objectives)
         objectiveLabel.Text = string.format("任務 %d / 7\n%s", objectiveNo, tostring(text or "等待下一個指示"))
         if storyText and storyText ~= "" then showToast(tostring(storyText), 6)
-        elseif stage and stage > 0 then showToast("車門緩緩關上。列車正駛向下一站……", 4) end
+        end
     end
+    lastRideState=rideState
     if shop.Visible then refreshShop() end
 end)
 
@@ -3725,7 +3815,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="29">
+      <Item class="LocalScript" referent="30">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -4072,13 +4162,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="30">
+  <Item class="Workspace" referent="31">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="31">
+    <Item class="SpawnLocation" referent="32">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

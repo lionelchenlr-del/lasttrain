@@ -37,6 +37,8 @@ for station=1,#Config.Stations do
 end
 local seats={}
 local glazing=0
+local integratedLamps=0
+local raisedCabPart=false
 for _,part in ipairs(train:GetDescendants()) do
  if part:IsA("Seat") then table.insert(seats,part) end
  if part.Name=="PanoramicWindowBand" then check(part.Transparency>=.65,"Opaque passenger glass") end
@@ -46,8 +48,12 @@ for _,part in ipairs(train:GetDescendants()) do
   check(math.abs(part.Position.Y-.675-Config.RailTop)<.001,"Wheel not resting on rail")
  end
  if part:GetAttribute("CabGlazing") then glazing+=1 end
+ if part:GetAttribute("IntegratedHeadlamp") then integratedLamps+=1 end
+ if part:IsA("BasePart") and part:GetAttribute("CabEnd") and not part:IsA("WedgePart") then raisedCabPart=true end
 end
 check(glazing>=200,"Dark cab glazing missing")
+check(integratedLamps>=8,"Flush headlamps missing")
+check(not raisedCabPart,"Separate protruding cab part")
 check(#seats>=32,"Missing usable seats")
 check(Config.StationSpacing>=2800 and Config.TravelDuration>=40,"Route too short")
 local params=RaycastParams.new(); params.FilterType=Enum.RaycastFilterType.Include

@@ -5,6 +5,8 @@ GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
 -- Shared geometry and timing: wheel contact, doors and safety use one layout.
 GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
+GameConfig.MinimumStopDuration = 8
+GameConfig.DepartureCountdown = 3
 GameConfig.TrainCenterZ = -6.35
 GameConfig.TrackHalfGauge = 4.05
 GameConfig.RailTop = -1.55

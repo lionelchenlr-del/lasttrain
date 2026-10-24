@@ -335,6 +335,9 @@ local function makeCarriage(name,offset,keepCab)
  local car=Instance.new("Model"); car.Name=name; car.Parent=train
  local omit={ConductorRecorder=true,RecorderStatus=true,PantographInsulator=true,PantographArm=true,PantographContactBar=true}
  local trimNames={CarFloor=true,CarInteriorCeiling=true,ContinuousCoachRoof=true,RoofShoulder=true,AisleRunner=true,ContinuousLowerSkirt=true,BeltlineAccent_Front=true,BeltlineAccent_Rear=true,LowerSidePanel_Front=true,LowerSidePanel_Rear=true,SideHeader=true,CoachLowerSideSkin=true,CoachUpperSideSkin=true,CoachEndSideSkin=true}
+ -- Flat fittings must end at the cab shoulder too. Previously short stripes
+ -- and glazing were kept by their centers and could stick out over the nose.
+ for _,n in ipairs({"CyanBeltline","GoldBeltline","PanoramicWindowBand","WindowMullion","FlushServicePanel","WindowSill","WindowTopFrame","IndirectCeilingStrip","LuggageShelf","LuggageShelfLip"}) do trimNames[n]=true end
  local minX,maxX=keepCab=="Rear" and 26 or 5,keepCab=="Front" and 44 or 65
  for _,source in ipairs(originalParts) do
   local cabEnd=source:GetAttribute("CabEnd")
