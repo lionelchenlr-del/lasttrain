@@ -6,6 +6,8 @@ local root = ReplicatedStorage:WaitForChild("LastTrain")
 local GameConfig = require(root:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local shopRequest = root:WaitForChild("Remotes"):WaitForChild("ShopRequest")
 local Profiles = require(script.Parent:WaitForChild("ProfileService"))
+local Catalog=require(root.Shared.PremiumCatalog)
+local Edition=require(script.Parent.LimitedEdition)
 
 local passToSkin = {}
 local productById = {}
@@ -50,7 +52,7 @@ end
 Players.PlayerAdded:Connect(function(player)
     task.spawn(function()
         if not waitForProfile(player) then return end
-        for skinKey in pairs(passToSkin) do
+        for _,skinKey in pairs(passToSkin) do
             refreshPassOwnership(player, skinKey)
         end
     end)
@@ -58,7 +60,7 @@ end)
 for _, player in ipairs(Players:GetPlayers()) do
     task.spawn(function()
         if not waitForProfile(player) then return end
-        for skinKey in pairs(passToSkin) do
+        for _,skinKey in pairs(passToSkin) do
             refreshPassOwnership(player, skinKey)
         end
     end)
@@ -124,6 +126,15 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+    if Catalog.Items.StarTrain.ProductId>0 and receiptInfo.ProductId==Catalog.Items.StarTrain.ProductId then
+        local buyer=Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if not buyer or not Profiles.IsLoaded(buyer) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        local serial=Edition.Confirm(buyer.UserId,receiptInfo.PurchaseId)
+        if not serial then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        if not Profiles.GrantEdition(buyer,serial) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        root.Remotes.PremiumNotice:FireClient(buyer,string.format("銀河高鐵 #%03d / 500 已解鎖。",serial),"StarTrain")
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+    end
     local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
     local product = productById[receiptInfo.ProductId]
     if not player or not product then

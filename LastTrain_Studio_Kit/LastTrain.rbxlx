@@ -75,7 +75,8 @@ function Appearance.Apply(character, skinKey)
         originalHeadColor = bodyColors.HeadColor3
         character:SetAttribute("LastTrainOriginalHeadColor", originalHeadColor)
     end
-    bodyColors.HeadColor3 = originalHeadColor
+    -- Authored game characters use a natural complexion and retain the face.
+    bodyColors.HeadColor3 = skin.SkinTone or originalHeadColor
     bodyColors.LeftArmColor3 = main
     bodyColors.RightArmColor3 = main
     bodyColors.LeftLegColor3 = main
@@ -164,31 +165,46 @@ function Appearance.Apply(character, skinKey)
     end
 
     if head then
-        local headTop = head.Size.Y / 2
-        local brimSize = Vector3.new(0.2, head.Size.X * 0.88, head.Size.Z * 0.86)
-        local brimOffset = CFrame.new(0, headTop + 0.02, 0) * CFrame.Angles(0, 0, math.rad(90))
-        local crownColor = skinKey == "Signalman" and Color3.fromRGB(184, 67, 48) or main
-        weldedPart("UniformCapBrim", head, brimSize, darkTrim, brimOffset, Enum.Material.Metal, Enum.PartType.Cylinder)
-
-        if skinKey == "Signalman" then
-            weldedPart("SignalHelmetCrown", head, Vector3.new(head.Size.X * 0.9, head.Size.Y * 0.46, head.Size.Z * 0.88), crownColor, CFrame.new(0, headTop + head.Size.Y * 0.12, 0), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-            weldedPart("SignalHelmetRim", head, Vector3.new(0.12, head.Size.X * 1.02, head.Size.Z * 0.92), accent, CFrame.new(0, headTop - 0.03, 0) * CFrame.Angles(0, 0, math.rad(90)), Enum.Material.Metal, Enum.PartType.Cylinder)
-        else
-            weldedPart("UniformCapCrown", head, Vector3.new(head.Size.X * 0.78, head.Size.Y * 0.34, head.Size.Z * 0.76), crownColor, CFrame.new(0, headTop + head.Size.Y * 0.13, 0), Enum.Material.Fabric, Enum.PartType.Ball)
-            weldedPart("UniformCapVisor", head, Vector3.new(head.Size.X * 0.56, 0.1, head.Size.Z * 0.42), accent, CFrame.new(0, headTop + 0.015, -head.Size.Z * 0.42), Enum.Material.Metal)
+        local top=head.Size.Y/2
+        local hair=Color3.fromRGB(22,24,30)
+        -- Sculpted hair follows the head with massless, collision-free pieces.
+        weldedPart("StyledHairCrown",head,Vector3.new(head.Size.X*.92,.32,head.Size.Z*.92),hair,CFrame.new(0,top+.08,.03),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+        weldedPart("SweptHairQuiff",head,Vector3.new(head.Size.X*.74,.30,head.Size.Z*.55),hair,CFrame.new(-.08,top+.20,-.20)*CFrame.Angles(0,0,math.rad(-12)),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+        for _,side in ipairs({-1,1}) do
+            weldedPart("HairSide",head,Vector3.new(.12,.38,head.Size.Z*.68),hair,CFrame.new(side*head.Size.X*.44,top-.16,.10),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
         end
-        weldedPart("UniformCapBadge", head, Vector3.new(0.17, 0.2, 0.08), accent, CFrame.new(0, headTop + head.Size.Y * 0.13, -head.Size.Z * 0.47), Enum.Material.Metal, Enum.PartType.Ball)
+        if skinKey=="Conductor" or skinKey=="PremiumStaff" then
+            weldedPart("TailoredCapCrown",head,Vector3.new(head.Size.X*.92,.22,head.Size.Z*.85),main,CFrame.new(0,top+.31,.02),Enum.Material.Fabric,Enum.PartType.Ball)
+            weldedPart("TailoredCapVisor",head,Vector3.new(head.Size.X*.72,.055,.42),darkTrim,CFrame.new(0,top+.19,-head.Size.Z*.38),Enum.Material.SmoothPlastic)
+            weldedPart("CapMetalBadge",head,Vector3.new(.15,.11,.035),accent,CFrame.new(0,top+.28,-head.Size.Z*.43),Enum.Material.Metal)
+        elseif skinKey=="NightGuard" then
+            weldedPart("MysteryMask",head,Vector3.new(head.Size.X*.72,.24,.065),Color3.fromRGB(117,128,147),CFrame.new(0,-.20,-head.Size.Z*.51),Enum.Material.Metal)
+        end
+    end
+    if torso then
+        local front=-(torso.Size.Z/2+.12)
+        for _,side in ipairs({-1,1}) do
+            weldedPart("TailoredLapel",torso,Vector3.new(.14,torso.Size.Y*.48,.045),darkTrim,CFrame.new(side*.20,torso.Size.Y*.13,front)*CFrame.Angles(0,0,side*math.rad(18)),Enum.Material.Fabric)
+        end
+        weldedPart("SilkTie",torso,Vector3.new(.105,torso.Size.Y*.40,.045),accent,CFrame.new(0,torso.Size.Y*.12,front-.03),Enum.Material.SmoothPlastic)
+        weldedPart("PocketSquare",torso,Vector3.new(.19,.065,.035),accent,CFrame.new(-torso.Size.X*.22,torso.Size.Y*.21,front-.035),Enum.Material.SmoothPlastic)
+        if skinKey=="VIP" then
+            local badge=weldedPart("VIPBadge",torso,Vector3.new(.22,.13,.04),accent,CFrame.new(torso.Size.X*.23,torso.Size.Y*.24,front),Enum.Material.Metal)
+            local tag=Instance.new("BillboardGui");tag.Name="VIPNameplate";tag.Size=UDim2.fromOffset(150,28);tag.StudsOffset=Vector3.new(0,2.5,0);tag.Adornee=head;tag.MaxDistance=45;tag.Parent=visuals
+            local text=Instance.new("TextLabel");text.Size=UDim2.fromScale(1,1);text.BackgroundTransparency=1;text.Text="VIP  ·  LAST TRAIN";text.Font=Enum.Font.GothamBold;text.TextSize=12;text.TextColor3=accent;text.Parent=tag
+        end
     end
 
     if skinKey == "NightGuard" and torso then
+        for _,side in ipairs({-1,1}) do
+            weldedPart("LongCoatTail",torso,Vector3.new(torso.Size.X*.36,torso.Size.Y*.83,.10),darkTrim,CFrame.new(side*torso.Size.X*.25,-torso.Size.Y*.70,torso.Size.Z*.47),Enum.Material.Fabric)
+        end
         local front = -(torso.Size.Z / 2 + 0.11)
         weldedPart("NightGuardScarf", torso, Vector3.new(torso.Size.X * 0.74, torso.Size.Y * 0.22, 0.22), accent, CFrame.new(0, torso.Size.Y * 0.34, front), Enum.Material.Fabric, Enum.PartType.Ball)
         weldedPart("NightGuardScarfTail", torso, Vector3.new(0.22, torso.Size.Y * 0.48, 0.12), accent, CFrame.new(torso.Size.X * 0.2, torso.Size.Y * 0.05, front - 0.02), Enum.Material.Fabric)
     elseif skinKey == "Signalman" and torso then
         weldedPart("SignalmanToolRadio", torso, Vector3.new(0.25, 0.34, 0.14), darkTrim, CFrame.new(torso.Size.X * 0.31, torso.Size.Y * 0.28, -(torso.Size.Z / 2 + 0.1)), Enum.Material.Metal)
         weldedPart("SignalmanRadioLamp", torso, Vector3.new(0.08, 0.08, 0.06), Color3.fromRGB(255, 90, 68), CFrame.new(torso.Size.X * 0.31, torso.Size.Y * 0.34, -(torso.Size.Z / 2 + 0.19)), Enum.Material.Neon, Enum.PartType.Ball)
-    elseif skinKey == "PlatformWorker" and torso then
-        weldedPart("ReflectiveVestStripe", torso, Vector3.new(torso.Size.X * 0.76, 0.12, 0.08), accent, CFrame.new(0, -torso.Size.Y * 0.08, -(torso.Size.Z / 2 + 0.1)), Enum.Material.Neon)
     end
 
     if skin.ShirtTemplate and skin.ShirtTemplate > 0 then
@@ -214,6 +230,7 @@ local GameConfig = {}
 
 GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
 -- Shared geometry and timing: wheel contact, doors and safety use one layout.
+GameConfig.StationaryTrain = true
 GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
 GameConfig.MinimumStopDuration = 8
@@ -305,6 +322,20 @@ GameConfig.Skins = {
     },
 }
 
+GameConfig.Skins.PlatformWorker.DisplayName="都會旅人"
+GameConfig.Skins.PlatformWorker.Colors={Main=Color3.fromRGB(34,42,55),Accent=Color3.fromRGB(224,228,231)}
+GameConfig.Skins.NightGuard.DisplayName="神祕乘客"
+GameConfig.Skins.NightGuard.CatalogPass="MysteryPassenger"
+GameConfig.Skins.NightGuard.MonsterDetectionMultiplier=1
+GameConfig.Skins.NightGuard.Ability="專屬面罩與長外套・外觀角色"
+GameConfig.Skins.NightGuard.Colors={Main=Color3.fromRGB(21,25,34),Accent=Color3.fromRGB(173,184,202)}
+GameConfig.Skins.PremiumStaff={DisplayName="高級站務員",Ability="訂製站務制服・專屬外觀",RequiresGamePass=true,CatalogPass="PremiumStaff",GamePassId=0,
+ PriceCoins=0,Colors={Main=Color3.fromRGB(27,43,65),Accent=Color3.fromRGB(223,117,52)}}
+GameConfig.Skins.VIP={DisplayName="VIP 都會紳士",Ability="VIP 正式服裝・金色名牌",RequiresGamePass=true,CatalogPass="VIP",GamePassId=0,
+ PriceCoins=0,Colors={Main=Color3.fromRGB(24,28,37),Accent=Color3.fromRGB(218,188,116)}}
+
+for _,skin in pairs(GameConfig.Skins) do skin.SkinTone=Color3.fromRGB(218,184,157) end
+
 -- Developer products are repeatable Robux purchases. Receipt handling is server-side.
 GameConfig.Products = {
     CoinPouch = { DisplayName = "300 張車票幣", ProductId = 0, Coins = 300 },
@@ -316,6 +347,83 @@ return GameConfig
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="6">
+          <Properties>
+            <string name="Name">InteriorTheme</string>
+            <string name="Source"><![CDATA[local Theme={}
+local seats={UpholsteredSeat=true,SeatBack=true,SeatHeadrest=true,SeatTopRail=true,SeatTopCorner=true,SeatLumbarPanel=true,SeatFrontBolster=true}
+local liners={IvoryCeilingLiner=true,InteriorSideLiner=true,WindowSill=true,LuggageShelf=true}
+local trims={CeilingChampagneReveal=true,ChampagneWindowReveal=true,SeatNumberBadge=true,SeatArmrest=true,LuggageShelfLip=true,RoyalGoldReveal=true,RoyalDividerTrim=true}
+local function sky(p)
+ local gui=p:FindFirstChild("GalaxyCeiling")
+ if gui then return gui end
+ gui=Instance.new("SurfaceGui");gui.Name="GalaxyCeiling";gui.Adornee=p;gui.Face=Enum.NormalId.Bottom;gui.CanvasSize=Vector2.new(1800,300);gui.LightInfluence=0;gui.Parent=p
+ local background=Instance.new("Frame");background.Size=UDim2.fromScale(1,1);background.BorderSizePixel=0;background.BackgroundColor3=Color3.new(1,1,1);background.Parent=gui
+ local gradient=Instance.new("UIGradient");gradient.Name="GalaxyGradient";gradient.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(17,28,69)),ColorSequenceKeypoint.new(.5,Color3.fromRGB(66,30,96)),ColorSequenceKeypoint.new(1,Color3.fromRGB(20,55,99))});gradient.Rotation=12;gradient.Parent=background
+ for i=1,96 do
+  local star=Instance.new("Frame");star.Name="CeilingStar";local diameter=i%9==0 and 14 or 7
+  star.Size=UDim2.fromOffset(diameter,diameter);star.Position=UDim2.fromScale((i*149%1750)/1800,(i*73%270)/300)
+  star.BackgroundColor3=Color3.fromRGB(225,236,255);star.BackgroundTransparency=i%9==0 and 0 or .14;star.BorderSizePixel=0;star.ZIndex=3;star.Parent=gui
+  local round=Instance.new("UICorner");round.CornerRadius=UDim.new(1,0);round.Parent=star
+
+ end
+ return gui
+end
+function Theme.Apply(train,key)
+ local galaxy=key=="Starfield";local royal=key=="Royal"
+ local front=train:FindFirstChild("FrontCarriage")
+ for _,p in ipairs(train:GetDescendants()) do
+  if p:IsA("BasePart") then
+   if seats[p.Name] or liners[p.Name] or trims[p.Name] or p.Name=="HeadrestCover" or p.Name=="AisleRunner" then
+    if not p:GetAttribute("InteriorBaseColor") then p:SetAttribute("InteriorBaseColor",p.Color) end
+    local activeRoyal=royal and front and p:IsDescendantOf(front)
+    if galaxy then
+     p.Color=seats[p.Name] and Color3.fromRGB(39,44,75) or liners[p.Name] and Color3.fromRGB(31,39,66) or trims[p.Name] and Color3.fromRGB(158,176,232) or p.Name=="HeadrestCover" and Color3.fromRGB(226,233,247) or Color3.fromRGB(26,33,67)
+    elseif activeRoyal then
+     p.Color=seats[p.Name] and Color3.fromRGB(222,209,179) or liners[p.Name] and Color3.fromRGB(244,230,202) or trims[p.Name] and Color3.fromRGB(205,167,79) or p.Name=="HeadrestCover" and Color3.fromRGB(249,243,225) or Color3.fromRGB(75,55,43)
+    else p.Color=p:GetAttribute("InteriorBaseColor") end
+   end
+   if p.Name=="IvoryCeilingLiner" then sky(p).Enabled=galaxy end
+   if p.Name=="WarmCabinLight" then
+    if not p:GetAttribute("LightBaseColor") then p:SetAttribute("LightBaseColor",p.Color) end
+    p.Color=galaxy and Color3.fromRGB(177,198,255) or royal and Color3.fromRGB(255,221,168) or p:GetAttribute("LightBaseColor")
+    for _,l in ipairs(p:GetChildren()) do if l:IsA("Light") then l.Color=p.Color end end
+   end
+  end
+ end
+end
+return Theme
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="7">
+          <Properties>
+            <string name="Name">PremiumCatalog</string>
+            <string name="Source"><![CDATA[-- Set real PassId values from this experience's Creator Dashboard before sale.
+local Catalog={Order={"NeonFlashlight","PremiumStaff","MysteryPassenger","LuxuryPass","LiveryBundle","VIP","RoyalCarriage","StarTrain"}}
+Catalog.Items={
+ NeonFlashlight={Name="霓虹手電筒",BasePrice=79,PassId=0,Kind="Flashlight",Description="霓虹燈框、三種光色、專屬手電筒。永久解鎖。",Color=Color3.fromRGB(77,218,225)},
+ PremiumStaff={Name="高級站務員",BasePrice=149,PassId=0,Kind="Skin",Skin="PremiumStaff",Description="深藍訂製制服、橘色領帶與金屬名牌。永久角色。",Color=Color3.fromRGB(226,126,54)},
+ MysteryPassenger={Name="神祕乘客",BasePrice=199,PassId=0,Kind="Skin",Skin="NightGuard",Description="黑色長外套、銀色面罩與神祕配件。永久角色。",Color=Color3.fromRGB(151,164,211)},
+ LuxuryPass={Name="豪華列車通行證",BasePrice=299,PassId=0,Kind="Access",Description="第二車商務座位與白橘商務票面。保留一般乘客走道。",Color=Color3.fromRGB(224,176,101)},
+ LiveryBundle={Name="列車外觀組合包",BasePrice=399,PassId=0,Kind="Livery",Description="解鎖晨光橘、午夜藍、香檳白；房主出發前選用。",Color=Color3.fromRGB(222,139,76)},
+ VIP={Name="VIP 通行證",BasePrice=499,PassId=0,Kind="Skin",Skin="VIP",Description="VIP 正式服裝、金色名牌與專屬候車區。",Color=Color3.fromRGB(235,200,105)},
+ RoyalCarriage={Name="皇家豪華車廂",BasePrice=799,PassId=0,Kind="Royal",Description="香檳白金皇家列車、第三車包廂、觀景座位、餐桌、休息床與茶飲吧。可邀同車朋友。",Color=Color3.fromRGB(206,171,101)},
+ StarTrain={Name="銀河高鐵・限定500台",BasePrice=999,PassId=0,ProductId=0,Limited=500,Kind="Livery",Description="全遊戲限量500台，一人一台永久編號。銀河車身、星空頂棚與觀景內裝。",Color=Color3.fromRGB(126,135,231)},
+}
+Catalog.Liveries={
+ Taiwan={Name="台灣高鐵・白橘",Body=Color3.fromRGB(241,243,241),Stripe=Color3.fromRGB(219,106,38)},
+ Sunrise={Name="晨光橘",Pass="LiveryBundle",Body=Color3.fromRGB(246,241,229),Stripe=Color3.fromRGB(235,126,54)},
+ Midnight={Name="午夜藍",Pass="LiveryBundle",Body=Color3.fromRGB(37,52,76),Stripe=Color3.fromRGB(175,190,207)},
+ Champagne={Name="香檳白",Pass="LiveryBundle",Body=Color3.fromRGB(241,235,219),Stripe=Color3.fromRGB(173,143,86)},
+ Royal={Name="皇家白金",Pass="RoyalCarriage",Body=Color3.fromRGB(245,237,216),Stripe=Color3.fromRGB(210,165,72)},
+ Starfield={Name="銀河限定500台",Pass="StarTrain",Body=Color3.fromRGB(23,28,64),Stripe=Color3.fromRGB(153,160,234)},
+}
+Catalog.LiveryOrder={"Taiwan","Sunrise","Midnight","Champagne","Royal","Starfield"}
+return Catalog
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="8">
           <Properties>
             <string name="Name">TrainFinish</string>
             <string name="Source"><![CDATA[-- A shared finish keeps lobby and playable stock in the same silver livery.
@@ -349,8 +457,9 @@ function Finish.Apply(model)
    elseif blackNames[p.Name] then
     p.Color=Finish.Graphite; p.Material=Enum.Material.Metal; p.Reflectance=0.1
    elseif p.Name=="PanoramicWindowBand" or p.Name=="DisplayWindowBand" then
-    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.Glass
-    p.Reflectance=0.04; p.Transparency=0.72
+    -- Non-refractive glazing keeps moving opaque skins visible consistently.
+    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.SmoothPlastic
+    p.Reflectance=0; p.Transparency=0.72
    elseif p.Name=="SlidingDoor" then
     -- A single translucent layer avoids refractive Glass sorting against the
     -- stationary passenger glazing while the leaf slides across the body.
@@ -364,7 +473,7 @@ return Finish
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="7">
+        <Item class="ModuleScript" referent="9">
           <Properties>
             <string name="Name">TrainGeometry</string>
             <string name="Source"><![CDATA[-- Closed, asset-free high-speed cabs. Paint, glazing and lamps are part of the
@@ -473,7 +582,68 @@ return Geometry
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="8">
+        <Item class="ModuleScript" referent="10">
+          <Properties>
+            <string name="Name">TrainLivery</string>
+            <string name="Source"><![CDATA[local Catalog=require(script.Parent.PremiumCatalog)
+local Finish=require(script.Parent.TrainFinish)
+local Livery={}
+function Livery.Apply(model,key)
+ local style=Catalog.Liveries[key];if not style then return false end
+ for _,p in ipairs(model:GetDescendants()) do
+  if p:IsA("BasePart") then
+   local role=p:GetAttribute("LiveryRole")
+   if not role then
+    if p.Color==Finish.Silver or p.Color==Finish.Roof then role="Body"
+    elseif p.Color==Finish.Orange then role="Stripe" end
+    if role then p:SetAttribute("LiveryRole",role) end
+   end
+   if role=="Body" then
+    p.Color=style.Body
+    if p:GetAttribute("CabEnd") then
+     local point=model:GetPivot():PointToObjectSpace(p.Position)
+     if key=="Starfield" then
+      local nebula=math.clamp(math.noise(point.X*.09,point.Y*.26,point.Z*.19)+.4,0,1)
+      p.Color=style.Body:Lerp(Color3.fromRGB(84,39,139),nebula*.65)
+     elseif key=="Royal" and math.abs(point.Z)<1.55 and point.Y>2.4 and point.Y<5.2 then p.Color=Color3.fromRGB(220,185,111) end
+    end
+   elseif role=="Stripe" then
+    if not p:GetAttribute("LiveryBaseMaterial") then p:SetAttribute("LiveryBaseMaterial",p.Material.Name) end
+    p.Color=style.Stripe;p.Material=key=="Starfield" and Enum.Material.Neon or Enum.Material[p:GetAttribute("LiveryBaseMaterial")]
+   end
+   if p.Name=="CoachLowerSideSkin" or p.Name=="DisplayCarBody" then
+    local marks=p:FindFirstChild("StarfieldMarks")
+    if not marks then
+     marks=Instance.new("Folder");marks.Name="StarfieldMarks";marks.Parent=p
+     for _,face in ipairs({Enum.NormalId.Front,Enum.NormalId.Back}) do
+      local gui=Instance.new("SurfaceGui");gui.Face=face;gui.CanvasSize=Vector2.new(1200,140);gui.LightInfluence=.35;gui.Adornee=p;gui.Parent=marks
+      local stars=Instance.new("TextLabel");stars.BackgroundTransparency=1;stars.Size=UDim2.fromScale(1,1);stars.Text="·     ✦       ·      ·        ✧       ·       ✦      ·";stars.TextColor3=Color3.fromRGB(196,206,247);stars.TextScaled=true;stars.Parent=gui
+      local planet=Instance.new("Frame");planet.Name="GalaxyPlanet";planet.Size=UDim2.fromScale(.14,.76);planet.Position=UDim2.fromScale(.43,.12);planet.BackgroundColor3=Color3.new(1,1,1);planet.BorderSizePixel=0;planet.Parent=gui
+      local round=Instance.new("UICorner");round.CornerRadius=UDim.new(1,0);round.Parent=planet
+      local shine=Instance.new("UIGradient");shine.Name="GalaxyGradient";shine.Color=ColorSequence.new(Color3.fromRGB(89,180,246),Color3.fromRGB(119,63,188));shine.Rotation=30;shine.Parent=planet
+      local ring=Instance.new("Frame");ring.Name="PlanetRing";ring.BackgroundTransparency=1;ring.Size=UDim2.fromScale(.32,.46);ring.Position=UDim2.fromScale(.34,.26);ring.Rotation=-12;ring.Parent=gui
+      local rounding=Instance.new("UICorner");rounding.CornerRadius=UDim.new(1,0);rounding.Parent=ring
+      local stroke=Instance.new("UIStroke");stroke.Thickness=3;stroke.Color=Color3.fromRGB(162,207,255);stroke.Parent=ring
+     end
+    end
+    for _,gui in ipairs(marks:GetChildren()) do gui.Enabled=key=="Starfield" end
+    local royal=p:FindFirstChild("RoyalWordmark")
+    if not royal then
+     royal=Instance.new("SurfaceGui");royal.Name="RoyalWordmark";royal.Adornee=p;royal.Face=Enum.NormalId.Front;royal.CanvasSize=Vector2.new(1000,140);royal.LightInfluence=.1;royal.Parent=p
+     local logo=Instance.new("TextLabel");logo.Size=UDim2.fromScale(1,1);logo.BackgroundTransparency=1;logo.Text="♛  ROYAL  ·  LAST TRAIN";logo.TextColor3=Color3.fromRGB(184,135,49);logo.Font=Enum.Font.GothamBold;logo.TextScaled=true;logo.Parent=royal
+    end
+    royal.Enabled=key=="Royal"
+   end
+  end
+ end
+ require(script.Parent.InteriorTheme).Apply(model,key)
+ model:SetAttribute("SelectedLivery",key);return true
+end
+return Livery
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="11">
           <Properties>
             <string name="Name">TrainLuxury</string>
             <string name="Source"><![CDATA[-- Native, asset-free finishing applied after cloning the three coaches.
@@ -613,18 +783,85 @@ return Luxury
 ]]></string>
           </Properties>
         </Item>
+        <Item class="ModuleScript" referent="12">
+          <Properties>
+            <string name="Name">TrainPremium</string>
+            <string name="Source"><![CDATA[local Premium={}
+local function part(parent,name,size,pos,color,material,transparency)
+ local p=Instance.new("Part");p.Name=name;p.Size=size;p.Position=pos;p.Color=color
+ p.Material=material or Enum.Material.SmoothPlastic;p.Transparency=transparency or 0
+ p.Anchored=true;p.CanCollide=false;p.CanTouch=false;p.CastShadow=false;p.Parent=parent;return p
+end
+local function sign(parent,name,value,x,color)
+ local p=part(parent,name,Vector3.new(.06,.62,3),Vector3.new(x,5.9,0),Color3.fromRGB(28,35,44))
+ for _,face in ipairs({Enum.NormalId.Left,Enum.NormalId.Right}) do
+  local g=Instance.new("SurfaceGui");g.Face=face;g.CanvasSize=Vector2.new(600,124);g.LightInfluence=0;g.Parent=p
+  local t=Instance.new("TextLabel");t.Size=UDim2.fromScale(1,1);t.BackgroundTransparency=1;t.Text=value;t.TextColor3=color;t.Font=Enum.Font.GothamBold;t.TextScaled=true;t.Parent=g
+ end
+end
+function Premium.Apply(train,front)
+ local gold=Color3.fromRGB(202,173,111)
+ for _,seat in ipairs(train:GetDescendants()) do
+  if seat:IsA("Seat") and seat.Name=="PassengerSeat" then
+   local key=seat:IsDescendantOf(front) and "RoyalCarriage" or (seat.Parent==train and seat.Position.X>40 and "LuxuryPass" or nil)
+   if key then
+    seat:SetAttribute("RequiredPass",key)
+    local prompt=seat:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then prompt.ObjectText=(key=="RoyalCarriage" and "皇家座位 " or "商務座位 ")..tostring(seat:GetAttribute("SeatNumber")) end
+   end
+  end
+ end
+ for _,p in ipairs(front:GetDescendants()) do
+  if p:IsA("BasePart") then
+   if p.Name=="UpholsteredSeat" or p.Name=="SeatBack" or p.Name=="SeatHeadrest" then p.Color=Color3.fromRGB(53,43,60) end
+   if p.Name=="HeadrestCover" then p.Color=Color3.fromRGB(237,226,202) end
+  end
+ end
+ for _,side in ipairs({-1,1}) do
+  part(front,"RoyalWalnutPanel",Vector3.new(24,1.18,.065),Vector3.new(83,1.9,side*4.86),Color3.fromRGB(81,57,47),Enum.Material.Wood)
+  part(front,"RoyalGoldReveal",Vector3.new(24,.035,.075),Vector3.new(83,2.53,side*4.83),gold,Enum.Material.Metal)
+  for _,x in ipairs({78.8,89.2}) do
+   part(front,"RoyalPrivacyDivider",Vector3.new(.08,4.9,2.9),Vector3.new(x,2.8,side*3.4),Color3.fromRGB(149,159,170),Enum.Material.SmoothPlastic,.65)
+   part(front,"RoyalDividerTrim",Vector3.new(.10,4.9,.055),Vector3.new(x,2.8,side*1.92),gold,Enum.Material.Metal)
+  end
+ end
+ -- Furnish the front lounge inside the existing body; no cab ornaments.
+ part(front,"RoyalDiningTable",Vector3.new(3.2,.12,2.6),Vector3.new(78.8,2.0,3.25),Color3.fromRGB(116,82,51),Enum.Material.Wood)
+ part(front,"RoyalDiningTableBase",Vector3.new(.35,1.8,.35),Vector3.new(78.8,1,3.25),gold,Enum.Material.Metal)
+ part(front,"RoyalTeaBar",Vector3.new(5,.20,1.7),Vector3.new(94,2.65,3.85),Color3.fromRGB(75,52,38),Enum.Material.Wood)
+ part(front,"RoyalBarCabinet",Vector3.new(4.8,2.3,1.5),Vector3.new(94,1.4,3.85),Color3.fromRGB(92,67,47),Enum.Material.Wood)
+ part(front,"RoyalBarGoldEdge",Vector3.new(5,.045,.05),Vector3.new(94,2.76,2.98),gold,Enum.Material.Metal)
+ for i=1,4 do
+  local cup=part(front,"RoyalGlassware",Vector3.new(.24,.40,.24),Vector3.new(92.5+i*.6,2.95,4.15),Color3.fromRGB(217,198,144),Enum.Material.SmoothPlastic,.35);cup.Shape=Enum.PartType.Cylinder
+ end
+ local facility=part(front,"RoyalTeaService",Vector3.one,Vector3.new(94,2.8,2.8),gold,Enum.Material.SmoothPlastic,1)
+ facility:SetAttribute("RoyalFacility","TeaBar")
+ local interaction=Instance.new("ProximityPrompt");interaction.ActionText="領取皇家茶飲";interaction.ObjectText="皇家茶飲吧";interaction.RequiresLineOfSight=false;interaction.MaxActivationDistance=7;interaction.HoldDuration=.4;interaction.Parent=facility
+ part(front,"RoyalBedBase",Vector3.new(6.2,.8,2.9),Vector3.new(93,.6,-3.25),Color3.fromRGB(91,65,48),Enum.Material.Wood)
+ part(front,"RoyalBedMattress",Vector3.new(6,.35,2.8),Vector3.new(93,1.18,-3.25),Color3.fromRGB(238,228,204))
+ part(front,"RoyalBedPillow",Vector3.new(1.3,.24,2.3),Vector3.new(95.1,1.48,-3.25),Color3.fromRGB(249,245,233))
+ local resting=Instance.new("Seat");resting.Name="PassengerSeat";resting.Size=Vector3.new(1.3,.18,1.55);resting.CFrame=CFrame.new(92.4,1.46,-3.25)*CFrame.Angles(0,-math.pi/2,0)
+ resting.Transparency=1;resting.Anchored=true;resting.CanTouch=false;resting.CanCollide=false;resting:SetAttribute("RequiredPass","RoyalCarriage");resting:SetAttribute("SeatNumber","ROYAL SUITE");resting.Parent=front
+ local rest=Instance.new("ProximityPrompt");rest.ActionText="休息";rest.ObjectText="皇家休息包廂";rest.MaxActivationDistance=6;rest.HoldDuration=.3;rest.Parent=resting
+ sign(train,"BusinessAreaSign","BUSINESS  ·  商務座位",42,gold)
+ sign(front,"RoyalAreaSign","ROYAL LOUNGE  ·  皇家包廂",72,gold)
+end
+return Premium
+]]></string>
+          </Properties>
+        </Item>
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="9">
+  <Item class="ServerScriptService" referent="13">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="10">
+    <Item class="Folder" referent="14">
       <Properties>
         <string name="Name">LastTrain</string>
       </Properties>
-      <Item class="Script" referent="11">
+      <Item class="Script" referent="15">
         <Properties>
           <string name="Name">Atmosphere</string>
           <token name="RunContext">0</token>
@@ -677,7 +914,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="12">
+      <Item class="Script" referent="16">
         <Properties>
           <string name="Name">Bootstrap</string>
           <token name="RunContext">0</token>
@@ -712,10 +949,15 @@ ensure("RemoteEvent", "TicketUpdate")
 ensure("RemoteFunction", "ShopRequest")
 ensure("RemoteFunction", "MatchmakingRequest")
 ensure("RemoteEvent", "MatchmakingUpdate")
+
+ensure("RemoteFunction", "PremiumShopRequest")
+ensure("RemoteEvent", "PremiumNotice")
+
+ensure("RemoteEvent", "RoyalFeedback")
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="13">
+      <Item class="Script" referent="17">
         <Properties>
           <string name="Name">CharacterShopServer</string>
           <token name="RunContext">0</token>
@@ -727,6 +969,8 @@ local root = ReplicatedStorage:WaitForChild("LastTrain")
 local GameConfig = require(root:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local shopRequest = root:WaitForChild("Remotes"):WaitForChild("ShopRequest")
 local Profiles = require(script.Parent:WaitForChild("ProfileService"))
+local Catalog=require(root.Shared.PremiumCatalog)
+local Edition=require(script.Parent.LimitedEdition)
 
 local passToSkin = {}
 local productById = {}
@@ -771,7 +1015,7 @@ end
 Players.PlayerAdded:Connect(function(player)
     task.spawn(function()
         if not waitForProfile(player) then return end
-        for skinKey in pairs(passToSkin) do
+        for _,skinKey in pairs(passToSkin) do
             refreshPassOwnership(player, skinKey)
         end
     end)
@@ -779,7 +1023,7 @@ end)
 for _, player in ipairs(Players:GetPlayers()) do
     task.spawn(function()
         if not waitForProfile(player) then return end
-        for skinKey in pairs(passToSkin) do
+        for _,skinKey in pairs(passToSkin) do
             refreshPassOwnership(player, skinKey)
         end
     end)
@@ -845,6 +1089,15 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+    if Catalog.Items.StarTrain.ProductId>0 and receiptInfo.ProductId==Catalog.Items.StarTrain.ProductId then
+        local buyer=Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if not buyer or not Profiles.IsLoaded(buyer) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        local serial=Edition.Confirm(buyer.UserId,receiptInfo.PurchaseId)
+        if not serial then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        if not Profiles.GrantEdition(buyer,serial) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+        root.Remotes.PremiumNotice:FireClient(buyer,string.format("銀河高鐵 #%03d / 500 已解鎖。",serial),"StarTrain")
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+    end
     local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
     local product = productById[receiptInfo.ProductId]
     if not player or not product then
@@ -864,7 +1117,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">DepartureGate</string>
           <string name="Source"><![CDATA[-- Server-owned departure decision. Missing/dead characters stay in the roster
@@ -897,7 +1150,54 @@ return Gate
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="15">
+      <Item class="ModuleScript" referent="19">
+        <Properties>
+          <string name="Name">EditionLedger</string>
+          <string name="Source"><![CDATA[-- Pure global-edition ledger. Call mutations only inside one UpdateAsync key.
+local Ledger={Limit=500}
+function Ledger.Normalize(raw)
+ raw=type(raw)=="table" and raw or {}
+ local state={Version=1,Claims={}}
+ local used={}
+ if type(raw.Claims)=="table" then
+  for user,claim in pairs(raw.Claims) do
+   if type(user)=="string" and type(claim)=="table" and type(claim.Serial)=="number"
+    and claim.Serial%1==0 and claim.Serial>=1 and claim.Serial<=Ledger.Limit and not used[claim.Serial] then
+    state.Claims[user]={Serial=claim.Serial,Owned=claim.Owned==true,Receipt=type(claim.Receipt)=="string" and claim.Receipt or nil}
+    used[claim.Serial]=true
+   end
+  end
+ end
+ return state
+end
+function Ledger.Status(state)
+ local owned,reserved=0,0
+ for _,claim in pairs(state.Claims) do if claim.Owned then owned+=1 else reserved+=1 end end
+ return {Limit=Ledger.Limit,Owned=owned,Reserved=reserved,Available=Ledger.Limit-owned-reserved}
+end
+function Ledger.Reserve(state,userId)
+ local key=tostring(userId);local claim=state.Claims[key]
+ if claim then return claim.Serial,claim.Owned and "Owned" or "Reserved" end
+ local used={};for _,c in pairs(state.Claims) do used[c.Serial]=true end
+ for serial=1,Ledger.Limit do
+  if not used[serial] then state.Claims[key]={Serial=serial,Owned=false};return serial,"Reserved" end
+ end
+ return nil,"SoldOut"
+end
+function Ledger.Confirm(state,userId,receipt)
+ if type(receipt)~="string" or receipt=="" then return nil end
+ local key=tostring(userId);local claim=state.Claims[key]
+ -- No unreserved sale can create a 501st copy. Checkout is reserved before
+ -- the experience is allowed to open Roblox's payment dialog.
+ if not claim then return nil end
+ if not claim.Owned then claim.Owned=true;claim.Receipt=receipt end
+ return claim.Serial
+end
+return Ledger
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="20">
         <Properties>
           <string name="Name">ExperienceMode</string>
           <token name="RunContext">0</token>
@@ -908,7 +1208,7 @@ Workspace:SetAttribute("LastTrainMode", mode)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">FirstStationEntry</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -1028,7 +1328,62 @@ return Entry
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="17">
+      <Item class="ModuleScript" referent="22">
+        <Properties>
+          <string name="Name">LimitedEdition</string>
+          <string name="Source"><![CDATA[local DSS=game:GetService("DataStoreService")
+local Run=game:GetService("RunService")
+local Ledger=require(script.Parent.EditionLedger)
+local Edition={}
+local localOnly=Run:IsStudio() and game.PlaceId==0
+local memory=Ledger.Normalize(nil)
+local store
+if not localOnly then
+ local ok,result=pcall(DSS.GetDataStore,DSS,"LastTrain_LimitedEd_v1")
+ if ok then store=result end
+end
+local function update(transform)
+ if localOnly then local result=transform(memory);return true,result,memory end
+ if not store then return false end
+ local result
+ local ok,state=pcall(function() return store:UpdateAsync("Galaxy500_v1",function(raw)
+  local ledger=Ledger.Normalize(raw);result=transform(ledger);return ledger
+ end) end)
+ return ok,result,state
+end
+function Edition.Status(userId)
+ local state
+ if localOnly then state=memory else
+  if not store then return nil end
+  local ok,raw=pcall(store.GetAsync,store,"Galaxy500_v1");if not ok then return nil end
+  state=Ledger.Normalize(raw)
+ end
+ local status=Ledger.Status(state)
+ local claim=state.Claims[tostring(userId)]
+ if claim and not claim.Owned then status.ReservedSerial=claim.Serial end
+ return status
+end
+function Edition.Reserve(userId)
+ local ok,serial=update(function(state) return Ledger.Reserve(state,userId) end)
+ return ok and serial or nil,ok and "庫存已滿或編號已保留。" or "庫存連線忙碌，尚未開啟付款。"
+end
+function Edition.Confirm(userId,receipt)
+ local ok,serial=update(function(state) return Ledger.Confirm(state,userId,receipt) end)
+ return ok and serial or nil
+end
+function Edition.OwnedSerial(userId)
+ if localOnly then local c=memory.Claims[tostring(userId)];return c and c.Owned and c.Serial or nil end
+ if not store then return nil end
+ local ok,raw=pcall(store.GetAsync,store,"Galaxy500_v1")
+ if not ok then return nil end
+ local c=Ledger.Normalize(raw).Claims[tostring(userId)]
+ return c and c.Owned and c.Serial or nil
+end
+return Edition
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="23">
         <Properties>
           <string name="Name">LobbyWorldBuilder</string>
           <token name="RunContext">0</token>
@@ -1478,7 +1833,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="18">
+      <Item class="Script" referent="24">
         <Properties>
           <string name="Name">Matchmaking</string>
           <token name="RunContext">0</token>
@@ -1535,6 +1890,7 @@ local function removeFromQueue(player)
 end
 
 local function studioRound(party)
+ workspace:SetAttribute("LastTrainHostId",party[1].UserId)
 	Workspace:SetAttribute("LastTrainMode", "Game")
 	local lobby = Workspace:FindFirstChild("LastTrainLobby")
 	if lobby then lobby:Destroy() end
@@ -1550,9 +1906,9 @@ local function studioRound(party)
 		-- Keep the first-person spawn clear of the rear carriage side. Starting at
 		-- the west end gives the player a readable view of the train and the nearby
 		-- platform approach, instead of spawning alongside an opaque cab panel.
-		local x=(station - 1) * config.StationSpacing - 80
+		local x=-80
 		if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
-		character:PivotTo(CFrame.new(x, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		character:PivotTo(CFrame.new(workspace:GetAttribute("LastTrainTraveling") and 25 or x, 3.4, workspace:GetAttribute("LastTrainTraveling") and config.TrainCenterZ or -22) * CFrame.Angles(0, math.rad(-90), 0))
 		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
 		if humanoid then
 			humanoid.Died:Once(function()
@@ -1645,7 +2001,7 @@ local function launchParty()
 		local accessCode = TeleportService:ReserveServerAsync(game.PlaceId)
 		local options = Instance.new("TeleportOptions")
 		options.ReservedServerAccessCode = accessCode
-		options:SetTeleportData({ LastTrainRound = true })
+		options:SetTeleportData({ LastTrainRound = true, LastTrainHostId=party[1].UserId })
 		TeleportService:TeleportAsync(game.PlaceId, party, options)
 	end)
 	if ok then
@@ -1786,7 +2142,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="19">
+      <Item class="Script" referent="25">
         <Properties>
           <string name="Name">PlayerSpawn</string>
           <token name="RunContext">0</token>
@@ -1809,8 +2165,9 @@ local function getStationSpawnCFrame(player)
 	local config = require(game:GetService("ReplicatedStorage"):WaitForChild("LastTrain"):WaitForChild("Shared"):WaitForChild("GameConfig"))
 	-- Respawns use the same clear approach point as a new round, away from the
 	-- carriage body so the locked first-person camera cannot start inside it.
-	local x = (station - 1) * config.StationSpacing - 80
+	local x = -80
 	if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
+	if workspace:GetAttribute("LastTrainTraveling") then return CFrame.new(25,.4,config.TrainCenterZ) end
 	return CFrame.new(x, 0.4, -22) * CFrame.Angles(0, math.rad(-90), 0)
 end
 
@@ -1856,7 +2213,125 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="20">
+      <Item class="ModuleScript" referent="26">
+        <Properties>
+          <string name="Name">PremiumAccess</string>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local Profiles=require(script.Parent.ProfileService)
+local Access={}
+function Access.Has(player,key)
+ if not key then return true end
+ local state=Profiles.GetState(player)
+ if state and state.OwnedPasses[key] then return true end
+ if key=="RoyalCarriage" then
+  local host=Players:GetPlayerByUserId(player:GetAttribute("RoyalGuestOf") or 0)
+  local owner=host and Profiles.GetState(host)
+  return owner~=nil and owner.OwnedPasses.RoyalCarriage==true
+ end
+ return false
+end
+return Access
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="27">
+        <Properties>
+          <string name="Name">PremiumShop</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local Marketplace=game:GetService("MarketplaceService")
+local RS=game:GetService("ReplicatedStorage")
+local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
+local Profiles=require(script.Parent.ProfileService)
+local Edition=require(script.Parent.LimitedEdition)
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local request=remotes:WaitForChild("PremiumShopRequest")
+local notice=remotes:WaitForChild("PremiumNotice")
+local prices,last={},{}
+local function loaded(p)
+ local deadline=os.clock()+20
+ repeat if Profiles.IsLoaded(p) then return true end;task.wait(.1) until not p.Parent or os.clock()>deadline
+ return false
+end
+local function offer(key)
+ local item=Catalog.Items[key]
+ local id=item.ProductId or item.PassId
+ if id<=0 then return {Price=item.BasePrice,ForSale=false,Planned=true} end
+ local cached=prices[key]
+ if cached and os.clock()-cached.At<120 then return cached end
+ local ok,info=pcall(Marketplace.GetProductInfoAsync,Marketplace,id,item.ProductId and Enum.InfoType.Product or Enum.InfoType.GamePass)
+ local amount=ok and type(info)=="table" and tonumber(info.PriceInRobux) or nil
+ local result={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Planned=false}
+ prices[key]=result;return result
+end
+local function verify(p,key)
+ local item=Catalog.Items[key];if not item or item.PassId<=0 then return end
+ for attempt=1,3 do
+  local ok,owned=pcall(Marketplace.UserOwnsGamePassAsync,Marketplace,p.UserId,item.PassId)
+  if ok then if p.Parent then Profiles.SetPass(p,key,owned==true) end;return owned end
+  task.wait(attempt*.4)
+ end
+ warn("LastTrain could not refresh pass ownership: "..key)
+end
+local function join(p)
+ task.spawn(function()
+  if not loaded(p) then return end
+  for _,key in ipairs(Catalog.Order) do verify(p,key) end
+  local serial=Edition.OwnedSerial(p.UserId);if serial then Profiles.GrantEdition(p,serial) end
+ end)
+end
+Players.PlayerAdded:Connect(join);for _,p in ipairs(Players:GetPlayers()) do join(p) end
+Marketplace.PromptGamePassPurchaseFinished:Connect(function(p,id,bought)
+ if not bought then return end
+ for key,item in pairs(Catalog.Items) do
+  if item.PassId==id and id>0 then task.spawn(function()
+   if verify(p,key) then notice:FireClient(p,item.Name.." 已解鎖，可在商店使用。",key) end
+  end);return end
+ end
+end)
+request.OnServerInvoke=function(p,action,key,option)
+ if type(action)~="string" or not loaded(p) then return {ok=false,message="資料載入中，請稍後再試。"} end
+ local now=os.clock()
+ if now-(last[p] or 0)<.2 then return {ok=false,message="請稍候再操作。"} end
+ last[p]=now
+ if action=="State" then
+  local offers={};for _,k in ipairs(Catalog.Order) do offers[k]=table.clone(offer(k)) end
+  offers.StarTrain.Edition=Edition.Status(p.UserId)
+  if not offers.StarTrain.Edition then offers.StarTrain.ForSale=false end
+  local party={};for _,member in ipairs(Players:GetPlayers()) do if member~=p then table.insert(party,{Id=member.UserId,Name=member.DisplayName}) end end
+  return {ok=true,state=Profiles.GetState(p),offers=offers,party=party}
+ end
+ if action=="ResetLivery" then local ok=Profiles.ResetLivery(p);return {ok=ok,message=ok and "已選擇白橘列車。" or "儲存失敗。"} end
+ if type(key)~="string" or not Catalog.Items[key] then return {ok=false,message="找不到這個商品。"} end
+ if action=="Invite" and key=="RoyalCarriage" then
+  local state=Profiles.GetState(p);local target=Players:GetPlayerByUserId(type(option)=="number" and option%1==0 and option or 0)
+  if workspace:GetAttribute("LastTrainMode")~="Game" or not state.OwnedPasses.RoyalCarriage or not target or target==p then return {ok=false,message="請邀請同車的朋友。"} end
+  target:SetAttribute("RoyalGuestOf",p.UserId)
+  notice:FireClient(target,p.DisplayName.." 邀請你使用本局皇家座位與茶飲吧。","RoyalCarriage")
+  return {ok=true,message="已邀請 "..target.DisplayName.." 使用本局皇家設施。"}
+ end
+ if action=="Equip" then
+  local ok,message=Profiles.EquipPremium(p,key,option)
+  return {ok=ok,message=message,state=Profiles.GetState(p)}
+ elseif action=="Buy" then
+  local state=Profiles.GetState(p)
+  if state.OwnedPasses[key] then return {ok=false,message="你已經擁有這個商品。"} end
+  local current=offer(key)
+  if not current.ForSale then return {ok=false,message="此商品尚未上架，目前可預覽內容。"} end
+  if Catalog.Items[key].Limited then
+   local serial,message=Edition.Reserve(p.UserId)
+   if not serial then return {ok=false,message=message} end
+   return {ok=true,id=Catalog.Items[key].ProductId,promptType="Product",serial=serial}
+  end
+  return {ok=true,id=Catalog.Items[key].PassId,promptType="GamePass"}
+ end
+ return {ok=false,message="不支援的商店操作。"}
+end
+Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="28">
         <Properties>
           <string name="Name">ProfileLoader</string>
           <token name="RunContext">0</token>
@@ -1877,7 +2352,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">ProfileService</string>
           <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
@@ -1900,6 +2375,7 @@ elseif isUnpublishedStudioTest then
 else
     warn("LastTrain: DataStore is unavailable: " .. tostring(storeResult))
 end
+local Catalog=require(ReplicatedStorage.LastTrain.Shared.PremiumCatalog)
 local Profiles = {}
 local cache = {}
 local locks = {}
@@ -1913,6 +2389,7 @@ local function normalize(raw)
         OwnedSkins = {},
         EquippedSkin = "PlatformWorker",
         ProcessedReceipts = {},
+        OwnedPasses = {}, EditionSerials={}, EquippedLivery="Taiwan", EquippedFlashlight="Standard", FlashlightColor="Ice",
     }
     if type(raw.OwnedSkins) == "table" then
         for key, owned in pairs(raw.OwnedSkins) do
@@ -1935,6 +2412,17 @@ local function normalize(raw)
             end
         end
     end
+    if type(raw.OwnedPasses)=="table" then
+        for key,owned in pairs(raw.OwnedPasses) do
+            if Catalog.Items[key] and owned==true then result.OwnedPasses[key]=true end
+        end
+    end
+    local serial=type(raw.EditionSerials)=="table" and tonumber(raw.EditionSerials.StarTrain)
+    if serial and serial%1==0 and serial>=1 and serial<=500 then result.EditionSerials.StarTrain=serial end
+    local livery=Catalog.Liveries[raw.EquippedLivery]
+    if livery and (not livery.Pass or result.OwnedPasses[livery.Pass]) then result.EquippedLivery=raw.EquippedLivery end
+    if result.OwnedPasses.NeonFlashlight and raw.EquippedFlashlight=="Neon" then result.EquippedFlashlight="Neon" end
+    if raw.FlashlightColor=="Amber" or raw.FlashlightColor=="Violet" then result.FlashlightColor=raw.FlashlightColor end
     return result
 end
 
@@ -1948,7 +2436,10 @@ local function applySkin(player, skinKey)
     local humanoid = character:FindFirstChildWhichIsA("Humanoid")
     if humanoid then humanoid.WalkSpeed = 16 * (skin.WalkSpeedMultiplier or 1) end
 
-    CharacterAppearance.Apply(character, skinKey)
+    if character:GetAttribute("AppliedLastTrainSkin")~=skinKey then
+        CharacterAppearance.Apply(character, skinKey)
+        character:SetAttribute("AppliedLastTrainSkin",skinKey)
+    end
 end
 
 local function syncPlayer(userId, profile)
@@ -1968,6 +2459,11 @@ local function syncPlayer(userId, profile)
     end
     coins.Value = profile.Coins
     player:SetAttribute("EquippedSkin", profile.EquippedSkin)
+    for key in pairs(Catalog.Items) do player:SetAttribute("Owns_"..key,profile.OwnedPasses[key]==true) end
+    player:SetAttribute("GalaxyEditionSerial",profile.EditionSerials.StarTrain)
+    player:SetAttribute("EquippedLivery",profile.EquippedLivery)
+    player:SetAttribute("EquippedFlashlight",profile.EquippedFlashlight)
+    player:SetAttribute("FlashlightColor",profile.FlashlightColor)
     applySkin(player, profile.EquippedSkin)
 end
 
@@ -2026,7 +2522,7 @@ function Profiles.Load(player)
         if not appearanceHooks[player.UserId] then
             appearanceHooks[player.UserId] = player.CharacterAppearanceLoaded:Connect(function(character)
                 local latest = cache[player.UserId]
-                if latest and player.Character == character then applySkin(player, latest.EquippedSkin) end
+                if latest and player.Character == character then character:SetAttribute("AppliedLastTrainSkin",nil);applySkin(player, latest.EquippedSkin) end
             end)
         end
         if player.Character then applySkin(player, cache[player.UserId].EquippedSkin) end
@@ -2043,7 +2539,7 @@ function Profiles.GetState(player)
     if not profile then return nil end
     local owned = {}
     for key, value in pairs(profile.OwnedSkins) do owned[key] = value end
-    return { Coins = profile.Coins, OwnedSkins = owned, EquippedSkin = profile.EquippedSkin }
+    return { Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
 end
 
 function Profiles.AwardCoins(player, amount)
@@ -2103,6 +2599,48 @@ function Profiles.GrantSkin(player, skinKey)
     return ok
 end
 
+function Profiles.SetPass(player,key,owned)
+    local item=Catalog.Items[key];if not item then return false end
+    return update(player.UserId,function(profile)
+        profile.OwnedPasses[key]=owned==true or nil
+        if item.Skin then
+            profile.OwnedSkins[item.Skin]=owned==true or nil
+            if not owned and profile.EquippedSkin==item.Skin then profile.EquippedSkin="PlatformWorker" end
+        end
+        local livery=Catalog.Liveries[profile.EquippedLivery]
+        if not owned and livery and livery.Pass==key then profile.EquippedLivery="Taiwan" end
+        if not owned and key=="NeonFlashlight" then profile.EquippedFlashlight="Standard" end
+    end)
+end
+function Profiles.EquipPremium(player,key,option)
+    local item=Catalog.Items[key];if not item then return false,"找不到這個商品。" end
+    local success,message=false,"尚未擁有這個商品。"
+    local ok=update(player.UserId,function(profile)
+        if not profile.OwnedPasses[key] then return end
+        if item.Skin then profile.EquippedSkin=item.Skin
+        elseif item.Kind=="Livery" or item.Kind=="Royal" then
+            local livery=Catalog.Liveries[option]
+            if not livery or (livery.Pass~=key and not (key=="RoyalCarriage" and option=="Taiwan")) then message="請選擇已解鎖的列車外觀。";return end
+            profile.EquippedLivery=option
+        elseif item.Kind=="Flashlight" then
+            if option~="Ice" and option~="Amber" and option~="Violet" and option~="Standard" then message="找不到這種光色。";return end
+            profile.EquippedFlashlight=option=="Standard" and "Standard" or "Neon"
+            if option~="Standard" then profile.FlashlightColor=option end
+        end
+        success=true;message=item.Kind=="Access" and "已解鎖，請前往專屬座位區。" or "已套用；列車塗裝由房主在出發前決定。"
+    end)
+    return ok and success,ok and message or "資料儲存失敗，請稍後再試。"
+end
+function Profiles.GrantEdition(player,serial)
+    if type(serial)~="number" or serial%1~=0 or serial<1 or serial>500 then return false end
+    return update(player.UserId,function(profile)
+        profile.OwnedPasses.StarTrain=true;profile.EditionSerials.StarTrain=serial
+    end)
+end
+function Profiles.ResetLivery(player)
+    return update(player.UserId,function(profile) profile.EquippedLivery="Taiwan" end)
+end
+
 function Profiles.GrantCoinsFromReceipt(userId, purchaseId, amount)
     if type(purchaseId) ~= "string" or purchaseId == "" then return false end
     amount = math.max(0, math.floor(tonumber(amount) or 0))
@@ -2135,7 +2673,7 @@ return Profiles
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="22">
+      <Item class="Script" referent="30">
         <Properties>
           <string name="Name">RecoveryGuard</string>
           <token name="RunContext">0</token>
@@ -2172,9 +2710,10 @@ RunService.Heartbeat:Connect(function()
 			if outsideStation and (not lastRecovery[player] or os.clock() - lastRecovery[player] > 2) then
 				lastRecovery[player] = os.clock()
 				local stop = currentStop
-				local x = (stop - 1) * GameConfig.StationSpacing - 80
+				local x = -80
     if stop==1 and not player:GetAttribute("FirstStationValidated") then x=GameConfig.FirstStationEntrySpawnX end
-				character:PivotTo(CFrame.new(x, 3, -22) * CFrame.Angles(0, math.rad(-90), 0))
+				if workspace:GetAttribute("LastTrainTraveling") then x=25 end
+    character:PivotTo(CFrame.new(x, 3, workspace:GetAttribute("LastTrainTraveling") and GameConfig.TrainCenterZ or -22) * CFrame.Angles(0, math.rad(-90), 0))
 				root.AssemblyLinearVelocity = Vector3.zero
 				root.AssemblyAngularVelocity = Vector3.zero
 			end
@@ -2188,7 +2727,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="23">
+      <Item class="Script" referent="31">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -2220,7 +2759,9 @@ local boardingText=nil
 local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
+local PremiumAccess=require(script.Parent.PremiumAccess)
 local operations=Operations.new(train)
+local scenes=require(script.Parent.StationScenes).new(world,GameConfig)
 local entry=FirstStationEntry.new(world,train,GameConfig,function(player,text)
  objectiveEvent:FireClient(player,stage,text,false,GameConfig.Stations[1].Name,"",nil,"Entry",1)
 end)
@@ -2309,8 +2850,10 @@ local function moveToNextStation()
  boardingText=nil
  updateDisplays(true)
  publish("列車開往下一站。","",nil,"Moving")
+ scenes:Depart(station)
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
+ scenes:Dock(station)
  Workspace:SetAttribute("LastTrainStation",station)
  Workspace:SetAttribute("LastTrainTraveling",false)
  arrivedAt=os.clock()
@@ -2401,13 +2944,29 @@ for _,seat in ipairs(train:GetDescendants()) do
  if seat:IsA("Seat") and seat.Name=="PassengerSeat" then
   local prompt=seat:FindFirstChildOfClass("ProximityPrompt")
   if prompt then
-   seat:GetPropertyChangedSignal("Occupant"):Connect(function() prompt.Enabled=seat.Occupant==nil end)
+   seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+    local occupant=seat.Occupant
+    prompt.Enabled=occupant==nil
+    local required=seat:GetAttribute("RequiredPass")
+    local owner=occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+    local state=owner and Profiles.GetState(owner)
+    if required and owner and not PremiumAccess.Has(owner,required) then
+     occupant.Sit=false
+     local weld=seat:FindFirstChild("SeatWeld");if weld then weld:Destroy() end
+    end
+   end)
    prompt.Triggered:Connect(function(player)
     local character=player.Character
     local root=character and character:FindFirstChild("HumanoidRootPart")
     local h=character and character:FindFirstChildWhichIsA("Humanoid")
     if not root or not h or h.Health<=0 or seat.Occupant or not entry:CanBoard(player,station) or not Operations.Contains(train,character) then return end
     if (root.Position-seat.Position).Magnitude>prompt.MaxActivationDistance+1 then return end
+    local required=seat:GetAttribute("RequiredPass")
+    local state=Profiles.GetState(player)
+    if required and not PremiumAccess.Has(player,required) then
+     ReplicatedStorage.LastTrain.Remotes.PremiumNotice:FireClient(player,required=="RoyalCarriage" and "這是皇家專屬座位，可在精品商店預覽通行證。" or "這是商務專屬座位，可在精品商店預覽通行證。",required)
+     return
+    end
     seat:Sit(h)
    end)
   end
@@ -2416,14 +2975,56 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="Script" referent="32">
+        <Properties>
+          <string name="Name">RoundLivery</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
+local Livery=require(RS.LastTrain.Shared.TrainLivery)
+local Profiles=require(script.Parent.ProfileService)
+while workspace:GetAttribute("LastTrainMode")~="Game" do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+local w=workspace:WaitForChild("LastTrainWorld")
+while not w:GetAttribute("Ready") do w:GetAttributeChangedSignal("Ready"):Wait() end
+while #Players:GetPlayers()==0 do task.wait(.1) end
+local first=Players:GetPlayers()[1]
+local data=first:GetJoinData().TeleportData
+local hostId=workspace:GetAttribute("LastTrainHostId") or (type(data)=="table" and tonumber(data.LastTrainHostId)) or first.UserId
+workspace:SetAttribute("LastTrainHostId",hostId)
+local chosen=false
+local function choose(p)
+ if chosen or p.UserId~=hostId then return end
+ task.spawn(function()
+  local deadline=os.clock()+25
+  while not Profiles.IsLoaded(p) and p.Parent and os.clock()<deadline do task.wait(.1) end
+  local state=Profiles.GetState(p);if not state then return end
+  local key=state.EquippedLivery;local style=Catalog.Liveries[key]
+  if style and style.Pass then
+   local item=Catalog.Items[style.Pass]
+   local ok,owned=false,false
+   if item.Limited then ok=true;owned=require(script.Parent.LimitedEdition).OwnedSerial(p.UserId)~=nil
+   elseif item.PassId>0 then ok,owned=pcall(game:GetService("MarketplaceService").UserOwnsGamePassAsync,game:GetService("MarketplaceService"),p.UserId,item.PassId) end
+   if not ok or not owned then key="Taiwan" end
+  end
+  if workspace:GetAttribute("LastTrainStation")~=1 or workspace:GetAttribute("LastTrainBoardingPending") then return end
+  Livery.Apply(w.Props.LastTrainCar,key)
+  if key=="Starfield" then w.Props.LastTrainCar:SetAttribute("EditionSerial",state.EditionSerials.StarTrain) end
+  chosen=true
+ end)
+end
+Players.PlayerAdded:Connect(choose);for _,p in ipairs(Players:GetPlayers()) do choose(p) end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
 -- never a client-supplied attribute, when deciding whether someone is aboard.
 local Safety={}
 function Safety.ShouldRecover(position,aboard,station,config)
- local stationX=(station-1)*config.StationSpacing
+ local stationX=config.StationaryTrain and 0 or (station-1)*config.StationSpacing
  local inTunnel=not aboard and (math.abs(position.X-stationX)>config.PlatformHalfLength+5 or position.Y < -2.4)
  return inTunnel or position.Y < -8 or math.abs(position.Z)>45
   or position.X < -250 or position.X > config.StationSpacing*(#config.Stations-1)+250
@@ -2432,7 +3033,93 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="25">
+      <Item class="Script" referent="34">
+        <Properties>
+          <string name="Name">RoyalFacilities</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local RS=game:GetService("ReplicatedStorage")
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local notice=remotes:WaitForChild("PremiumNotice")
+local Players=game:GetService("Players")
+local Access=require(script.Parent.PremiumAccess)
+local Operations=require(script.Parent.TrainOperations)
+while workspace:GetAttribute("LastTrainMode")~="Game" do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+local w=workspace:WaitForChild("LastTrainWorld")
+while not w:GetAttribute("Ready") do w:GetAttributeChangedSignal("Ready"):Wait() end
+local train=w.Props.LastTrainCar
+local last={}
+for _,p in ipairs(train:GetDescendants()) do
+ if p:GetAttribute("RoyalFacility")=="TeaBar" then
+  local prompt=p:FindFirstChildOfClass("ProximityPrompt")
+  prompt.Triggered:Connect(function(player)
+   local c=player.Character;local root=c and c:FindFirstChild("HumanoidRootPart")
+   if not root or not Operations.Contains(train,c) or (root.Position-p.Position).Magnitude>8 then return end
+   if not Access.Has(player,"RoyalCarriage") then notice:FireClient(player,"皇家茶飲吧供皇家乘客與受邀朋友使用。","RoyalCarriage");return end
+   if os.clock()-(last[player] or -10)<5 then return end;last[player]=os.clock()
+   local backpack=player:FindFirstChildOfClass("Backpack");if not backpack or backpack:FindFirstChild("皇家茶飲") or c:FindFirstChild("皇家茶飲") then return end
+   local tea=Instance.new("Tool");tea.Name="皇家茶飲";tea.ToolTip="皇家茶飲吧 · 點擊品嚐";tea.CanBeDropped=false
+   local cup=Instance.new("Part");cup.Name="Handle";cup.Shape=Enum.PartType.Cylinder;cup.Size=Vector3.new(.65,.55,.55);cup.Color=Color3.fromRGB(226,212,180);cup.Material=Enum.Material.SmoothPlastic;cup.CanCollide=false;cup.CanTouch=false;cup.Massless=true;cup.Parent=tea
+   tea.Grip=CFrame.Angles(0,0,math.pi/2)
+   tea.Activated:Connect(function() if tea.Parent==player.Character then tea:Destroy();remotes:WaitForChild("RoyalFeedback"):FireClient(player,"溫熱的皇家茶飲，帶著淡淡花香。") end end)
+   tea.Parent=backpack;remotes:WaitForChild("RoyalFeedback"):FireClient(player,"皇家茶飲已放入背包，可裝備品嚐。")
+  end)
+ end
+end
+Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="35">
+        <Properties>
+          <string name="Name">StationScenes</string>
+          <string name="Source"><![CDATA[-- Station coordinates are local to a fixed passenger train. Only scenery moves.
+local Scenes={};Scenes.__index=Scenes
+function Scenes.new(world,config)
+ local self=setmetatable({World=world,Config=config,Stations={}},Scenes)
+ for _,p in ipairs(world:GetDescendants()) do
+  if p:IsA("BasePart") then
+   local index=p:GetAttribute("StationIndex")
+   if index then
+    if not p:GetAttribute("StationLocalFrame") then
+     p:SetAttribute("StationLocalFrame",p.CFrame-Vector3.new((index-1)*config.StationSpacing,0,0))
+     p:SetAttribute("StationCollision",p.CanCollide);p:SetAttribute("StationQuery",p.CanQuery)
+    end
+    self.Stations[index]=self.Stations[index] or {};table.insert(self.Stations[index],p)
+   end
+  end
+ end
+ return self
+end
+function Scenes:Dock(index)
+ local parts,poses={},{}
+ for station,list in pairs(self.Stations) do
+  local active=station==index
+  for _,p in ipairs(list) do
+   table.insert(parts,p)
+   table.insert(poses,p:GetAttribute("StationLocalFrame")+Vector3.new(0,active and 0 or -1000-station*100,0))
+   p.CanCollide=active and p:GetAttribute("StationCollision")==true
+   p.CanQuery=active and p:GetAttribute("StationQuery")==true
+   for _,d in ipairs(p:GetDescendants()) do
+    if d:IsA("ProximityPrompt") or d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=active end
+   end
+  end
+ end
+ workspace:BulkMoveTo(parts,poses,Enum.BulkMoveMode.FireCFrameChanged)
+ self.World:SetAttribute("ActiveStation",index)
+end
+function Scenes:Depart(index)
+ -- All passengers are already inside. Remove platform collisions while its
+ -- departure is rendered locally; the train's collision floor never moves.
+ for _,p in ipairs(self.Stations[index] or {}) do
+  p.CanCollide=false;p.CanQuery=false
+  for _,d in ipairs(p:GetDescendants()) do if d:IsA("ProximityPrompt") then d.Enabled=false end end
+ end
+end
+return Scenes
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="36">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -2509,6 +3196,12 @@ end
 
 local active = false
 local speed = 10.5
+local function huntAllowed()
+    local stage=Workspace:GetAttribute("LastTrainRoundStage") or 0
+    local station=Workspace:GetAttribute("LastTrainStation") or 1
+    return stage>=1 and stage<3 and station>=2 and station<=3
+        and not Workspace:GetAttribute("LastTrainTraveling")
+end
 local function nearestPlayer()
     local bestRoot, bestDistance, bestRange, bestScore
     for _, player in ipairs(Players:GetPlayers()) do
@@ -2528,6 +3221,7 @@ local function nearestPlayer()
 end
 
 local function catchNearbyPlayer()
+    if not huntAllowed() then return end
     for _, player in ipairs(Players:GetPlayers()) do
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
@@ -2541,12 +3235,12 @@ end
 while true do
     local stage = Workspace:GetAttribute("LastTrainRoundStage") or 0
     local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
-    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, -22)
+    local stationSpawn = Vector3.new(118, 0, -22)
     if (stationSpawn - spawnPosition).Magnitude > 1 then
         spawnPosition = stationSpawn
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
     end
-    local shouldHunt = stage >= 1 and stage < 3 and station >= 2 and station <= 3
+    local shouldHunt = huntAllowed()
     if shouldHunt and not active then
         active = true
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
@@ -2570,7 +3264,7 @@ while true do
             if success and path.Status == Enum.PathStatus.Success then
                 local waypoints = path:GetWaypoints()
                 for index = 2, #waypoints do
-                    if not active then break end
+                    if not active or not huntAllowed() then break end
                     local destination = Vector3.new(waypoints[index].Position.X, 0.5, waypoints[index].Position.Z)
                     local start = root.Position
                     local delta = Vector3.new(destination.X - start.X, 0, destination.Z - start.Z)
@@ -2578,7 +3272,7 @@ while true do
                     if length > 0.2 then
                         local direction = delta.Unit
                         local travelled = 0
-                        while travelled < length and active do
+                        while travelled < length and active and huntAllowed() do
                             local dt = RunService.Heartbeat:Wait()
                             local step = math.min(speed * dt, length - travelled)
                             travelled += step
@@ -2601,7 +3295,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">TicketAccess</string>
           <string name="Source"><![CDATA[-- Per-round, per-player state. This never reads a client-provided credential.
@@ -2628,12 +3322,13 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
 local Players=game:GetService("Players")
 local TweenService=game:GetService("TweenService")
+local HttpService=game:GetService("HttpService")
 local Operations={}
 Operations.__index=Operations
 
@@ -2645,9 +3340,12 @@ function Operations.new(train)
    if p.Name=="SlidingDoor" then
     local closed=pivot:ToObjectSpace(p.CFrame)
     local shift=(p:GetAttribute("OpenX") or p.Position.X)-(p:GetAttribute("ClosedX") or p.Position.X)
+    p:SetAttribute("MotionClosedFrame",closed)
     table.insert(self.Doors,{Part=p,Closed=closed,Open=closed+Vector3.new(shift,0,0)})
    elseif p.Name=="BogieWheel" or p.Name=="WheelHub" then
-    table.insert(self.Wheels,{Part=p,Relative=pivot:ToObjectSpace(p.CFrame)})
+    local relative=pivot:ToObjectSpace(p.CFrame)
+    p:SetAttribute("MotionWheelFrame",relative)
+    table.insert(self.Wheels,{Part=p,Relative=relative})
    end
   end
  end
@@ -2696,47 +3394,76 @@ function Operations:SetDoors(open,instant)
  self.Train:SetAttribute("DoorsOpen",open)
 end
 
-function Operations:Move(distance,duration,extraRiders)
+function Operations:Move(distance,duration,_extraRiders)
  assert(not self.Moving,"Train already moving")
  assert(not self.Train:GetAttribute("DoorsOpen"),"Close doors before departure")
+ assert(duration>0,"Travel duration must be positive")
  self.Moving=true
- local start=self.Train:GetPivot()
- local value=Instance.new("CFrameValue"); value.Value=start
- local previous=start
- local function update()
-  local current=value.Value
-  local delta=current*previous:Inverse()
-  local riders={}
-  for _,player in ipairs(Players:GetPlayers()) do
-   if Operations.Contains(self.Train,player.Character) then table.insert(riders,player.Character) end
-  end
-  -- Regression fixtures may supply server-owned NPCs; no client can call this module.
-  for _,character in ipairs(extraRiders or {}) do
-   if Operations.Contains(self.Train,character) then table.insert(riders,character) end
-  end
-  local standing={}
-  for _,character in ipairs(riders) do
-   local h=character:FindFirstChildWhichIsA("Humanoid")
-   if not (h.SeatPart and h.SeatPart:IsDescendantOf(self.Train)) then
-    table.insert(standing,{Character=character,Target=delta*character:GetPivot()})
-   end
-  end
-  self.Train:PivotTo(current)
-  for _,rider in ipairs(standing) do rider.Character:PivotTo(rider.Target) end
-  local rotation=-(current.Position-start.Position).X/.675
-  for _,wheel in ipairs(self.Wheels) do wheel.Part.CFrame=current*wheel.Relative*CFrame.Angles(rotation,0,0) end
-  previous=current
- end
- local connection=value:GetPropertyChangedSignal("Value"):Connect(update)
- local tween=TweenService:Create(value,TweenInfo.new(duration,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Value=start+Vector3.new(distance,0,0)})
- tween:Play(); tween.Completed:Wait()
- connection:Disconnect(); value:Destroy(); self.Moving=false
+ local startedAt=workspace:GetServerTimeNow()
+ local from=workspace:GetAttribute("LastTrainStation") or 1
+ self.Train:SetAttribute("TravelScene",HttpService:JSONEncode({Distance=distance,Duration=duration,
+  StartedAt=startedAt,From=from,To=math.min(from+1,7)}))
+ -- No train, character, camera, collision floor or seat transform is changed.
+ -- Every client draws only the passing scenery using the shared server clock.
+ task.wait(duration)
+ self.Moving=false
 end
 return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="28">
+      <Item class="Script" referent="39">
+        <Properties>
+          <string name="Name">VIPLounge</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local RS=game:GetService("ReplicatedStorage")
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local notice=remotes:WaitForChild("PremiumNotice")
+while workspace:GetAttribute("LastTrainMode")==nil do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+if workspace:GetAttribute("LastTrainMode")~="Lobby" then return end
+local lobby=workspace:WaitForChild("LastTrainLobby")
+local lounge=Instance.new("Model");lounge.Name="VIPLounge";lounge.Parent=lobby
+local function part(name,size,pos,color)
+ local p=Instance.new("Part");p.Name=name;p.Size=size;p.Position=pos;p.Color=color;p.Material=Enum.Material.SmoothPlastic
+ p.Anchored=true;p.Parent=lounge;return p
+end
+local gold=Color3.fromRGB(212,182,112)
+part("LoungeCarpet",Vector3.new(30,.06,22),Vector3.new(-59,.05,57),Color3.fromRGB(39,45,59))
+for _,x in ipairs({-74,-44}) do part("LoungeSide",Vector3.new(.15,3,22),Vector3.new(x,1.5,57),Color3.fromRGB(55,63,77)) end
+local panel=part("VIPLoungeSign",Vector3.new(20,2,.14),Vector3.new(-59,5,67),Color3.fromRGB(24,31,44))
+local g=Instance.new("SurfaceGui");g.Face=Enum.NormalId.Front;g.CanvasSize=Vector2.new(800,100);g.LightInfluence=0;g.Parent=panel
+local text=Instance.new("TextLabel");text.Size=UDim2.fromScale(1,1);text.BackgroundTransparency=1;text.Text="VIP  LOUNGE  ·  專屬候車區";text.TextColor3=gold;text.Font=Enum.Font.GothamBold;text.TextScaled=true;text.Parent=g
+for _,x in ipairs({-68,-59,-50}) do
+ local seat=Instance.new("Seat");seat.Name="VIPLoungeSeat";seat.Size=Vector3.new(2.4,.4,2.4);seat.Position=Vector3.new(x,1.2,61);seat.Color=Color3.fromRGB(41,47,65);seat.Anchored=true;seat.CanTouch=false;seat.Parent=lounge
+ part("LoungeSeatBack",Vector3.new(2.4,2.4,.3),Vector3.new(x,2.3,62.1),Color3.fromRGB(41,47,65))
+ local prompt=Instance.new("ProximityPrompt");prompt.ActionText="坐下";prompt.ObjectText="VIP 專屬候車座位";prompt.MaxActivationDistance=7;prompt.Parent=seat
+ prompt.Triggered:Connect(function(p)
+  local c=p.Character;local h=c and c:FindFirstChildWhichIsA("Humanoid");local r=c and c:FindFirstChild("HumanoidRootPart")
+  if p:GetAttribute("Owns_VIP") and h and h.Health>0 and r and (r.Position-seat.Position).Magnitude<8 and not seat.Occupant then seat:Sit(h) end
+ end)
+end
+local noticeAt={}
+RunService.Heartbeat:Connect(function()
+ if not lounge.Parent then return end
+ for _,p in ipairs(Players:GetPlayers()) do
+  local c=p.Character;local r=c and c:FindFirstChild("HumanoidRootPart")
+  if r and not p:GetAttribute("Owns_VIP") and r.Position.X> -74 and r.Position.X< -44 and r.Position.Z>46 and r.Position.Z<68 then
+   local h=c:FindFirstChildWhichIsA("Humanoid");if h then
+    local seat=h.SeatPart;h.Sit=false
+    local weld=seat and seat:FindFirstChild("SeatWeld");if weld then weld:Destroy() end
+   end
+   c:PivotTo(CFrame.new(-59,3.5,42));r.AssemblyLinearVelocity=Vector3.zero
+   if os.clock()-(noticeAt[p] or 0)>3 then noticeAt[p]=os.clock();notice:FireClient(p,"VIP 專屬候車區；可在精品商店預覽。","VIP") end
+  end
+ end
+end)
+Players.PlayerRemoving:Connect(function(p) noticeAt[p]=nil end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="40">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -2762,8 +3489,9 @@ Workspace:SetAttribute("LastTrainRoundStage", 0)
 local function folder(name) local f=Instance.new("Folder"); f.Name=name; f.Parent=world; return f end
 local geometry, props, objectives = folder("Geometry"), folder("Props"), folder("Objectives")
 local C={ concrete=Color3.fromRGB(77,88,95), tile=Color3.fromRGB(105,117,122), dark=Color3.fromRGB(28,37,43), metal=Color3.fromRGB(128,141,145), gold=Color3.fromRGB(233,188,99), cyan=Color3.fromRGB(92,212,226), glass=Color3.fromRGB(31,63,76) }
+local buildingStation=nil
 local function part(parent,name,size,pos,color,material,transparency,collide)
- local p=Instance.new("Part"); p.Name=name; p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic; p.Transparency=transparency or 0; p.Anchored=true; p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=parent; return p
+ local p=Instance.new("Part"); p.Name=name; p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic; p.Transparency=transparency or 0; p.Anchored=true; p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=parent; if buildingStation then p:SetAttribute("StationIndex",buildingStation) end; return p
 end
 local function routePart(parent,name,size,pos,color,material,transparency,collide)
  local count=math.ceil(size.X/512)
@@ -2785,7 +3513,7 @@ local function label(host,text,color,width,height,face)
  local t=Instance.new("TextLabel"); t.Size=UDim2.fromScale(1,1); t.BackgroundTransparency=1; t.Text=text; t.TextColor3=color; t.TextStrokeTransparency=.72; t.Font=Enum.Font.GothamBlack; t.TextScaled=true; t.Parent=gui; return gui
 end
 local function prompt(name,stage,pos,action,objectText,extra)
- local a=part(objectives,name,Vector3.new(2,3,2),pos,C.cyan,Enum.Material.Neon,1,false); a:SetAttribute("ObjectiveStage",stage)
+ local a=part(objectives,name,Vector3.new(2,3,2),pos,C.cyan,Enum.Material.Neon,1,false); a:SetAttribute("ObjectiveStage",stage); a:SetAttribute("StationIndex",math.max(1,stage+1))
  if extra then for k,v in pairs(extra) do a:SetAttribute(k,v) end end
  local pr=Instance.new("ProximityPrompt"); pr.ActionText=action; pr.ObjectText=objectText; pr.HoldDuration=.65; pr.MaxActivationDistance=11; pr.RequiresLineOfSight=false; pr.Parent=a; return a
 end
@@ -2812,17 +3540,16 @@ local function curvedWindowBand(parent,name,centerX,side)
  end end
 end
 local function curvedStripe(parent,name,side,y,color,thickness)
- local segments=18; local xStart,xEnd=8,62
- for i=1,segments do
-  local x=xStart+(i-.5)*(xEnd-xStart)/segments
-  local onOpenDoor=name~="GoldBeltline" or x<32 or x>38
-  if onOpenDoor then
-   local pos=Vector3.new(x,y,side*(5.64+.025))
-   local right=side>0 and Vector3.new(1,0,0) or Vector3.new(-1,0,0)
-   local p=part(parent,name,Vector3.new((xEnd-xStart)/segments+.03,thickness,.12),pos,color,Enum.Material.Neon,0,false)
-   p.CFrame=CFrame.fromMatrix(pos,right,Vector3.new(0,1,0),right:Cross(Vector3.new(0,1,0)))
-   p:SetAttribute("SurfaceStripe",true)
-  end
+ -- One face per uninterrupted run: adjoining coplanar segments used to
+ -- overlap by .03 studs and shimmer when viewed from a moving camera.
+ local runs=name=="GoldBeltline" and {{8,32},{38,62}} or {{8,62}}
+ for _,run in ipairs(runs) do
+  local x=(run[1]+run[2])/2
+  local pos=Vector3.new(x,y,side*(5.64+.025))
+  local right=Vector3.new(side,0,0)
+  local p=part(parent,name,Vector3.new(run[2]-run[1],thickness,.12),pos,color,Enum.Material.SmoothPlastic,0,false)
+  p.CFrame=CFrame.fromMatrix(pos,right,Vector3.yAxis,right:Cross(Vector3.yAxis))
+  p:SetAttribute("SurfaceStripe",true)
  end
 end
 local function beam(parent,name,a,b,width,color,material)
@@ -2834,8 +3561,8 @@ end
 
 -- Long, enclosed runs separate all seven stations; boarding is mandatory.
 local spacing=GameConfig.StationSpacing
-local routeLength=spacing*(#GameConfig.Stations-1)+480
-local routeCenter=spacing*(#GameConfig.Stations-1)/2
+local routeLength=960
+local routeCenter=0
 local routeStart=routeCenter-routeLength/2
 local routeEnd=routeCenter+routeLength/2
 routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-3.5,0),C.concrete,Enum.Material.Concrete)
@@ -2857,7 +3584,8 @@ for _,side in ipairs({-1,1}) do
  routePart(geometry,"RailFoot",Vector3.new(routeLength-25,.10,.65),Vector3.new(routeCenter,GameConfig.RailTop-.28,z),C.metal,Enum.Material.Metal)
 end
 for x=routeStart+10,routeEnd-10,8 do
- part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete)
+ local sleeper=part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete,0,false)
+ sleeper:SetAttribute("TravelLoop",960)
 end
 routePart(geometry,"OverheadContactWire",Vector3.new(routeLength-25,.07,.07),Vector3.new(routeCenter,11.64,GameConfig.TrainCenterZ),Color3.fromRGB(112,108,96),Enum.Material.Metal,0,false)
 for x=routeStart+30,routeEnd-30,128 do
@@ -2865,8 +3593,9 @@ for x=routeStart+30,routeEnd-30,128 do
  if stopDistance>230 then
   for _,side in ipairs({-1,1}) do
    local lamp=part(geometry,"TunnelServiceLight",Vector3.new(4,.3,.16),Vector3.new(x,6,side*31.7),Color3.fromRGB(207,223,233),Enum.Material.Neon,0,false)
+   lamp:SetAttribute("TravelLoop",960)
    pointLight(lamp,Color3.fromRGB(187,207,225),.7,27)
-   part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false)
+   local rib=part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false);rib:SetAttribute("TravelLoop",960)
   end
  end
 end
@@ -2982,7 +3711,7 @@ for rowIndex,x in ipairs({14,24,46,56}) do
    label(badge,string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")),Color3.fromRGB(23,30,40),nil,nil,Enum.NormalId.Left)
    local seat=Instance.new("Seat"); seat.Name="PassengerSeat"; seat.Size=Vector3.new(1.3,.18,1.55)
    seat.CFrame=CFrame.new(x,1.03,z)*CFrame.Angles(0,-math.pi/2,0)
-   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CastShadow=false
+   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CanTouch=false; seat.CastShadow=false
    seat:SetAttribute("SeatNumber",string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")))
    seat.Parent=train
    local sit=Instance.new("ProximityPrompt"); sit.ActionText="坐下"; sit.ObjectText="座位 "..seat:GetAttribute("SeatNumber")
@@ -3160,6 +3889,7 @@ for _,child in ipairs(train:GetChildren()) do
 end
 TrainFinish.Apply(train)
 TrainLuxury.Apply(train,rearCar,frontCar)
+require(ReplicatedStorage.LastTrain.Shared.TrainPremium).Apply(train,frontCar)
 -- Recessed walk plates meet the platform edge when the platform-side doors open.
 for _,car in ipairs({train,rearCar,frontCar}) do
  local offset=car==rearCar and -60 or (car==frontCar and 60 or 0)
@@ -3193,11 +3923,16 @@ part(frontCar,"FrontCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(99,4.1,0),
 -- Align the negative-side doors within arm's reach of the platform edge.
 for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,GameConfig.TrainCenterZ) end end
 
--- Freeze a stable pivot; seat occupancy and wheel animation must not change it.
+-- A replicated anchor gives both server and clients the same stable pivot.
+-- Model.WorldPivot alone does not replicate when parts are moved in a batch.
+local motionRoot=part(train,"TrainMotionRoot",Vector3.one,Vector3.new(35,0,GameConfig.TrainCenterZ),C.dark,Enum.Material.SmoothPlastic,1,false)
+motionRoot.CanTouch=false; motionRoot.CanQuery=false; motionRoot.CastShadow=false
+train.PrimaryPart=motionRoot
 train:PivotTo(train:GetPivot())
 train:SetAttribute("PassengerFrameOffset",train:GetPivot():ToObjectSpace(CFrame.new(35,0,GameConfig.TrainCenterZ)))
 
 for i,station in ipairs(GameConfig.Stations) do
+ buildingStation=i
  local center=(i-1)*spacing; local accent=station.Accent
  -- End screens close each platform while leaving the train clearance open.
  for _,endSign in ipairs({-1,1}) do
@@ -3287,6 +4022,7 @@ for i,station in ipairs(GameConfig.Stations) do
  end
 end
 
+buildingStation=1
 -- Station 01 notices and entry signage.
 local entry=Instance.new("Model"); entry.Name="FirstStationEntry"; entry.Parent=props
 local gx=GameConfig.FirstStationGateX
@@ -3316,7 +4052,15 @@ local kiosk=part(entry,"TicketMachine",Vector3.new(3.4,4.5,2),Vector3.new(-151,2
 local machineScreen=part(entry,"TicketMachineScreen",Vector3.new(2.5,1.65,.08),Vector3.new(-151,3.1,-28.55),Color3.fromRGB(13,29,38),Enum.Material.SmoothPlastic,0,false)
 label(machineScreen,"領取無目的地車票\nFREE TICKET",Color3.fromRGB(238,226,185),nil,nil,Enum.NormalId.Back)
 part(entry,"TicketOutputSlot",Vector3.new(1.6,.12,.08),Vector3.new(-151,1.75,-28.5),C.dark,Enum.Material.SmoothPlastic,0,false)
-part(entry,"UnclaimedTicket",Vector3.new(.85,.04,.5),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(237,221,181),Enum.Material.SmoothPlastic,0,false)
+local ticket=part(entry,"UnclaimedTicket",Vector3.new(1.35,.06,.8),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(250,249,245),Enum.Material.SmoothPlastic,0,false)
+local ticketFace=Instance.new("SurfaceGui"); ticketFace.Name="TicketFace"; ticketFace.Face=Enum.NormalId.Top
+ ticketFace.CanvasSize=Vector2.new(540,320); ticketFace.LightInfluence=0; ticketFace.Parent=ticket
+local ticketStripe=Instance.new("Frame"); ticketStripe.Name="OrangeBand"; ticketStripe.Size=UDim2.fromScale(1,.24)
+ ticketStripe.BorderSizePixel=0; ticketStripe.BackgroundColor3=TrainFinish.Orange; ticketStripe.Parent=ticketFace
+local ticketText=Instance.new("TextLabel"); ticketText.Name="TicketText"; ticketText.Position=UDim2.fromScale(.06,.28)
+ ticketText.Size=UDim2.fromScale(.88,.66); ticketText.BackgroundTransparency=1; ticketText.TextColor3=TrainFinish.Graphite
+ ticketText.Font=Enum.Font.GothamMedium; ticketText.TextScaled=true
+ ticketText.Text="末班車  LAST TRAIN\n新月站 → 目的地未定\n單程車票 • 請感應進站"; ticketText.Parent=ticketFace
 local entrySign=part(entry,"EntryInstructions",Vector3.new(.18,2.2,15.5),Vector3.new(gx-2,6.2,-22.5),C.dark,Enum.Material.SmoothPlastic,0,false)
 local entryGui=label(entrySign,"① 領取車票　→　② 刷卡進站　→　③ 上車",Color3.fromRGB(243,232,201),nil,nil,Enum.NormalId.Left)
 entryGui.CanvasSize=Vector2.new(1600,220); entryGui:FindFirstChildWhichIsA("TextLabel").TextWrapped=false
@@ -3338,23 +4082,26 @@ prompt("ReadAccidentLog",5,Vector3.new(spacing*5+40,2.2,-27),"讀取事故紀錄
 prompt("LeaveEnding",6,Vector3.new(spacing*6-50,2.2,-27),"相信列車長，離開","結局：回到城市",{Ending="Conductor"})
 prompt("TruthEnding",6,Vector3.new(spacing*6,2.2,-27),"關閉核心，終止循環","真相結局：讓列車停下",{Ending="Truth"})
 prompt("SecretEnding",6,Vector3.new(spacing*6+50,2.2,-27),"啟動封存系統","隱藏結局：STATION 08",{Ending="Station08"})
-local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(spacing+118,0.15,0),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
+buildingStation=nil
+local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(118,0.15,-22),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
 local ambience=Instance.new("Sound"); ambience.Name="StationAmbience"; ambience.SoundId=""; ambience.Looped=true; ambience.Volume=.12; ambience.RollOffMaxDistance=200; ambience.Parent=world
+local scenes=require(script.Parent.StationScenes).new(world,GameConfig)
+scenes:Dock(1)
 world:SetAttribute("Ready",true)
 ]]></string>
         </Properties>
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="29">
+  <Item class="StarterPlayer" referent="41">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="30">
+    <Item class="StarterPlayerScripts" referent="42">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="31">
+      <Item class="LocalScript" referent="43">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -3485,7 +4232,7 @@ local flashlight = Instance.new("SpotLight")
 flashlight.Name = "LastTrainBeam"
 flashlight.Face = Enum.NormalId.Front
 flashlight.Angle = 62
-flashlight.Brightness = 3.4
+flashlight.Brightness = 1.65
 flashlight.Range = 58
 flashlight.Shadows = false
 flashlight.Enabled = inGame
@@ -3523,7 +4270,7 @@ title.BackgroundTransparency = 1
 title.Position = UDim2.fromOffset(25, 18)
 title.Size = UDim2.new(1, -100, 0, 34)
 title.Font = Enum.Font.GothamBold
-title.Text = "月台小舖"
+title.Text = "車票幣服裝"
 title.TextColor3 = Color3.fromRGB(238, 241, 239)
 title.TextSize = 22
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -3748,7 +4495,7 @@ local function makeSkinCard(key, info, order)
 end
 
 local skinKeys = {}
-for key in pairs(GameConfig.Skins) do table.insert(skinKeys, key) end
+for key,skin in pairs(GameConfig.Skins) do if not skin.CatalogPass then table.insert(skinKeys,key) end end
 table.sort(skinKeys, function(a, b)
     local rank = { PlatformWorker = 1, Conductor = 2, Signalman = 3, NightGuard = 4 }
     return (rank[a] or 99) < (rank[b] or 99)
@@ -4026,6 +4773,36 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     if shop.Visible then refreshShop() end
 end)
 
+-- The ticket is personal; attribute changes restore its face after respawn.
+local ticketCard=Instance.new("Frame")
+ticketCard.Name="PassengerTicket"; ticketCard.AnchorPoint=Vector2.new(1,1)
+ticketCard.Position=UDim2.new(1,-18,1,-80); ticketCard.Size=UDim2.fromOffset(220,108)
+ticketCard.BackgroundColor3=Color3.fromRGB(250,249,245); ticketCard.BorderSizePixel=0
+ticketCard.Parent=gui; rounded(ticketCard,8)
+local ticketBand=Instance.new("TextLabel")
+ticketBand.Name="OrangeBand"; ticketBand.Size=UDim2.new(1,0,0,28)
+ticketBand.BackgroundColor3=Color3.fromRGB(219,106,38); ticketBand.BorderSizePixel=0
+ticketBand.Text="末班車  LAST TRAIN"; ticketBand.Font=Enum.Font.GothamBold
+ ticketBand.TextColor3=Color3.fromRGB(255,255,255); ticketBand.TextSize=14; ticketBand.Parent=ticketCard
+local ticketDetails=Instance.new("TextLabel")
+ticketDetails.Name="TicketDetails"; ticketDetails.Position=UDim2.fromOffset(10,34)
+ticketDetails.Size=UDim2.new(1,-20,1,-40); ticketDetails.BackgroundTransparency=1
+ ticketDetails.TextColor3=Color3.fromRGB(25,29,35); ticketDetails.Font=Enum.Font.GothamMedium
+ ticketDetails.TextSize=13; ticketDetails.TextWrapped=true; ticketDetails.Parent=ticketCard
+local function refreshTicket()
+ ticketCard.Visible=Workspace:GetAttribute("LastTrainMode")=="Game" and player:GetAttribute("FirstStationHasTicket")==true
+ local serial=player:GetAttribute("GalaxyEditionSerial")
+ local ticketType=serial and string.format("銀河收藏票 #%03d/500",serial) or player:GetAttribute("Owns_RoyalCarriage") and "皇家乘車票" or player:GetAttribute("Owns_LuxuryPass") and "商務乘車票" or "單程車票"
+ ticketDetails.Text="新月站 → 目的地未定\n"..ticketType.."\n"..(player:GetAttribute("FirstStationValidated") and "已驗票 · 本次旅程有效" or "尚未驗票 · 請至閘門感應")
+end
+player:GetAttributeChangedSignal("FirstStationHasTicket"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("FirstStationValidated"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("GalaxyEditionSerial"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("Owns_RoyalCarriage"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("Owns_LuxuryPass"):Connect(refreshTicket)
+Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(refreshTicket)
+refreshTicket()
+
 local ticketSound=Instance.new("Sound")
 ticketSound.Name="TicketReaderFeedback"
 ticketSound.SoundId="rbxasset://sounds/volume_slider.ogg"
@@ -4072,7 +4849,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="32">
+      <Item class="LocalScript" referent="44">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -4417,15 +5194,421 @@ end)
 ]]></string>
         </Properties>
       </Item>
+      <Item class="LocalScript" referent="45">
+        <Properties>
+          <string name="Name">PremiumFlashlight</string>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local Run=game:GetService("RunService")
+local p=Players.LocalPlayer
+local model=Instance.new("Model");model.Name="NeonFlashlightView"
+local pieces={}
+local function part(name,size,offset,color,material)
+ local v=Instance.new("Part");v.Name=name;v.Size=size;v.Color=color;v.Material=material or Enum.Material.SmoothPlastic
+ v.Anchored=true;v.CanCollide=false;v.CanTouch=false;v.CanQuery=false;v.CastShadow=false;v.Parent=model
+ table.insert(pieces,{Part=v,Offset=offset});return v
+end
+part("Grip",Vector3.new(.22,.22,.63),CFrame.new(0,0,.18),Color3.fromRGB(29,35,45))
+part("Head",Vector3.new(.32,.32,.25),CFrame.new(0,0,-.18),Color3.fromRGB(58,65,76))
+local ring=part("NeonRing",Vector3.new(.34,.34,.045),CFrame.new(0,0,-.315),Color3.fromRGB(104,225,240),Enum.Material.Neon)
+local colors={Ice=Color3.fromRGB(173,235,255),Amber=Color3.fromRGB(255,209,137),Violet=Color3.fromRGB(202,184,255)}
+Run:BindToRenderStep("PremiumFlashlight",Enum.RenderPriority.Camera.Value+2,function()
+ local camera=workspace.CurrentCamera
+ if not camera then return end
+ local light=camera:FindFirstChild("LastTrainFlashlight")
+ local beam=light and light:FindFirstChild("LastTrainBeam")
+ local enabled=workspace:GetAttribute("LastTrainMode")=="Game" and p:GetAttribute("EquippedFlashlight")=="Neon"
+ if beam then beam.Color=enabled and (colors[p:GetAttribute("FlashlightColor")] or colors.Ice) or Color3.fromRGB(255,255,255) end
+ if enabled and beam and beam.Enabled then
+  model.Parent=camera;ring.Color=colors[p:GetAttribute("FlashlightColor")] or colors.Ice
+  local pose=camera.CFrame*CFrame.new(.58,-.48,-.9)*CFrame.Angles(math.rad(-5),math.rad(-6),0)
+  for _,item in ipairs(pieces) do item.Part.CFrame=pose*item.Offset end
+ else model.Parent=nil end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="46">
+        <Properties>
+          <string name="Name">PremiumShop</string>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local Marketplace=game:GetService("MarketplaceService")
+local UIS=game:GetService("UserInputService")
+local Run=game:GetService("RunService")
+local p=Players.LocalPlayer
+local Catalog=require(RS.LastTrain.Shared.PremiumCatalog)
+local Appearance=require(RS.LastTrain.Shared.CharacterAppearance)
+local Livery=require(RS.LastTrain.Shared.TrainLivery)
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local request=remotes:WaitForChild("PremiumShopRequest")
+local gui=Instance.new("ScreenGui");gui.Name="LastTrainPremiumShop";gui.ResetOnSpawn=false;gui.DisplayOrder=30;gui.Parent=p:WaitForChild("PlayerGui")
+local navy=Color3.fromRGB(22,29,41);local orange=Color3.fromRGB(219,106,38);local white=Color3.fromRGB(248,247,242)
+local function corner(v,r) local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,r or 10);c.Parent=v end
+local function text(parent,name,value,pos,size,fontSize,color)
+ local t=Instance.new("TextLabel");t.Name=name;t.Text=value;t.Position=pos;t.Size=size;t.Font=Enum.Font.GothamMedium;t.TextSize=fontSize or 14;t.TextColor3=color or navy;t.BackgroundTransparency=1;t.TextWrapped=true;t.TextXAlignment=Enum.TextXAlignment.Left;t.Parent=parent;return t
+end
+local function button(parent,name,value,pos,size)
+ local b=Instance.new("TextButton");b.Name=name;b.Text=value;b.Position=pos;b.Size=size;b.BackgroundColor3=orange;b.TextColor3=white;b.Font=Enum.Font.GothamBold;b.TextSize=14;b.BorderSizePixel=0;b.Parent=parent;corner(b,8);return b
+end
+local open=button(gui,"OpenPremium","精品商店 [P]",UDim2.new(1,-174,0,76),UDim2.fromOffset(150,40))
+local panel=Instance.new("Frame");panel.Name="PremiumPanel";panel.AnchorPoint=Vector2.new(.5,.5);panel.Position=UDim2.fromScale(.5,.5);panel.Size=UDim2.fromScale(.9,.86);panel.BackgroundColor3=white;panel.Visible=false;panel.Parent=gui;corner(panel,14)
+local limit=Instance.new("UISizeConstraint");limit.MinSize=Vector2.new(320,300);limit.MaxSize=Vector2.new(960,680);limit.Parent=panel
+text(panel,"Title","末班精品  /  COLLECTION",UDim2.fromOffset(22,15),UDim2.new(1,-95,0,30),21)
+local close=button(panel,"ClosePremium","×",UDim2.new(1,-53,0,15),UDim2.fromOffset(34,30));close.Modal=true
+text(panel,"Subtitle","永久收藏 · 裝備與權益分開列明",UDim2.fromOffset(22,49),UDim2.new(1,-44,0,21),12,Color3.fromRGB(105,110,117))
+local coinShop=button(panel,"CoinShop","車票幣服裝",UDim2.fromOffset(22,78),UDim2.fromOffset(128,29))
+local invite=button(panel,"InviteRoyal","邀請同車朋友",UDim2.fromOffset(278,78),UDim2.fromOffset(166,29));invite.Visible=false
+local party={};local inviteIndex=1
+local fullButton=button(panel,"FullSizePreview","全尺寸展示",UDim2.fromOffset(454,78),UDim2.fromOffset(140,29))
+local reset=button(panel,"DefaultLivery","白橘列車",UDim2.fromOffset(160,78),UDim2.fromOffset(106,29))
+local cards=Instance.new("ScrollingFrame");cards.Name="Products";cards.BackgroundTransparency=1;cards.BorderSizePixel=0;cards.Position=UDim2.fromOffset(18,120);cards.Size=UDim2.new(.46,-20,1,-179);cards.ScrollBarThickness=4;cards.AutomaticCanvasSize=Enum.AutomaticSize.Y;cards.CanvasSize=UDim2.new();cards.Parent=panel
+local layout=Instance.new("UIListLayout");layout.Padding=UDim.new(0,8);layout.SortOrder=Enum.SortOrder.LayoutOrder;layout.Parent=cards
+local detailsScroll=Instance.new("ScrollingFrame");detailsScroll.Name="ProductDetails";detailsScroll.Position=UDim2.new(.46,8,0,120);detailsScroll.Size=UDim2.new(.54,-28,1,-160);detailsScroll.BackgroundTransparency=1;detailsScroll.BorderSizePixel=0;detailsScroll.ScrollBarThickness=3;detailsScroll.CanvasSize=UDim2.fromOffset(0,440);detailsScroll.Parent=panel
+local viewport=Instance.new("ViewportFrame");viewport.Name="ProductPreview";viewport.Position=UDim2.fromOffset(0,0);viewport.Size=UDim2.new(1,-6,0,180);viewport.BackgroundColor3=Color3.fromRGB(224,228,231);viewport.Ambient=Color3.fromRGB(185,192,206);viewport.LightColor=Color3.fromRGB(255,241,217);viewport.LightDirection=Vector3.new(-1,-1,-2);viewport.Parent=detailsScroll;corner(viewport,10)
+local camera=Instance.new("Camera");camera.FieldOfView=35;camera.Parent=viewport;viewport.CurrentCamera=camera
+local preview=Instance.new("WorldModel");preview.Parent=viewport
+local nameLabel=text(detailsScroll,"ProductName","",UDim2.fromOffset(2,194),UDim2.new(1,-10,0,34),20)
+local detail=text(detailsScroll,"ProductDescription","",UDim2.fromOffset(2,233),UDim2.new(1,-10,0,65),13)
+local choiceLabel=text(detailsScroll,"ChoiceLabel","",UDim2.fromOffset(2,308),UDim2.new(1,-10,0,30),12)
+local cycle=button(detailsScroll,"CycleOption","切換選項",UDim2.fromOffset(2,345),UDim2.new(1,-10,0,30))
+local action=button(detailsScroll,"PurchaseOrEquip","",UDim2.fromOffset(2,385),UDim2.new(1,-10,0,38))
+local status=text(panel,"Status","",UDim2.fromOffset(22,0),UDim2.new(1,-44,0,30),12);status.Position=UDim2.new(0,22,1,-35)
+local selected=Catalog.Order[1];local state=nil;local offers={};local buttons={};local optionIndex=1;local model=nil;local base=nil;local angle=.3;local dragging=false
+local function options(key)
+ if key=="RoyalCarriage" then return {"Royal","Taiwan"} end
+ if key=="LiveryBundle" then return {"Sunrise","Midnight","Champagne"} end
+ if key=="StarTrain" then return {"Starfield"} end
+ if key=="NeonFlashlight" then return {"Ice","Amber","Violet","Standard"} end
+ return {"Default"}
+end
+local function option() local list=options(selected);return list[(optionIndex-1)%#list+1] end
+local function piece(parent,name,size,position,color,shape)
+ local v=Instance.new("Part");v.Name=name;v.Size=size;v.Position=position;v.Color=color;v.Material=Enum.Material.SmoothPlastic;v.Anchored=true;v.CanCollide=false;v.Shape=shape or Enum.PartType.Block;v.Parent=parent;return v
+end
+local function makePreview()
+ preview:ClearAllChildren();model=Instance.new("Model");model.Name="ProductModel";model.Parent=preview
+ local item=Catalog.Items[selected]
+ if item.Skin and p.Character then
+  local arch=p.Character.Archivable;p.Character.Archivable=true;local clone=p.Character:Clone();p.Character.Archivable=arch
+  clone.Parent=model
+  for _,d in ipairs(clone:GetDescendants()) do if d:IsA("LuaSourceContainer") or d:IsA("Tool") then d:Destroy() end end
+  Appearance.Apply(clone,item.Skin)
+  for _,d in ipairs(clone:GetDescendants()) do if d:IsA("BasePart") then d.Anchored=true;d.LocalTransparencyModifier=0 end end
+  clone:PivotTo(CFrame.Angles(0,math.pi,0))
+ elseif item.Kind=="Flashlight" then
+  local body=piece(model,"FlashlightGrip",Vector3.new(2.8,.65,.65),Vector3.zero,navy,Enum.PartType.Cylinder);body.CFrame=CFrame.Angles(0,0,math.pi/2)
+  local head=piece(model,"FlashlightHead",Vector3.new(.65,.95,.95),Vector3.new(0,1.35,0),Color3.fromRGB(52,63,75),Enum.PartType.Cylinder);head.CFrame=CFrame.new(head.Position)*CFrame.Angles(0,0,math.pi/2)
+  local color=option()=="Amber" and Color3.fromRGB(255,193,99) or option()=="Violet" and Color3.fromRGB(172,156,255) or Color3.fromRGB(104,225,240)
+  local ring=piece(model,"NeonRing",Vector3.new(.10,.98,.98),Vector3.new(0,1.70,0),color,Enum.PartType.Cylinder);ring.CFrame=CFrame.new(ring.Position)*CFrame.Angles(0,0,math.pi/2);ring.Material=Enum.Material.Neon
+ else
+  for i=1,3 do
+   local x=(i-2)*18
+   piece(model,"DisplayCarBody",Vector3.new(17,3.8,4.6),Vector3.new(x,2,0),Color3.fromRGB(241,243,241))
+   for _,side in ipairs({-1,1}) do
+    piece(model,"Window",Vector3.new(14,1.2,.06),Vector3.new(x,2.6,side*2.32),Color3.fromRGB(48,65,86))
+    piece(model,"Stripe",Vector3.new(17,.18,.07),Vector3.new(x,1.5,side*2.35),Color3.fromRGB(219,106,38))
+   end
+   if i<3 then piece(model,"Gangway",Vector3.new(1,3.5,4),Vector3.new(x+9,1.9,0),navy) end
+  end
+  for _,side in ipairs({-1,1}) do
+   local nose=piece(model,"StreamlinedNose",Vector3.new(9,3.4,4.5),Vector3.new(side*30,1.8,0),Color3.fromRGB(241,243,241));local mesh=Instance.new("SpecialMesh");mesh.MeshType=Enum.MeshType.Sphere;mesh.Parent=nose
+  end
+  local key=(item.Kind=="Livery" or item.Kind=="Royal") and option() or "Taiwan";Livery.Apply(model,key)
+  if selected=="RoyalCarriage" then for _,d in ipairs(model:GetDescendants()) do if d:IsA("BasePart") and d.Name=="Stripe" then d.Color=Color3.fromRGB(202,173,111) end end end
+ end
+ local box,size=model:GetBoundingBox()
+ for _,part in ipairs(model:GetDescendants()) do if part:IsA("BasePart") then part.CFrame=part.CFrame-box.Position end end
+ model.WorldPivot=CFrame.new();base=CFrame.new();angle=.3
+ local _,bounds=model:GetBoundingBox();local aspect=math.max(viewport.AbsoluteSize.X/math.max(viewport.AbsoluteSize.Y,1),.5)
+ local radius=math.sqrt(bounds.X*bounds.X+bounds.Z*bounds.Z)/2
+ local distance=(math.max(bounds.Y/2,radius/aspect)/math.tan(math.rad(camera.FieldOfView/2))+radius)*1.12
+ camera.CFrame=CFrame.lookAt(Vector3.new(0,bounds.Y*.08,distance),Vector3.zero)
+end
+local function render(rebuild)
+ local item=Catalog.Items[selected];local owned=state and state.OwnedPasses[selected]
+ local info=offers[selected]
+ local serial=state and state.EditionSerials and state.EditionSerials.StarTrain
+ nameLabel.Text=item.Name;detail.Text=item.Description
+ local labels={Ice="冰藍光",Amber="暖橘光",Violet="紫羅蘭光",Standard="標準手電筒",Default="永久權益"}
+ choiceLabel.Text=(Catalog.Liveries[option()] and Catalog.Liveries[option()].Name) or labels[option()] or ""
+ if selected=="StarTrain" then
+  local edition=info and info.Edition
+  choiceLabel.Text=serial and string.format("永久編號 #%03d / 500",serial) or edition and edition.ReservedSerial and string.format("已保留 #%03d / 500，可繼續購買",edition.ReservedSerial) or edition and string.format("可保留 %d / 500 台 · 已領取 %d 台",edition.Available,edition.Owned) or "全球限量 500 台 · 庫存確認中"
+ end
+ invite.Visible=selected=="RoyalCarriage" and owned and workspace:GetAttribute("LastTrainMode")=="Game"
+ invite.Text=party[inviteIndex] and ("邀請 "..party[inviteIndex].Name) or "尚無其他同車玩家"
+ cycle.Visible=#options(selected)>1
+ action.Text=info and info.Loading and "取得價格中…" or owned and (item.Kind=="Access" and "查看已解鎖權益" or "使用這個選項") or info and info.ForSale and ("購買 · "..tostring(info.Price).." R$") or "尚未上架 · 可預覽"
+ if selected=="StarTrain" and not owned and info and info.Edition and info.Edition.Available==0 and not info.Edition.ReservedSerial then action.Text="500 台已額滿" end
+ action.BackgroundColor3=owned and navy or orange
+ for key,b in pairs(buttons) do
+  b.BackgroundColor3=key==selected and Color3.fromRGB(232,224,211) or Color3.fromRGB(237,237,232)
+  local offer=offers[key];b.Price.Text=offer and offer.Loading and "取得價格中…" or state and state.OwnedPasses[key] and "已擁有" or offer and offer.ForSale and (tostring(offer.Price).." R$") or ("預定 "..Catalog.Items[key].BasePrice.." R$ · 未上架")
+ end
+ if rebuild then makePreview() end
+end
+local personalQuotes={}
+local function refresh()
+ local ok,r=pcall(request.InvokeServer,request,"State")
+ if ok and r and r.ok then
+  state=r.state;offers=r.offers;party=r.party or {}
+  for _,key in ipairs(Catalog.Order) do
+   local id=Catalog.Items[key].ProductId or Catalog.Items[key].PassId
+   if id>0 then
+    local cached=personalQuotes[key]
+    if cached and os.clock()-cached.At<120 then local quote=table.clone(cached);quote.Edition=offers[key] and offers[key].Edition;offers[key]=quote else
+     offers[key]={Loading=true,ForSale=false}
+     task.spawn(function()
+      -- Client lookup reflects this player's regional pricing and discounts.
+      local success,info=pcall(Marketplace.GetProductInfoAsync,Marketplace,id,Catalog.Items[key].ProductId and Enum.InfoType.Product or Enum.InfoType.GamePass)
+      local amount=success and type(info)=="table" and tonumber(info.PriceInRobux) or nil
+      local quote={At=os.clock(),Price=amount,ForSale=amount~=nil and info.IsForSale==true,Edition=offers[key] and offers[key].Edition}
+      personalQuotes[key]=quote;offers[key]=quote;if panel.Visible then render(false) end
+     end)
+    end
+   end
+  end
+  render(false)
+ end
+end
+for i,key in ipairs(Catalog.Order) do
+ local item=Catalog.Items[key];local b=button(cards,key,"",UDim2.new(),UDim2.new(1,-8,0,77));b.LayoutOrder=i;b.Text="";buttons[key]=b
+ text(b,"Name",item.Name,UDim2.fromOffset(11,8),UDim2.new(1,-20,0,27),14)
+ local price=text(b,"Price","預定 "..item.BasePrice.." R$ · 未上架",UDim2.fromOffset(11,39),UDim2.new(1,-20,0,25),12,Color3.fromRGB(111,91,67))
+ b.Activated:Connect(function() selected=key;optionIndex=1;render(true) end)
+end
+local function visible(on)
+ panel.Visible=on
+ if on then refresh();render(true) else dragging=false end
+end
+-- A private display copy never moves or repaints the passenger train.
+local display=nil;local savedCameraType=nil;local savedFov=nil;local controls=nil
+local fullBar=Instance.new("Frame");fullBar.Name="FullPreviewControls";fullBar.AnchorPoint=Vector2.new(.5,0);fullBar.Position=UDim2.new(.5,0,0,12);fullBar.Size=UDim2.new(.94,0,0,76);fullBar.BackgroundColor3=navy;fullBar.Visible=false;fullBar.Parent=gui;corner(fullBar,10)
+local barLimit=Instance.new("UISizeConstraint");barLimit.MaxSize=Vector2.new(650,76);barLimit.MinSize=Vector2.new(300,76);barLimit.Parent=fullBar
+text(fullBar,"PreviewNotice","全尺寸外觀展示 · 不代表已解鎖",UDim2.fromOffset(16,8),UDim2.new(1,-32,0,23),13,white)
+local exterior=button(fullBar,"Exterior","車頭與外觀",UDim2.new(.025,0,0,38),UDim2.new(.25,0,0,29))
+local interior=button(fullBar,"Interior","車廂內裝",UDim2.new(.285,0,0,38),UDim2.new(.25,0,0,29))
+local back=button(fullBar,"BackToShop","返回商店",UDim2.new(.725,0,0,38),UDim2.new(.25,0,0,29));back.Modal=true
+local function cameraView(inside)
+ if not display then return end
+ local camera=workspace.CurrentCamera;camera.CameraType=Enum.CameraType.Scriptable;camera.FieldOfView=65
+ if inside then camera.CFrame=CFrame.lookAt(Vector3.new(selected=="RoyalCarriage" and 78 or -4,204.2,0),Vector3.new(selected=="RoyalCarriage" and 94 or -26,selected=="RoyalCarriage" and 203.3 or 204.9,0))
+ else camera.CFrame=CFrame.lookAt(Vector3.new(-116,207,-25),Vector3.new(-40,204,0)) end
+end
+local function closeDisplay()
+ if display then display:Destroy();display=nil end
+ fullBar.Visible=false;open.Visible=true
+ local camera=workspace.CurrentCamera;camera.CameraType=savedCameraType or Enum.CameraType.Custom;camera.FieldOfView=savedFov or 70
+ local character=p.Character;camera.CameraSubject=character and character:FindFirstChildWhichIsA("Humanoid")
+ if controls then controls:Enable() end
+ visible(true)
+end
+local function openDisplay()
+ if display then display:Destroy();display=nil end
+ local world=workspace:FindFirstChild("LastTrainWorld")
+ local source=world and world:FindFirstChild("Props") and world.Props:FindFirstChild("LastTrainCar")
+ local item=Catalog.Items[selected]
+ if not source or (item.Kind~="Livery" and item.Kind~="Royal" and item.Kind~="Access") then status.Text="請在遊戲中選擇列車造型或車廂商品，再開啟全尺寸展示。";return end
+ display=source:Clone();display.Name="PremiumFullPreview"
+ for _,d in ipairs(display:GetDescendants()) do
+  if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("LuaSourceContainer") or d:IsA("ProximityPrompt") then d:Destroy()
+  elseif d:IsA("BasePart") then d.Anchored=true;d.CanCollide=false;d.CanTouch=false;d.CanQuery=false end
+ end
+ display:PivotTo(CFrame.new(0,200,0));Livery.Apply(display,item.Kind=="Access" and "Royal" or option())
+ local ground=Instance.new("Part");ground.Name="DisplayGround";ground.Anchored=true;ground.CanCollide=false;ground.Size=Vector3.new(300,1,70);ground.Position=Vector3.new(0,197.6,0);ground.Color=Color3.fromRGB(31,39,53);ground.Material=Enum.Material.SmoothPlastic;ground.Parent=display
+ display.Parent=workspace
+ if not fullBar.Visible then savedCameraType=workspace.CurrentCamera.CameraType;savedFov=workspace.CurrentCamera.FieldOfView end
+ controls=require(p.PlayerScripts:WaitForChild("PlayerModule")):GetControls();controls:Disable()
+ panel.Visible=false;fullBar.Visible=true;open.Visible=false;cameraView(false)
+end
+fullButton.Activated:Connect(openDisplay)
+exterior.Activated:Connect(function() cameraView(false) end)
+interior.Activated:Connect(function() cameraView(true) end)
+back.Activated:Connect(closeDisplay)
+open.Activated:Connect(function() visible(not panel.Visible) end)
+close.Activated:Connect(function() visible(false) end)
+coinShop.Activated:Connect(function() visible(false);p.PlayerGui:SetAttribute("OpenLastTrainShop",true) end)
+cycle.Activated:Connect(function() optionIndex+=1;render(true) end)
+reset.Activated:Connect(function() local ok,r=pcall(request.InvokeServer,request,"ResetLivery");status.Text=ok and r.message or "連線忙碌。";refresh() end)
+invite.Activated:Connect(function()
+ local target=party[inviteIndex];if not target then status.Text="請與朋友加入同一趟列車。";return end
+ local ok,r=pcall(request.InvokeServer,request,"Invite","RoyalCarriage",target.Id)
+ status.Text=ok and r.message or "連線忙碌。";inviteIndex=inviteIndex%#party+1;render(false)
+end)
+action.Activated:Connect(function()
+ local owned=state and state.OwnedPasses[selected]
+ local ok,r=pcall(request.InvokeServer,request,owned and "Equip" or "Buy",selected,option())
+ if not ok or not r then status.Text="連線忙碌，請稍後再試。";return end
+ if r.ok and r.id then
+  if r.promptType=="Product" then status.Text=string.format("已保留 #%03d / 500，請完成 Roblox 付款。",r.serial);Marketplace:PromptProductPurchase(p,r.id) else Marketplace:PromptGamePassPurchase(p,r.id) end else status.Text=r.message or "完成。" end
+ if r.state then state=r.state;render(false) end
+end)
+Marketplace.PromptGamePassPurchaseFinished:Connect(function(who,_,bought) if who==p and bought then task.delay(1.5,refresh) end end)
+Marketplace.PromptProductPurchaseFinished:Connect(function(userId) if userId==p.UserId then task.delay(.5,refresh) end end)
+remotes:WaitForChild("PremiumNotice").OnClientEvent:Connect(function(message,key)
+ if Catalog.Items[key] then selected=key;optionIndex=1 end
+ status.Text=message;visible(true)
+end)
+UIS.InputBegan:Connect(function(input,processed)
+ if not processed and input.KeyCode==Enum.KeyCode.P then if fullBar.Visible then closeDisplay() else visible(not panel.Visible) end end
+ if fullBar.Visible and input.KeyCode==Enum.KeyCode.Escape then closeDisplay() elseif panel.Visible and input.KeyCode==Enum.KeyCode.Escape then visible(false) end
+end)
+viewport.InputBegan:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true end end)
+UIS.InputEnded:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
+UIS.InputChanged:Connect(function(input) if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then angle+=input.Delta.X*.008 end end)
+Run.RenderStepped:Connect(function(dt) if panel.Visible and model and base then if not dragging then angle+=dt*.15 end;model:PivotTo(CFrame.Angles(0,angle,0)*base) end end)
+
+p.PlayerGui:GetAttributeChangedSignal("OpenLastTrainPremium"):Connect(function()
+ if p.PlayerGui:GetAttribute("OpenLastTrainPremium") then p.PlayerGui:SetAttribute("OpenLastTrainPremium",false);visible(true) end
+end)
+
+p.PlayerGui:GetAttributeChangedSignal("OpenLastTrainPremiumProduct"):Connect(function()
+ local key=p.PlayerGui:GetAttribute("OpenLastTrainPremiumProduct")
+ if Catalog.Items[key] then selected=key;optionIndex=1;p.PlayerGui:SetAttribute("OpenLastTrainPremiumProduct",nil);visible(true) end
+end)
+
+p.PlayerGui:GetAttributeChangedSignal("FullPreviewProduct"):Connect(function()
+ local key=p.PlayerGui:GetAttribute("FullPreviewProduct")
+ if key=="Close" then p.PlayerGui:SetAttribute("FullPreviewProduct",nil);closeDisplay();return end
+ if Catalog.Items[key] then selected=key;optionIndex=1;p.PlayerGui:SetAttribute("FullPreviewProduct",nil);openDisplay() end
+end)
+p.PlayerGui:GetAttributeChangedSignal("FullPreviewInterior"):Connect(function() if p.PlayerGui:GetAttribute("FullPreviewInterior") then p.PlayerGui:SetAttribute("FullPreviewInterior",false);cameraView(true) end end)
+
+for index,tab in ipairs({coinShop,reset,invite,fullButton}) do
+ tab.Position=UDim2.new(.025+(index-1)*.24,0,0,78);tab.Size=UDim2.new(.22,0,0,29);tab.TextScaled=true
+ local scaleLimit=Instance.new("UITextSizeConstraint");scaleLimit.MaxTextSize=14;scaleLimit.MinTextSize=10;scaleLimit.Parent=tab
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="47">
+        <Properties>
+          <string name="Name">RidePresentation</string>
+          <string name="Source"><![CDATA[local RS=game:GetService("ReplicatedStorage")
+local Tween=game:GetService("TweenService")
+local Run=game:GetService("RunService")
+local player=game.Players.LocalPlayer
+local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
+local gui=Instance.new("ScreenGui");gui.Name="LastTrainRidePresentation";gui.ResetOnSpawn=false;gui.DisplayOrder=18;gui.Parent=player:WaitForChild("PlayerGui")
+local title=Instance.new("TextLabel");title.AnchorPoint=Vector2.new(.5,1);title.Position=UDim2.new(.5,0,1,-24);title.Size=UDim2.fromOffset(460,38);title.BackgroundColor3=Color3.fromRGB(22,28,43);title.BackgroundTransparency=.16;title.TextColor3=Color3.fromRGB(244,223,174);title.Font=Enum.Font.GothamMedium;title.TextSize=15;title.Visible=false;title.Parent=gui
+local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,8);c.Parent=title
+local version=0
+local function show(text,color)
+ version+=1;local token=version;title.Text=text;title.TextColor3=color or Color3.fromRGB(244,223,174);title.TextTransparency=0;title.BackgroundTransparency=.16;title.Visible=true
+ task.delay(3,function() if token==version then local t=Tween:Create(title,TweenInfo.new(.6),{TextTransparency=1,BackgroundTransparency=1});t:Play();t.Completed:Wait();if token==version then title.Visible=false end end end)
+end
+remotes:WaitForChild("RoyalFeedback").OnClientEvent:Connect(show)
+local train=nil;local gradients={};local time=0
+task.spawn(function()
+ while workspace:GetAttribute("LastTrainMode")~="Game" do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+ local w=workspace:WaitForChild("LastTrainWorld")
+ while not w:GetAttribute("Ready") do w:GetAttributeChangedSignal("Ready"):Wait() end
+ train=w:WaitForChild("Props"):WaitForChild("LastTrainCar")
+ local function refresh()
+  table.clear(gradients)
+  for _,d in ipairs(train:GetDescendants()) do if d:IsA("UIGradient") and d.Name=="GalaxyGradient" then table.insert(gradients,d) end end
+ end
+ train:GetAttributeChangedSignal("SelectedLivery"):Connect(refresh)
+ train.DescendantAdded:Connect(function(d) if d:IsA("UIGradient") and d.Name=="GalaxyGradient" then table.insert(gradients,d) end end)
+ refresh()
+end)
+Run.RenderStepped:Connect(function(dt)
+ if not train or train:GetAttribute("SelectedLivery")~="Starfield" then return end
+ time+=dt
+ for _,g in ipairs(gradients) do g.Offset=Vector2.new(math.sin(time*.12)*.15,math.cos(time*.09)*.08) end
+end)
+remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(_,_,_,_,_,_,state)
+ if state~="Moving" or not train then return end
+ local key=train:GetAttribute("SelectedLivery")
+ if key=="Royal" or key=="Starfield" then
+  local chime=Instance.new("Sound");chime.SoundId="rbxasset://sounds/volume_slider.ogg";chime.Volume=.12;chime.PlaybackSpeed=key=="Royal" and 1.2 or .8;chime.Parent=game:GetService("SoundService");chime:Play();game:GetService("Debris"):AddItem(chime,3)
+ end
+ if key=="Royal" then show("♛  ROYAL LAST TRAIN · 皇家白金列車")
+ elseif key=="Starfield" then
+  local serial=train:GetAttribute("EditionSerial")
+  show(serial and string.format("GALAXY LAST TRAIN · #%03d / 500",serial) or "GALAXY LAST TRAIN · LIMITED 500",Color3.fromRGB(187,205,255))
+ end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="48">
+        <Properties>
+          <string name="Name">TravelScenery</string>
+          <string name="Source"><![CDATA[-- The passenger carriage and camera never receive travel transforms.
+local RunService=game:GetService("RunService")
+local HttpService=game:GetService("HttpService")
+while workspace:GetAttribute("LastTrainMode")~="Game" do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+local world=workspace:WaitForChild("LastTrainWorld")
+while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
+local train=world:WaitForChild("Props"):WaitForChild("LastTrainCar")
+local scenes,loops={},{}
+for _,p in ipairs(world:GetDescendants()) do
+ if p:IsA("BasePart") then
+  local index=p:GetAttribute("StationIndex")
+  if index and p:GetAttribute("StationLocalFrame") then
+   scenes[index]=scenes[index] or {};table.insert(scenes[index],p)
+  elseif p:GetAttribute("TravelLoop") then table.insert(loops,{Part=p,Frame=p.CFrame,Length=p:GetAttribute("TravelLoop")}) end
+ end
+end
+local motion=nil
+local function effects(index,on)
+ for _,p in ipairs(scenes[index] or {}) do
+  for _,d in ipairs(p:GetDescendants()) do
+   if d:IsA("SurfaceGui") or d:IsA("Light") then d.Enabled=on end
+  end
+ end
+end
+local function begin()
+ local raw=train:GetAttribute("TravelScene");if not raw then return end
+ local ok,data=pcall(HttpService.JSONDecode,HttpService,raw)
+ if not ok or type(data)~="table" or type(data.Duration)~="number" or data.Duration<=0 then return end
+ motion=data;effects(data.From,true);effects(data.To,true)
+end
+train:GetAttributeChangedSignal("TravelScene"):Connect(begin);begin()
+local parts,poses={},{}
+RunService:BindToRenderStep("LastTrainScenery",Enum.RenderPriority.Camera.Value-2,function()
+ if not motion then return end
+ local elapsed=workspace:GetServerTimeNow()-motion.StartedAt
+ local alpha=math.clamp(elapsed/motion.Duration,0,1)
+ local travelled=motion.Distance*(.5-.5*math.cos(math.pi*alpha))
+ table.clear(parts);table.clear(poses)
+ for _,index in ipairs({motion.From,motion.To}) do
+  for _,p in ipairs(scenes[index] or {}) do
+   table.insert(parts,p)
+   local x=index==motion.From and -travelled or motion.Distance-travelled
+   table.insert(poses,p:GetAttribute("StationLocalFrame")+Vector3.new(x,0,0))
+  end
+ end
+ for _,item in ipairs(loops) do
+  local total=(motion.From-1)*motion.Distance+travelled
+  local x=(item.Frame.X+item.Length/2-total)%item.Length-item.Length/2
+  table.insert(parts,item.Part);table.insert(poses,item.Frame+Vector3.new(x-item.Frame.X,0,0))
+ end
+ workspace:BulkMoveTo(parts,poses,Enum.BulkMoveMode.FireCFrameChanged)
+ if alpha>=1 then
+  -- Park the departing station exactly where the server parks it. Incoming
+  -- scenery is already docked at zero and server door animation can begin.
+  table.clear(parts);table.clear(poses)
+  for _,p in ipairs(scenes[motion.From] or {}) do
+   table.insert(parts,p);table.insert(poses,p:GetAttribute("StationLocalFrame")+Vector3.new(0,-1000-motion.From*100,0))
+  end
+  workspace:BulkMoveTo(parts,poses,Enum.BulkMoveMode.FireCFrameChanged)
+  effects(motion.From,false);effects(motion.To,true);motion=nil
+ end
+end)
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="33">
+  <Item class="Workspace" referent="49">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="34">
+    <Item class="SpawnLocation" referent="50">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

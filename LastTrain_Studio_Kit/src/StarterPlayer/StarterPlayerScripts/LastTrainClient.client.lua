@@ -126,7 +126,7 @@ local flashlight = Instance.new("SpotLight")
 flashlight.Name = "LastTrainBeam"
 flashlight.Face = Enum.NormalId.Front
 flashlight.Angle = 62
-flashlight.Brightness = 3.4
+flashlight.Brightness = 1.65
 flashlight.Range = 58
 flashlight.Shadows = false
 flashlight.Enabled = inGame
@@ -164,7 +164,7 @@ title.BackgroundTransparency = 1
 title.Position = UDim2.fromOffset(25, 18)
 title.Size = UDim2.new(1, -100, 0, 34)
 title.Font = Enum.Font.GothamBold
-title.Text = "月台小舖"
+title.Text = "車票幣服裝"
 title.TextColor3 = Color3.fromRGB(238, 241, 239)
 title.TextSize = 22
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -389,7 +389,7 @@ local function makeSkinCard(key, info, order)
 end
 
 local skinKeys = {}
-for key in pairs(GameConfig.Skins) do table.insert(skinKeys, key) end
+for key,skin in pairs(GameConfig.Skins) do if not skin.CatalogPass then table.insert(skinKeys,key) end end
 table.sort(skinKeys, function(a, b)
     local rank = { PlatformWorker = 1, Conductor = 2, Signalman = 3, NightGuard = 4 }
     return (rank[a] or 99) < (rank[b] or 99)
@@ -666,6 +666,36 @@ objectiveEvent.OnClientEvent:Connect(function(stage, text, completed, stationNam
     lastRideState=rideState
     if shop.Visible then refreshShop() end
 end)
+
+-- The ticket is personal; attribute changes restore its face after respawn.
+local ticketCard=Instance.new("Frame")
+ticketCard.Name="PassengerTicket"; ticketCard.AnchorPoint=Vector2.new(1,1)
+ticketCard.Position=UDim2.new(1,-18,1,-80); ticketCard.Size=UDim2.fromOffset(220,108)
+ticketCard.BackgroundColor3=Color3.fromRGB(250,249,245); ticketCard.BorderSizePixel=0
+ticketCard.Parent=gui; rounded(ticketCard,8)
+local ticketBand=Instance.new("TextLabel")
+ticketBand.Name="OrangeBand"; ticketBand.Size=UDim2.new(1,0,0,28)
+ticketBand.BackgroundColor3=Color3.fromRGB(219,106,38); ticketBand.BorderSizePixel=0
+ticketBand.Text="末班車  LAST TRAIN"; ticketBand.Font=Enum.Font.GothamBold
+ ticketBand.TextColor3=Color3.fromRGB(255,255,255); ticketBand.TextSize=14; ticketBand.Parent=ticketCard
+local ticketDetails=Instance.new("TextLabel")
+ticketDetails.Name="TicketDetails"; ticketDetails.Position=UDim2.fromOffset(10,34)
+ticketDetails.Size=UDim2.new(1,-20,1,-40); ticketDetails.BackgroundTransparency=1
+ ticketDetails.TextColor3=Color3.fromRGB(25,29,35); ticketDetails.Font=Enum.Font.GothamMedium
+ ticketDetails.TextSize=13; ticketDetails.TextWrapped=true; ticketDetails.Parent=ticketCard
+local function refreshTicket()
+ ticketCard.Visible=Workspace:GetAttribute("LastTrainMode")=="Game" and player:GetAttribute("FirstStationHasTicket")==true
+ local serial=player:GetAttribute("GalaxyEditionSerial")
+ local ticketType=serial and string.format("銀河收藏票 #%03d/500",serial) or player:GetAttribute("Owns_RoyalCarriage") and "皇家乘車票" or player:GetAttribute("Owns_LuxuryPass") and "商務乘車票" or "單程車票"
+ ticketDetails.Text="新月站 → 目的地未定\n"..ticketType.."\n"..(player:GetAttribute("FirstStationValidated") and "已驗票 · 本次旅程有效" or "尚未驗票 · 請至閘門感應")
+end
+player:GetAttributeChangedSignal("FirstStationHasTicket"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("FirstStationValidated"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("GalaxyEditionSerial"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("Owns_RoyalCarriage"):Connect(refreshTicket)
+player:GetAttributeChangedSignal("Owns_LuxuryPass"):Connect(refreshTicket)
+Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(refreshTicket)
+refreshTicket()
 
 local ticketSound=Instance.new("Sound")
 ticketSound.Name="TicketReaderFeedback"

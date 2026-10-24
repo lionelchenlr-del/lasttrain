@@ -3,6 +3,7 @@ local GameConfig = {}
 
 GameConfig.DataStoreName = "LastTrain_PlayerData_v1"
 -- Shared geometry and timing: wheel contact, doors and safety use one layout.
+GameConfig.StationaryTrain = true
 GameConfig.StationSpacing = 2800
 GameConfig.TravelDuration = 42
 GameConfig.MinimumStopDuration = 8
@@ -93,6 +94,20 @@ GameConfig.Skins = {
         PantsTemplate = 0,
     },
 }
+
+GameConfig.Skins.PlatformWorker.DisplayName="都會旅人"
+GameConfig.Skins.PlatformWorker.Colors={Main=Color3.fromRGB(34,42,55),Accent=Color3.fromRGB(224,228,231)}
+GameConfig.Skins.NightGuard.DisplayName="神祕乘客"
+GameConfig.Skins.NightGuard.CatalogPass="MysteryPassenger"
+GameConfig.Skins.NightGuard.MonsterDetectionMultiplier=1
+GameConfig.Skins.NightGuard.Ability="專屬面罩與長外套・外觀角色"
+GameConfig.Skins.NightGuard.Colors={Main=Color3.fromRGB(21,25,34),Accent=Color3.fromRGB(173,184,202)}
+GameConfig.Skins.PremiumStaff={DisplayName="高級站務員",Ability="訂製站務制服・專屬外觀",RequiresGamePass=true,CatalogPass="PremiumStaff",GamePassId=0,
+ PriceCoins=0,Colors={Main=Color3.fromRGB(27,43,65),Accent=Color3.fromRGB(223,117,52)}}
+GameConfig.Skins.VIP={DisplayName="VIP 都會紳士",Ability="VIP 正式服裝・金色名牌",RequiresGamePass=true,CatalogPass="VIP",GamePassId=0,
+ PriceCoins=0,Colors={Main=Color3.fromRGB(24,28,37),Accent=Color3.fromRGB(218,188,116)}}
+
+for _,skin in pairs(GameConfig.Skins) do skin.SkinTone=Color3.fromRGB(218,184,157) end
 
 -- Developer products are repeatable Robux purchases. Receipt handling is server-side.
 GameConfig.Products = {

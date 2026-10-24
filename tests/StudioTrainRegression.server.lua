@@ -25,23 +25,41 @@ local function rig(name,position,anchored)
  return model,h
 end
 for station=1,#Config.Stations do
- local x=(station-1)*Config.StationSpacing
+ local x=0
  check(not Safety.ShouldRecover(Vector3.new(x,3,-22),false,station,Config),"Valid platform rejected")
  check(Safety.ShouldRecover(Vector3.new(x+230,3,-22),false,station,Config),"Walking past platform allowed")
  check(Safety.ShouldRecover(Vector3.new(x+500,3,Config.TrainCenterZ),false,station,Config),"Tunnel traversal allowed")
  check(Safety.ShouldRecover(Vector3.new(x,-10,-22),false,station,Config),"Falling not recovered")
  if station<#Config.Stations then
   check(not Safety.ShouldRecover(Vector3.new(x+500,3,Config.TrainCenterZ),true,station,Config),"Valid moving rider rejected")
-  check(Safety.ShouldRecover(Vector3.new(x+Config.StationSpacing,3,-22),false,station,Config),"Skipping station allowed")
+  check(Safety.ShouldRecover(Vector3.new(x+Config.StationSpacing,3,-22),false,station,Config),"Inactive station accessible")
  end
 end
+local scenes=require(game.ServerScriptService.LastTrain.StationScenes).new(W,Config)
+local fixedTrain=train:GetPivot()
+for active=1,7 do
+ scenes:Dock(active)
+ for _,p in ipairs(W:GetDescendants()) do
+  if p:IsA("BasePart") and p:GetAttribute("StationLocalFrame") then
+   local index=p:GetAttribute("StationIndex")
+   local expected=p:GetAttribute("StationLocalFrame")+Vector3.new(0,index==active and 0 or -1000-index*100,0)
+   check((p.Position-expected.Position).Magnitude<.001,"Station local frame mismatch")
+   check(p.CanCollide==(index==active and p:GetAttribute("StationCollision")==true),"Inactive station collision enabled")
+  end
+ end
+ check((train:GetPivot().Position-fixedTrain.Position).Magnitude==0,"Docking moved the passenger train")
+end
+scenes:Dock(1)
 local seats={}
 local glazing=0
 local integratedLamps=0
 local raisedCabPart=false
 for _,part in ipairs(train:GetDescendants()) do
- if part:IsA("Seat") then table.insert(seats,part) end
- if part.Name=="PanoramicWindowBand" then check(part.Transparency>=.65,"Opaque passenger glass") end
+ if part:IsA("Seat") then table.insert(seats,part);check(not part.CanTouch,"Seat auto-sits aisle passengers") end
+ if part.Name=="PanoramicWindowBand" then
+  check(part.Transparency>=.65,"Opaque passenger glass")
+  check(part.Material==Enum.Material.SmoothPlastic and part.Reflectance==0,"Refractive moving glazing")
+ end
  if part.Name=="BogieWheel" then
   local z=part.Position.Z
   check(math.abs(math.abs(z-Config.TrainCenterZ)-Config.TrackHalfGauge)<.001,"Wheel gauge mismatch")
@@ -171,7 +189,7 @@ for cycle=1,2 do
   local before=standing:GetPivot().Position
   op:Move(Config.StationSpacing,.7,{standing,seated})
   task.wait(.15)
-  check(math.abs(standing:GetPivot().Position.X-before.X-Config.StationSpacing)<.05,"Standing rider slipped")
+  check((standing:GetPivot().Position-before).Magnitude<.0001,"Stationary passenger was moved")
   check(h.SeatPart==seats[1],"Seat detached during motion")
   check((seated.HumanoidRootPart.Position-seats[1].Position).Magnitude<5,"Seated rider did not move")
   setDoorsChecked(true)
@@ -184,7 +202,7 @@ for cycle=1,2 do
  end
  setDoorsChecked(false)
  op:Move(-Config.StationSpacing*6,1,{standing,seated})
- check((train:GetPivot().Position-initial.Position).Magnitude<.02,"Return drift")
+ check((train:GetPivot().Position-initial.Position).Magnitude<.02,"Fixed train pivot drift")
 end
 setDoorsChecked(true)
 h.Sit=false
@@ -197,19 +215,30 @@ roofIntruder:Destroy()
 standing:Destroy(); seated:Destroy()
 print("LASTTRAIN_REGRESSION_ALL_PASS",tests,"assertions; two full routes; seated and standing riders; 12 arrivals")
 
--- Optional visual review: 12 seconds per view after all checks finish.
+-- Paint/GUI themes must never add physical ornaments or move cab vertices.
+local Livery=require(game.ReplicatedStorage.LastTrain.Shared.TrainLivery)
+local originals={};local count=0
+for _,p in ipairs(train:GetDescendants()) do if p:IsA("BasePart") then originals[p]=p.CFrame;count+=1 end end
+for _,key in ipairs({"Royal","Starfield","Taiwan"}) do
+ check(Livery.Apply(train,key),"Theme failed: "..key)
+ local after=0
+ for _,p in ipairs(train:GetDescendants()) do if p:IsA("BasePart") then
+  after+=1;check(originals[p]~=nil and p.CFrame==originals[p],"Theme added protrusion or moved geometry")
+ end end
+ check(after==count,"Theme added physical ornaments")
+end
+print("LASTTRAIN_THEME_ALL_PASS",count,"rigid parts unchanged across royal/galaxy/default")
 local camera=workspace.CurrentCamera
 if camera then
- camera.CameraType=Enum.CameraType.Scriptable
- camera.FieldOfView=65
+ camera.CameraType=Enum.CameraType.Scriptable;camera.FieldOfView=65
  for _,view in ipairs({
-  {"Exterior",Vector3.new(-84,7.6,-23),Vector3.new(-12,3.8,-6.35)},
-  {"Interior",Vector3.new(30,4.1,-6.35),Vector3.new(8,4.1,-6.35)},
-  {"Gangway",Vector3.new(0,4.1,-6.35),Vector3.new(20,4.1,-6.35)},
-  {"Rail contact",Vector3.new(-4,2.5,1.9),Vector3.new(14,-.8,-6.35)},
+  {"Royal-Exterior","Royal",Vector3.new(-88,7.4,-24),Vector3.new(-6,3.8,-6.35)},
+  {"Royal-Interior","Royal",Vector3.new(85,4.2,-6.35),Vector3.new(98,3.3,-6.35)},
+  {"Galaxy-Exterior","Starfield",Vector3.new(-88,7.4,-24),Vector3.new(-6,3.8,-6.35)},
+  {"Galaxy-Interior","Starfield",Vector3.new(31,4.2,-6.35),Vector3.new(9,4.9,-6.35)},
  }) do
-  camera.CFrame=CFrame.lookAt(view[2],view[3])
-  print("LASTTRAIN_VISUAL_VIEW",view[1]); task.wait(12)
+  Livery.Apply(train,view[2]);camera.CFrame=CFrame.lookAt(view[3],view[4])
+  workspace:SetAttribute("ThemeReview",view[1]);print("LASTTRAIN_THEME_VIEW",view[1]);task.wait(20)
  end
- camera.CFrame=CFrame.lookAt(Vector3.new(-92,7.6,-25),Vector3.new(-20,4,-6.35))
+ Livery.Apply(train,"Taiwan")
 end

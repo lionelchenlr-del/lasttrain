@@ -29,8 +29,9 @@ function Finish.Apply(model)
    elseif blackNames[p.Name] then
     p.Color=Finish.Graphite; p.Material=Enum.Material.Metal; p.Reflectance=0.1
    elseif p.Name=="PanoramicWindowBand" or p.Name=="DisplayWindowBand" then
-    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.Glass
-    p.Reflectance=0.04; p.Transparency=0.72
+    -- Non-refractive glazing keeps moving opaque skins visible consistently.
+    p.Color=Color3.fromRGB(166,195,204); p.Material=Enum.Material.SmoothPlastic
+    p.Reflectance=0; p.Transparency=0.72
    elseif p.Name=="SlidingDoor" then
     -- A single translucent layer avoids refractive Glass sorting against the
     -- stationary passenger glazing while the leaf slides across the body.

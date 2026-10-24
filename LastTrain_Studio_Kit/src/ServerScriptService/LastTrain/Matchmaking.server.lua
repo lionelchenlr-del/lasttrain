@@ -51,6 +51,7 @@ local function removeFromQueue(player)
 end
 
 local function studioRound(party)
+ workspace:SetAttribute("LastTrainHostId",party[1].UserId)
 	Workspace:SetAttribute("LastTrainMode", "Game")
 	local lobby = Workspace:FindFirstChild("LastTrainLobby")
 	if lobby then lobby:Destroy() end
@@ -66,9 +67,9 @@ local function studioRound(party)
 		-- Keep the first-person spawn clear of the rear carriage side. Starting at
 		-- the west end gives the player a readable view of the train and the nearby
 		-- platform approach, instead of spawning alongside an opaque cab panel.
-		local x=(station - 1) * config.StationSpacing - 80
+		local x=-80
 		if station==1 and not player:GetAttribute("FirstStationValidated") then x=config.FirstStationEntrySpawnX end
-		character:PivotTo(CFrame.new(x, 3.4, -22) * CFrame.Angles(0, math.rad(-90), 0))
+		character:PivotTo(CFrame.new(workspace:GetAttribute("LastTrainTraveling") and 25 or x, 3.4, workspace:GetAttribute("LastTrainTraveling") and config.TrainCenterZ or -22) * CFrame.Angles(0, math.rad(-90), 0))
 		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
 		if humanoid then
 			humanoid.Died:Once(function()
@@ -161,7 +162,7 @@ local function launchParty()
 		local accessCode = TeleportService:ReserveServerAsync(game.PlaceId)
 		local options = Instance.new("TeleportOptions")
 		options.ReservedServerAccessCode = accessCode
-		options:SetTeleportData({ LastTrainRound = true })
+		options:SetTeleportData({ LastTrainRound = true, LastTrainHostId=party[1].UserId })
 		TeleportService:TeleportAsync(game.PlaceId, party, options)
 	end)
 	if ok then

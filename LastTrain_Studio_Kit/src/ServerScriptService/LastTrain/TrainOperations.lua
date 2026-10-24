@@ -1,6 +1,7 @@
 -- Server-only operations shared by the story controller and Studio regression tests.
 local Players=game:GetService("Players")
 local TweenService=game:GetService("TweenService")
+local HttpService=game:GetService("HttpService")
 local Operations={}
 Operations.__index=Operations
 
@@ -12,9 +13,12 @@ function Operations.new(train)
    if p.Name=="SlidingDoor" then
     local closed=pivot:ToObjectSpace(p.CFrame)
     local shift=(p:GetAttribute("OpenX") or p.Position.X)-(p:GetAttribute("ClosedX") or p.Position.X)
+    p:SetAttribute("MotionClosedFrame",closed)
     table.insert(self.Doors,{Part=p,Closed=closed,Open=closed+Vector3.new(shift,0,0)})
    elseif p.Name=="BogieWheel" or p.Name=="WheelHub" then
-    table.insert(self.Wheels,{Part=p,Relative=pivot:ToObjectSpace(p.CFrame)})
+    local relative=pivot:ToObjectSpace(p.CFrame)
+    p:SetAttribute("MotionWheelFrame",relative)
+    table.insert(self.Wheels,{Part=p,Relative=relative})
    end
   end
  end
@@ -63,40 +67,18 @@ function Operations:SetDoors(open,instant)
  self.Train:SetAttribute("DoorsOpen",open)
 end
 
-function Operations:Move(distance,duration,extraRiders)
+function Operations:Move(distance,duration,_extraRiders)
  assert(not self.Moving,"Train already moving")
  assert(not self.Train:GetAttribute("DoorsOpen"),"Close doors before departure")
+ assert(duration>0,"Travel duration must be positive")
  self.Moving=true
- local start=self.Train:GetPivot()
- local value=Instance.new("CFrameValue"); value.Value=start
- local previous=start
- local function update()
-  local current=value.Value
-  local delta=current*previous:Inverse()
-  local riders={}
-  for _,player in ipairs(Players:GetPlayers()) do
-   if Operations.Contains(self.Train,player.Character) then table.insert(riders,player.Character) end
-  end
-  -- Regression fixtures may supply server-owned NPCs; no client can call this module.
-  for _,character in ipairs(extraRiders or {}) do
-   if Operations.Contains(self.Train,character) then table.insert(riders,character) end
-  end
-  local standing={}
-  for _,character in ipairs(riders) do
-   local h=character:FindFirstChildWhichIsA("Humanoid")
-   if not (h.SeatPart and h.SeatPart:IsDescendantOf(self.Train)) then
-    table.insert(standing,{Character=character,Target=delta*character:GetPivot()})
-   end
-  end
-  self.Train:PivotTo(current)
-  for _,rider in ipairs(standing) do rider.Character:PivotTo(rider.Target) end
-  local rotation=-(current.Position-start.Position).X/.675
-  for _,wheel in ipairs(self.Wheels) do wheel.Part.CFrame=current*wheel.Relative*CFrame.Angles(rotation,0,0) end
-  previous=current
- end
- local connection=value:GetPropertyChangedSignal("Value"):Connect(update)
- local tween=TweenService:Create(value,TweenInfo.new(duration,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Value=start+Vector3.new(distance,0,0)})
- tween:Play(); tween.Completed:Wait()
- connection:Disconnect(); value:Destroy(); self.Moving=false
+ local startedAt=workspace:GetServerTimeNow()
+ local from=workspace:GetAttribute("LastTrainStation") or 1
+ self.Train:SetAttribute("TravelScene",HttpService:JSONEncode({Distance=distance,Duration=duration,
+  StartedAt=startedAt,From=from,To=math.min(from+1,7)}))
+ -- No train, character, camera, collision floor or seat transform is changed.
+ -- Every client draws only the passing scenery using the shared server clock.
+ task.wait(duration)
+ self.Moving=false
 end
 return Operations

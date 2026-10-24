@@ -71,6 +71,12 @@ end
 
 local active = false
 local speed = 10.5
+local function huntAllowed()
+    local stage=Workspace:GetAttribute("LastTrainRoundStage") or 0
+    local station=Workspace:GetAttribute("LastTrainStation") or 1
+    return stage>=1 and stage<3 and station>=2 and station<=3
+        and not Workspace:GetAttribute("LastTrainTraveling")
+end
 local function nearestPlayer()
     local bestRoot, bestDistance, bestRange, bestScore
     for _, player in ipairs(Players:GetPlayers()) do
@@ -90,6 +96,7 @@ local function nearestPlayer()
 end
 
 local function catchNearbyPlayer()
+    if not huntAllowed() then return end
     for _, player in ipairs(Players:GetPlayers()) do
         local character = player.Character
         local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
@@ -103,12 +110,12 @@ end
 while true do
     local stage = Workspace:GetAttribute("LastTrainRoundStage") or 0
     local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)
-    local stationSpawn = Vector3.new((station - 1) * GameConfig.StationSpacing + 118, 0, -22)
+    local stationSpawn = Vector3.new(118, 0, -22)
     if (stationSpawn - spawnPosition).Magnitude > 1 then
         spawnPosition = stationSpawn
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
     end
-    local shouldHunt = stage >= 1 and stage < 3 and station >= 2 and station <= 3
+    local shouldHunt = huntAllowed()
     if shouldHunt and not active then
         active = true
         setModelPosition(spawnPosition, Vector3.new(-1, 0, 0))
@@ -132,7 +139,7 @@ while true do
             if success and path.Status == Enum.PathStatus.Success then
                 local waypoints = path:GetWaypoints()
                 for index = 2, #waypoints do
-                    if not active then break end
+                    if not active or not huntAllowed() then break end
                     local destination = Vector3.new(waypoints[index].Position.X, 0.5, waypoints[index].Position.Z)
                     local start = root.Position
                     local delta = Vector3.new(destination.X - start.X, 0, destination.Z - start.Z)
@@ -140,7 +147,7 @@ while true do
                     if length > 0.2 then
                         local direction = delta.Unit
                         local travelled = 0
-                        while travelled < length and active do
+                        while travelled < length and active and huntAllowed() do
                             local dt = RunService.Heartbeat:Wait()
                             local step = math.min(speed * dt, length - travelled)
                             travelled += step

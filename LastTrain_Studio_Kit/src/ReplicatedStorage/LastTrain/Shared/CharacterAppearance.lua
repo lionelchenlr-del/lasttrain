@@ -31,7 +31,8 @@ function Appearance.Apply(character, skinKey)
         originalHeadColor = bodyColors.HeadColor3
         character:SetAttribute("LastTrainOriginalHeadColor", originalHeadColor)
     end
-    bodyColors.HeadColor3 = originalHeadColor
+    -- Authored game characters use a natural complexion and retain the face.
+    bodyColors.HeadColor3 = skin.SkinTone or originalHeadColor
     bodyColors.LeftArmColor3 = main
     bodyColors.RightArmColor3 = main
     bodyColors.LeftLegColor3 = main
@@ -120,31 +121,46 @@ function Appearance.Apply(character, skinKey)
     end
 
     if head then
-        local headTop = head.Size.Y / 2
-        local brimSize = Vector3.new(0.2, head.Size.X * 0.88, head.Size.Z * 0.86)
-        local brimOffset = CFrame.new(0, headTop + 0.02, 0) * CFrame.Angles(0, 0, math.rad(90))
-        local crownColor = skinKey == "Signalman" and Color3.fromRGB(184, 67, 48) or main
-        weldedPart("UniformCapBrim", head, brimSize, darkTrim, brimOffset, Enum.Material.Metal, Enum.PartType.Cylinder)
-
-        if skinKey == "Signalman" then
-            weldedPart("SignalHelmetCrown", head, Vector3.new(head.Size.X * 0.9, head.Size.Y * 0.46, head.Size.Z * 0.88), crownColor, CFrame.new(0, headTop + head.Size.Y * 0.12, 0), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-            weldedPart("SignalHelmetRim", head, Vector3.new(0.12, head.Size.X * 1.02, head.Size.Z * 0.92), accent, CFrame.new(0, headTop - 0.03, 0) * CFrame.Angles(0, 0, math.rad(90)), Enum.Material.Metal, Enum.PartType.Cylinder)
-        else
-            weldedPart("UniformCapCrown", head, Vector3.new(head.Size.X * 0.78, head.Size.Y * 0.34, head.Size.Z * 0.76), crownColor, CFrame.new(0, headTop + head.Size.Y * 0.13, 0), Enum.Material.Fabric, Enum.PartType.Ball)
-            weldedPart("UniformCapVisor", head, Vector3.new(head.Size.X * 0.56, 0.1, head.Size.Z * 0.42), accent, CFrame.new(0, headTop + 0.015, -head.Size.Z * 0.42), Enum.Material.Metal)
+        local top=head.Size.Y/2
+        local hair=Color3.fromRGB(22,24,30)
+        -- Sculpted hair follows the head with massless, collision-free pieces.
+        weldedPart("StyledHairCrown",head,Vector3.new(head.Size.X*.92,.32,head.Size.Z*.92),hair,CFrame.new(0,top+.08,.03),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+        weldedPart("SweptHairQuiff",head,Vector3.new(head.Size.X*.74,.30,head.Size.Z*.55),hair,CFrame.new(-.08,top+.20,-.20)*CFrame.Angles(0,0,math.rad(-12)),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+        for _,side in ipairs({-1,1}) do
+            weldedPart("HairSide",head,Vector3.new(.12,.38,head.Size.Z*.68),hair,CFrame.new(side*head.Size.X*.44,top-.16,.10),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
         end
-        weldedPart("UniformCapBadge", head, Vector3.new(0.17, 0.2, 0.08), accent, CFrame.new(0, headTop + head.Size.Y * 0.13, -head.Size.Z * 0.47), Enum.Material.Metal, Enum.PartType.Ball)
+        if skinKey=="Conductor" or skinKey=="PremiumStaff" then
+            weldedPart("TailoredCapCrown",head,Vector3.new(head.Size.X*.92,.22,head.Size.Z*.85),main,CFrame.new(0,top+.31,.02),Enum.Material.Fabric,Enum.PartType.Ball)
+            weldedPart("TailoredCapVisor",head,Vector3.new(head.Size.X*.72,.055,.42),darkTrim,CFrame.new(0,top+.19,-head.Size.Z*.38),Enum.Material.SmoothPlastic)
+            weldedPart("CapMetalBadge",head,Vector3.new(.15,.11,.035),accent,CFrame.new(0,top+.28,-head.Size.Z*.43),Enum.Material.Metal)
+        elseif skinKey=="NightGuard" then
+            weldedPart("MysteryMask",head,Vector3.new(head.Size.X*.72,.24,.065),Color3.fromRGB(117,128,147),CFrame.new(0,-.20,-head.Size.Z*.51),Enum.Material.Metal)
+        end
+    end
+    if torso then
+        local front=-(torso.Size.Z/2+.12)
+        for _,side in ipairs({-1,1}) do
+            weldedPart("TailoredLapel",torso,Vector3.new(.14,torso.Size.Y*.48,.045),darkTrim,CFrame.new(side*.20,torso.Size.Y*.13,front)*CFrame.Angles(0,0,side*math.rad(18)),Enum.Material.Fabric)
+        end
+        weldedPart("SilkTie",torso,Vector3.new(.105,torso.Size.Y*.40,.045),accent,CFrame.new(0,torso.Size.Y*.12,front-.03),Enum.Material.SmoothPlastic)
+        weldedPart("PocketSquare",torso,Vector3.new(.19,.065,.035),accent,CFrame.new(-torso.Size.X*.22,torso.Size.Y*.21,front-.035),Enum.Material.SmoothPlastic)
+        if skinKey=="VIP" then
+            local badge=weldedPart("VIPBadge",torso,Vector3.new(.22,.13,.04),accent,CFrame.new(torso.Size.X*.23,torso.Size.Y*.24,front),Enum.Material.Metal)
+            local tag=Instance.new("BillboardGui");tag.Name="VIPNameplate";tag.Size=UDim2.fromOffset(150,28);tag.StudsOffset=Vector3.new(0,2.5,0);tag.Adornee=head;tag.MaxDistance=45;tag.Parent=visuals
+            local text=Instance.new("TextLabel");text.Size=UDim2.fromScale(1,1);text.BackgroundTransparency=1;text.Text="VIP  ·  LAST TRAIN";text.Font=Enum.Font.GothamBold;text.TextSize=12;text.TextColor3=accent;text.Parent=tag
+        end
     end
 
     if skinKey == "NightGuard" and torso then
+        for _,side in ipairs({-1,1}) do
+            weldedPart("LongCoatTail",torso,Vector3.new(torso.Size.X*.36,torso.Size.Y*.83,.10),darkTrim,CFrame.new(side*torso.Size.X*.25,-torso.Size.Y*.70,torso.Size.Z*.47),Enum.Material.Fabric)
+        end
         local front = -(torso.Size.Z / 2 + 0.11)
         weldedPart("NightGuardScarf", torso, Vector3.new(torso.Size.X * 0.74, torso.Size.Y * 0.22, 0.22), accent, CFrame.new(0, torso.Size.Y * 0.34, front), Enum.Material.Fabric, Enum.PartType.Ball)
         weldedPart("NightGuardScarfTail", torso, Vector3.new(0.22, torso.Size.Y * 0.48, 0.12), accent, CFrame.new(torso.Size.X * 0.2, torso.Size.Y * 0.05, front - 0.02), Enum.Material.Fabric)
     elseif skinKey == "Signalman" and torso then
         weldedPart("SignalmanToolRadio", torso, Vector3.new(0.25, 0.34, 0.14), darkTrim, CFrame.new(torso.Size.X * 0.31, torso.Size.Y * 0.28, -(torso.Size.Z / 2 + 0.1)), Enum.Material.Metal)
         weldedPart("SignalmanRadioLamp", torso, Vector3.new(0.08, 0.08, 0.06), Color3.fromRGB(255, 90, 68), CFrame.new(torso.Size.X * 0.31, torso.Size.Y * 0.34, -(torso.Size.Z / 2 + 0.19)), Enum.Material.Neon, Enum.PartType.Ball)
-    elseif skinKey == "PlatformWorker" and torso then
-        weldedPart("ReflectiveVestStripe", torso, Vector3.new(torso.Size.X * 0.76, 0.12, 0.08), accent, CFrame.new(0, -torso.Size.Y * 0.08, -(torso.Size.Z / 2 + 0.1)), Enum.Material.Neon)
     end
 
     if skin.ShirtTemplate and skin.ShirtTemplate > 0 then

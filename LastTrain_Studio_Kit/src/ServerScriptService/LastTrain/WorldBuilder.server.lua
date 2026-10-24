@@ -20,8 +20,9 @@ Workspace:SetAttribute("LastTrainRoundStage", 0)
 local function folder(name) local f=Instance.new("Folder"); f.Name=name; f.Parent=world; return f end
 local geometry, props, objectives = folder("Geometry"), folder("Props"), folder("Objectives")
 local C={ concrete=Color3.fromRGB(77,88,95), tile=Color3.fromRGB(105,117,122), dark=Color3.fromRGB(28,37,43), metal=Color3.fromRGB(128,141,145), gold=Color3.fromRGB(233,188,99), cyan=Color3.fromRGB(92,212,226), glass=Color3.fromRGB(31,63,76) }
+local buildingStation=nil
 local function part(parent,name,size,pos,color,material,transparency,collide)
- local p=Instance.new("Part"); p.Name=name; p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic; p.Transparency=transparency or 0; p.Anchored=true; p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=parent; return p
+ local p=Instance.new("Part"); p.Name=name; p.Size=size; p.Position=pos; p.Color=color; p.Material=material or Enum.Material.SmoothPlastic; p.Transparency=transparency or 0; p.Anchored=true; p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=parent; if buildingStation then p:SetAttribute("StationIndex",buildingStation) end; return p
 end
 local function routePart(parent,name,size,pos,color,material,transparency,collide)
  local count=math.ceil(size.X/512)
@@ -43,7 +44,7 @@ local function label(host,text,color,width,height,face)
  local t=Instance.new("TextLabel"); t.Size=UDim2.fromScale(1,1); t.BackgroundTransparency=1; t.Text=text; t.TextColor3=color; t.TextStrokeTransparency=.72; t.Font=Enum.Font.GothamBlack; t.TextScaled=true; t.Parent=gui; return gui
 end
 local function prompt(name,stage,pos,action,objectText,extra)
- local a=part(objectives,name,Vector3.new(2,3,2),pos,C.cyan,Enum.Material.Neon,1,false); a:SetAttribute("ObjectiveStage",stage)
+ local a=part(objectives,name,Vector3.new(2,3,2),pos,C.cyan,Enum.Material.Neon,1,false); a:SetAttribute("ObjectiveStage",stage); a:SetAttribute("StationIndex",math.max(1,stage+1))
  if extra then for k,v in pairs(extra) do a:SetAttribute(k,v) end end
  local pr=Instance.new("ProximityPrompt"); pr.ActionText=action; pr.ObjectText=objectText; pr.HoldDuration=.65; pr.MaxActivationDistance=11; pr.RequiresLineOfSight=false; pr.Parent=a; return a
 end
@@ -70,17 +71,16 @@ local function curvedWindowBand(parent,name,centerX,side)
  end end
 end
 local function curvedStripe(parent,name,side,y,color,thickness)
- local segments=18; local xStart,xEnd=8,62
- for i=1,segments do
-  local x=xStart+(i-.5)*(xEnd-xStart)/segments
-  local onOpenDoor=name~="GoldBeltline" or x<32 or x>38
-  if onOpenDoor then
-   local pos=Vector3.new(x,y,side*(5.64+.025))
-   local right=side>0 and Vector3.new(1,0,0) or Vector3.new(-1,0,0)
-   local p=part(parent,name,Vector3.new((xEnd-xStart)/segments+.03,thickness,.12),pos,color,Enum.Material.Neon,0,false)
-   p.CFrame=CFrame.fromMatrix(pos,right,Vector3.new(0,1,0),right:Cross(Vector3.new(0,1,0)))
-   p:SetAttribute("SurfaceStripe",true)
-  end
+ -- One face per uninterrupted run: adjoining coplanar segments used to
+ -- overlap by .03 studs and shimmer when viewed from a moving camera.
+ local runs=name=="GoldBeltline" and {{8,32},{38,62}} or {{8,62}}
+ for _,run in ipairs(runs) do
+  local x=(run[1]+run[2])/2
+  local pos=Vector3.new(x,y,side*(5.64+.025))
+  local right=Vector3.new(side,0,0)
+  local p=part(parent,name,Vector3.new(run[2]-run[1],thickness,.12),pos,color,Enum.Material.SmoothPlastic,0,false)
+  p.CFrame=CFrame.fromMatrix(pos,right,Vector3.yAxis,right:Cross(Vector3.yAxis))
+  p:SetAttribute("SurfaceStripe",true)
  end
 end
 local function beam(parent,name,a,b,width,color,material)
@@ -92,8 +92,8 @@ end
 
 -- Long, enclosed runs separate all seven stations; boarding is mandatory.
 local spacing=GameConfig.StationSpacing
-local routeLength=spacing*(#GameConfig.Stations-1)+480
-local routeCenter=spacing*(#GameConfig.Stations-1)/2
+local routeLength=960
+local routeCenter=0
 local routeStart=routeCenter-routeLength/2
 local routeEnd=routeCenter+routeLength/2
 routePart(geometry,"Foundation",Vector3.new(routeLength,2,66),Vector3.new(routeCenter,-3.5,0),C.concrete,Enum.Material.Concrete)
@@ -115,7 +115,8 @@ for _,side in ipairs({-1,1}) do
  routePart(geometry,"RailFoot",Vector3.new(routeLength-25,.10,.65),Vector3.new(routeCenter,GameConfig.RailTop-.28,z),C.metal,Enum.Material.Metal)
 end
 for x=routeStart+10,routeEnd-10,8 do
- part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete)
+ local sleeper=part(geometry,"TrackSleeper",Vector3.new(.95,.25,11),Vector3.new(x,GameConfig.RailTop-.425,GameConfig.TrainCenterZ),Color3.fromRGB(111,117,119),Enum.Material.Concrete,0,false)
+ sleeper:SetAttribute("TravelLoop",960)
 end
 routePart(geometry,"OverheadContactWire",Vector3.new(routeLength-25,.07,.07),Vector3.new(routeCenter,11.64,GameConfig.TrainCenterZ),Color3.fromRGB(112,108,96),Enum.Material.Metal,0,false)
 for x=routeStart+30,routeEnd-30,128 do
@@ -123,8 +124,9 @@ for x=routeStart+30,routeEnd-30,128 do
  if stopDistance>230 then
   for _,side in ipairs({-1,1}) do
    local lamp=part(geometry,"TunnelServiceLight",Vector3.new(4,.3,.16),Vector3.new(x,6,side*31.7),Color3.fromRGB(207,223,233),Enum.Material.Neon,0,false)
+   lamp:SetAttribute("TravelLoop",960)
    pointLight(lamp,Color3.fromRGB(187,207,225),.7,27)
-   part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false)
+   local rib=part(geometry,"TunnelWallRib",Vector3.new(.32,16,.32),Vector3.new(x,7,side*31.6),C.metal,Enum.Material.Metal,0,false);rib:SetAttribute("TravelLoop",960)
   end
  end
 end
@@ -240,7 +242,7 @@ for rowIndex,x in ipairs({14,24,46,56}) do
    label(badge,string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")),Color3.fromRGB(23,30,40),nil,nil,Enum.NormalId.Left)
    local seat=Instance.new("Seat"); seat.Name="PassengerSeat"; seat.Size=Vector3.new(1.3,.18,1.55)
    seat.CFrame=CFrame.new(x,1.03,z)*CFrame.Angles(0,-math.pi/2,0)
-   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CastShadow=false
+   seat.Anchored=true; seat.Transparency=1; seat.CanCollide=false; seat.CanTouch=false; seat.CastShadow=false
    seat:SetAttribute("SeatNumber",string.format("%02d%s",rowIndex,side<0 and (column==1 and "A" or "B") or (column==1 and "C" or "D")))
    seat.Parent=train
    local sit=Instance.new("ProximityPrompt"); sit.ActionText="坐下"; sit.ObjectText="座位 "..seat:GetAttribute("SeatNumber")
@@ -418,6 +420,7 @@ for _,child in ipairs(train:GetChildren()) do
 end
 TrainFinish.Apply(train)
 TrainLuxury.Apply(train,rearCar,frontCar)
+require(ReplicatedStorage.LastTrain.Shared.TrainPremium).Apply(train,frontCar)
 -- Recessed walk plates meet the platform edge when the platform-side doors open.
 for _,car in ipairs({train,rearCar,frontCar}) do
  local offset=car==rearCar and -60 or (car==frontCar and 60 or 0)
@@ -451,11 +454,16 @@ part(frontCar,"FrontCabBulkhead",Vector3.new(.42,7.4,8.5),Vector3.new(99,4.1,0),
 -- Align the negative-side doors within arm's reach of the platform edge.
 for _,desc in ipairs(train:GetDescendants()) do if desc:IsA("BasePart") then desc.Position=desc.Position+Vector3.new(0,0,GameConfig.TrainCenterZ) end end
 
--- Freeze a stable pivot; seat occupancy and wheel animation must not change it.
+-- A replicated anchor gives both server and clients the same stable pivot.
+-- Model.WorldPivot alone does not replicate when parts are moved in a batch.
+local motionRoot=part(train,"TrainMotionRoot",Vector3.one,Vector3.new(35,0,GameConfig.TrainCenterZ),C.dark,Enum.Material.SmoothPlastic,1,false)
+motionRoot.CanTouch=false; motionRoot.CanQuery=false; motionRoot.CastShadow=false
+train.PrimaryPart=motionRoot
 train:PivotTo(train:GetPivot())
 train:SetAttribute("PassengerFrameOffset",train:GetPivot():ToObjectSpace(CFrame.new(35,0,GameConfig.TrainCenterZ)))
 
 for i,station in ipairs(GameConfig.Stations) do
+ buildingStation=i
  local center=(i-1)*spacing; local accent=station.Accent
  -- End screens close each platform while leaving the train clearance open.
  for _,endSign in ipairs({-1,1}) do
@@ -545,6 +553,7 @@ for i,station in ipairs(GameConfig.Stations) do
  end
 end
 
+buildingStation=1
 -- Station 01 notices and entry signage.
 local entry=Instance.new("Model"); entry.Name="FirstStationEntry"; entry.Parent=props
 local gx=GameConfig.FirstStationGateX
@@ -574,7 +583,15 @@ local kiosk=part(entry,"TicketMachine",Vector3.new(3.4,4.5,2),Vector3.new(-151,2
 local machineScreen=part(entry,"TicketMachineScreen",Vector3.new(2.5,1.65,.08),Vector3.new(-151,3.1,-28.55),Color3.fromRGB(13,29,38),Enum.Material.SmoothPlastic,0,false)
 label(machineScreen,"領取無目的地車票\nFREE TICKET",Color3.fromRGB(238,226,185),nil,nil,Enum.NormalId.Back)
 part(entry,"TicketOutputSlot",Vector3.new(1.6,.12,.08),Vector3.new(-151,1.75,-28.5),C.dark,Enum.Material.SmoothPlastic,0,false)
-part(entry,"UnclaimedTicket",Vector3.new(.85,.04,.5),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(237,221,181),Enum.Material.SmoothPlastic,0,false)
+local ticket=part(entry,"UnclaimedTicket",Vector3.new(1.35,.06,.8),Vector3.new(-151,1.69,-28.17),Color3.fromRGB(250,249,245),Enum.Material.SmoothPlastic,0,false)
+local ticketFace=Instance.new("SurfaceGui"); ticketFace.Name="TicketFace"; ticketFace.Face=Enum.NormalId.Top
+ ticketFace.CanvasSize=Vector2.new(540,320); ticketFace.LightInfluence=0; ticketFace.Parent=ticket
+local ticketStripe=Instance.new("Frame"); ticketStripe.Name="OrangeBand"; ticketStripe.Size=UDim2.fromScale(1,.24)
+ ticketStripe.BorderSizePixel=0; ticketStripe.BackgroundColor3=TrainFinish.Orange; ticketStripe.Parent=ticketFace
+local ticketText=Instance.new("TextLabel"); ticketText.Name="TicketText"; ticketText.Position=UDim2.fromScale(.06,.28)
+ ticketText.Size=UDim2.fromScale(.88,.66); ticketText.BackgroundTransparency=1; ticketText.TextColor3=TrainFinish.Graphite
+ ticketText.Font=Enum.Font.GothamMedium; ticketText.TextScaled=true
+ ticketText.Text="末班車  LAST TRAIN\n新月站 → 目的地未定\n單程車票 • 請感應進站"; ticketText.Parent=ticketFace
 local entrySign=part(entry,"EntryInstructions",Vector3.new(.18,2.2,15.5),Vector3.new(gx-2,6.2,-22.5),C.dark,Enum.Material.SmoothPlastic,0,false)
 local entryGui=label(entrySign,"① 領取車票　→　② 刷卡進站　→　③ 上車",Color3.fromRGB(243,232,201),nil,nil,Enum.NormalId.Left)
 entryGui.CanvasSize=Vector2.new(1600,220); entryGui:FindFirstChildWhichIsA("TextLabel").TextWrapped=false
@@ -596,6 +613,9 @@ prompt("ReadAccidentLog",5,Vector3.new(spacing*5+40,2.2,-27),"讀取事故紀錄
 prompt("LeaveEnding",6,Vector3.new(spacing*6-50,2.2,-27),"相信列車長，離開","結局：回到城市",{Ending="Conductor"})
 prompt("TruthEnding",6,Vector3.new(spacing*6,2.2,-27),"關閉核心，終止循環","真相結局：讓列車停下",{Ending="Truth"})
 prompt("SecretEnding",6,Vector3.new(spacing*6+50,2.2,-27),"啟動封存系統","隱藏結局：STATION 08",{Ending="Station08"})
-local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(spacing+118,0.15,0),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
+buildingStation=nil
+local monsterSpawn=part(world,"MonsterSpawn",Vector3.new(2,1,2),Vector3.new(118,0.15,-22),Color3.fromRGB(174,45,38),Enum.Material.Neon,1,false); monsterSpawn.CanTouch=false
 local ambience=Instance.new("Sound"); ambience.Name="StationAmbience"; ambience.SoundId=""; ambience.Looped=true; ambience.Volume=.12; ambience.RollOffMaxDistance=200; ambience.Parent=world
+local scenes=require(script.Parent.StationScenes).new(world,GameConfig)
+scenes:Dock(1)
 world:SetAttribute("Ready",true)

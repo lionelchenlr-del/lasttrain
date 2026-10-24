@@ -18,6 +18,7 @@ elseif isUnpublishedStudioTest then
 else
     warn("LastTrain: DataStore is unavailable: " .. tostring(storeResult))
 end
+local Catalog=require(ReplicatedStorage.LastTrain.Shared.PremiumCatalog)
 local Profiles = {}
 local cache = {}
 local locks = {}
@@ -31,6 +32,7 @@ local function normalize(raw)
         OwnedSkins = {},
         EquippedSkin = "PlatformWorker",
         ProcessedReceipts = {},
+        OwnedPasses = {}, EditionSerials={}, EquippedLivery="Taiwan", EquippedFlashlight="Standard", FlashlightColor="Ice",
     }
     if type(raw.OwnedSkins) == "table" then
         for key, owned in pairs(raw.OwnedSkins) do
@@ -53,6 +55,17 @@ local function normalize(raw)
             end
         end
     end
+    if type(raw.OwnedPasses)=="table" then
+        for key,owned in pairs(raw.OwnedPasses) do
+            if Catalog.Items[key] and owned==true then result.OwnedPasses[key]=true end
+        end
+    end
+    local serial=type(raw.EditionSerials)=="table" and tonumber(raw.EditionSerials.StarTrain)
+    if serial and serial%1==0 and serial>=1 and serial<=500 then result.EditionSerials.StarTrain=serial end
+    local livery=Catalog.Liveries[raw.EquippedLivery]
+    if livery and (not livery.Pass or result.OwnedPasses[livery.Pass]) then result.EquippedLivery=raw.EquippedLivery end
+    if result.OwnedPasses.NeonFlashlight and raw.EquippedFlashlight=="Neon" then result.EquippedFlashlight="Neon" end
+    if raw.FlashlightColor=="Amber" or raw.FlashlightColor=="Violet" then result.FlashlightColor=raw.FlashlightColor end
     return result
 end
 
@@ -66,7 +79,10 @@ local function applySkin(player, skinKey)
     local humanoid = character:FindFirstChildWhichIsA("Humanoid")
     if humanoid then humanoid.WalkSpeed = 16 * (skin.WalkSpeedMultiplier or 1) end
 
-    CharacterAppearance.Apply(character, skinKey)
+    if character:GetAttribute("AppliedLastTrainSkin")~=skinKey then
+        CharacterAppearance.Apply(character, skinKey)
+        character:SetAttribute("AppliedLastTrainSkin",skinKey)
+    end
 end
 
 local function syncPlayer(userId, profile)
@@ -86,6 +102,11 @@ local function syncPlayer(userId, profile)
     end
     coins.Value = profile.Coins
     player:SetAttribute("EquippedSkin", profile.EquippedSkin)
+    for key in pairs(Catalog.Items) do player:SetAttribute("Owns_"..key,profile.OwnedPasses[key]==true) end
+    player:SetAttribute("GalaxyEditionSerial",profile.EditionSerials.StarTrain)
+    player:SetAttribute("EquippedLivery",profile.EquippedLivery)
+    player:SetAttribute("EquippedFlashlight",profile.EquippedFlashlight)
+    player:SetAttribute("FlashlightColor",profile.FlashlightColor)
     applySkin(player, profile.EquippedSkin)
 end
 
@@ -144,7 +165,7 @@ function Profiles.Load(player)
         if not appearanceHooks[player.UserId] then
             appearanceHooks[player.UserId] = player.CharacterAppearanceLoaded:Connect(function(character)
                 local latest = cache[player.UserId]
-                if latest and player.Character == character then applySkin(player, latest.EquippedSkin) end
+                if latest and player.Character == character then character:SetAttribute("AppliedLastTrainSkin",nil);applySkin(player, latest.EquippedSkin) end
             end)
         end
         if player.Character then applySkin(player, cache[player.UserId].EquippedSkin) end
@@ -161,7 +182,7 @@ function Profiles.GetState(player)
     if not profile then return nil end
     local owned = {}
     for key, value in pairs(profile.OwnedSkins) do owned[key] = value end
-    return { Coins = profile.Coins, OwnedSkins = owned, EquippedSkin = profile.EquippedSkin }
+    return { Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
 end
 
 function Profiles.AwardCoins(player, amount)
@@ -219,6 +240,48 @@ function Profiles.GrantSkin(player, skinKey)
         profile.OwnedSkins[skinKey] = true
     end)
     return ok
+end
+
+function Profiles.SetPass(player,key,owned)
+    local item=Catalog.Items[key];if not item then return false end
+    return update(player.UserId,function(profile)
+        profile.OwnedPasses[key]=owned==true or nil
+        if item.Skin then
+            profile.OwnedSkins[item.Skin]=owned==true or nil
+            if not owned and profile.EquippedSkin==item.Skin then profile.EquippedSkin="PlatformWorker" end
+        end
+        local livery=Catalog.Liveries[profile.EquippedLivery]
+        if not owned and livery and livery.Pass==key then profile.EquippedLivery="Taiwan" end
+        if not owned and key=="NeonFlashlight" then profile.EquippedFlashlight="Standard" end
+    end)
+end
+function Profiles.EquipPremium(player,key,option)
+    local item=Catalog.Items[key];if not item then return false,"找不到這個商品。" end
+    local success,message=false,"尚未擁有這個商品。"
+    local ok=update(player.UserId,function(profile)
+        if not profile.OwnedPasses[key] then return end
+        if item.Skin then profile.EquippedSkin=item.Skin
+        elseif item.Kind=="Livery" or item.Kind=="Royal" then
+            local livery=Catalog.Liveries[option]
+            if not livery or (livery.Pass~=key and not (key=="RoyalCarriage" and option=="Taiwan")) then message="請選擇已解鎖的列車外觀。";return end
+            profile.EquippedLivery=option
+        elseif item.Kind=="Flashlight" then
+            if option~="Ice" and option~="Amber" and option~="Violet" and option~="Standard" then message="找不到這種光色。";return end
+            profile.EquippedFlashlight=option=="Standard" and "Standard" or "Neon"
+            if option~="Standard" then profile.FlashlightColor=option end
+        end
+        success=true;message=item.Kind=="Access" and "已解鎖，請前往專屬座位區。" or "已套用；列車塗裝由房主在出發前決定。"
+    end)
+    return ok and success,ok and message or "資料儲存失敗，請稍後再試。"
+end
+function Profiles.GrantEdition(player,serial)
+    if type(serial)~="number" or serial%1~=0 or serial<1 or serial>500 then return false end
+    return update(player.UserId,function(profile)
+        profile.OwnedPasses.StarTrain=true;profile.EditionSerials.StarTrain=serial
+    end)
+end
+function Profiles.ResetLivery(player)
+    return update(player.UserId,function(profile) profile.EquippedLivery="Taiwan" end)
 end
 
 function Profiles.GrantCoinsFromReceipt(userId, purchaseId, amount)

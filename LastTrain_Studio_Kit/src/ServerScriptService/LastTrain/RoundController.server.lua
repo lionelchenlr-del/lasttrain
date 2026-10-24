@@ -26,7 +26,9 @@ local boardingText=nil
 local arrivedAt=os.clock()
 local station=1
 local spacing=GameConfig.StationSpacing
+local PremiumAccess=require(script.Parent.PremiumAccess)
 local operations=Operations.new(train)
+local scenes=require(script.Parent.StationScenes).new(world,GameConfig)
 local entry=FirstStationEntry.new(world,train,GameConfig,function(player,text)
  objectiveEvent:FireClient(player,stage,text,false,GameConfig.Stations[1].Name,"",nil,"Entry",1)
 end)
@@ -115,8 +117,10 @@ local function moveToNextStation()
  boardingText=nil
  updateDisplays(true)
  publish("列車開往下一站。","",nil,"Moving")
+ scenes:Depart(station)
  operations:Move(spacing,GameConfig.TravelDuration)
  station=math.min(station+1,#GameConfig.Stations); world:SetAttribute("Station",station)
+ scenes:Dock(station)
  Workspace:SetAttribute("LastTrainStation",station)
  Workspace:SetAttribute("LastTrainTraveling",false)
  arrivedAt=os.clock()
@@ -207,13 +211,29 @@ for _,seat in ipairs(train:GetDescendants()) do
  if seat:IsA("Seat") and seat.Name=="PassengerSeat" then
   local prompt=seat:FindFirstChildOfClass("ProximityPrompt")
   if prompt then
-   seat:GetPropertyChangedSignal("Occupant"):Connect(function() prompt.Enabled=seat.Occupant==nil end)
+   seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+    local occupant=seat.Occupant
+    prompt.Enabled=occupant==nil
+    local required=seat:GetAttribute("RequiredPass")
+    local owner=occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+    local state=owner and Profiles.GetState(owner)
+    if required and owner and not PremiumAccess.Has(owner,required) then
+     occupant.Sit=false
+     local weld=seat:FindFirstChild("SeatWeld");if weld then weld:Destroy() end
+    end
+   end)
    prompt.Triggered:Connect(function(player)
     local character=player.Character
     local root=character and character:FindFirstChild("HumanoidRootPart")
     local h=character and character:FindFirstChildWhichIsA("Humanoid")
     if not root or not h or h.Health<=0 or seat.Occupant or not entry:CanBoard(player,station) or not Operations.Contains(train,character) then return end
     if (root.Position-seat.Position).Magnitude>prompt.MaxActivationDistance+1 then return end
+    local required=seat:GetAttribute("RequiredPass")
+    local state=Profiles.GetState(player)
+    if required and not PremiumAccess.Has(player,required) then
+     ReplicatedStorage.LastTrain.Remotes.PremiumNotice:FireClient(player,required=="RoyalCarriage" and "這是皇家專屬座位，可在精品商店預覽通行證。" or "這是商務專屬座位，可在精品商店預覽通行證。",required)
+     return
+    end
     seat:Sit(h)
    end)
   end

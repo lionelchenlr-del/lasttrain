@@ -1,3 +1,20 @@
+# Current stationary-carriage regression (2026-10-24)
+
+Production now keeps the passenger train fixed. Scenery and station scenes provide travel. Historical results below describe earlier moving-train versions.
+
+- `python3 tools/run_movement_regression.py`: 111 checks, 18 journeys with train transform APIs forbidden.
+- `luau tests/DepartureGate.spec.luau`: 116 checks.
+- `luau tests/TicketAccess.spec.luau`: 45 checks.
+- `luau tests/EditionLedger.spec.luau`: 22,507 checks, 500 global serials, receipt replay and allocation cap.
+- `python3 tools/build_studio_regression.py /tmp/LastTrain-geometry.rbxlx`: Studio **Run**, seven scene positions/collision sets, two full visual routes, 12 arrivals, seat/door/connection/cab checks. Latest result: 18,762 checks.
+- `python3 tools/build_player_regression.py /tmp/LastTrain-player.rbxlx`: Studio **Test**, actual unanchored client-owned character walks the connected cars during a 42-second journey, then sits, opens and closes both full-size previews without disturbing the native seat weld, stands and dies/respawns during another journey. Client train drift must remain below .0001 studs. No server carry or character anchoring is used in this fixture.
+- `python3 tools/build_story_regression.py /tmp/LastTrain-story.rbxlx --lobby --branch=Conductor --ending=Conductor`: Studio **Test**, normal server story controller, anchored test character and native prompt holds; all seven stops, ending ACK and real unowned/owned paid-seat prompts. `--ending=Station08` selects the secret branch; `--live-monster --travel=42` retains the monster and full journey duration. Timings changed only in the disposable fixture. Three endings were reached across separate sessions.
+- `python3 tools/build_premium_regression.py /tmp/LastTrain-shop.rbxlx`: Studio **Test**, eight entitlements, unlisted purchase rejection, invalid equip, profile equipment choices, receipt deduplication and native VIP lounge access. Fixture-only server grants do not represent real Robux purchases.
+
+All test places stay outside the repository and are excluded from the production Rojo tree. No live payment, four-client latency, published teleport or long-term cloud persistence claim is made. Seven real pass IDs and one developer product ID are still required before sale.
+
+---
+
 # Train regression checks
 
 Build a temporary place from the repository root:

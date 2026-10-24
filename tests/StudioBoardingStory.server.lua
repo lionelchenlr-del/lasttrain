@@ -7,15 +7,17 @@ local Operations=require(game.ServerScriptService.LastTrain.TrainOperations)
 local train=W.Props.LastTrainCar
 local ack=Instance.new("RemoteEvent"); ack.Name="StoryTestAck"; ack.Parent=game.ReplicatedStorage
 local inputAcks={}; local anomalyCount=0; local anomalyCorrect=false; local anomalyCleared=false
+local endingSeen=nil
 local player
 ack.OnServerEvent:Connect(function(sender,kind,value)
  if sender~=player then return end
- if kind=="Input" then inputAcks[value]=true
+ if kind=="Ending" then endingSeen=value
+ elseif kind=="Input" then inputAcks[value]=true
  elseif kind=="Anomaly" then anomalyCount+=1; anomalyCorrect=value==true
  elseif kind=="AnomalyCleared" then anomalyCleared=value==true end
 end)
 local function untilTrue(predicate,message,timeout)
- local deadline=os.clock()+(timeout or 20)
+ local deadline=os.clock()+(timeout or 75)
  repeat if predicate() then return end; task.wait(.05) until os.clock()>deadline
  error(message)
 end
@@ -106,5 +108,55 @@ assert(workspace:GetAttribute("LastTrainStation")==3,"Closing-door exit left pas
 assert((train:GetPivot().Position-before.Position).Magnitude<.01,"Closing-door exit did not cancel departure")
 print("LASTTRAIN_STORY_CLOSING_EXIT_PASS")
 board(3); atStation(4)
+platformTask("MirrorReport",4); board(4); atStation(5)
+platformTask("CCTVEvidence",5); board(5); atStation(6)
+local branch=workspace:GetAttribute("StoryTestBranch") or "Records"
+platformTask(branch=="Conductor" and "TrustConductor" or "ReadAccidentLog",6)
+board(6); atStation(7)
+local ending=workspace:GetAttribute("StoryTestEnding") or "Truth"
+if branch=="Conductor" then
+ position(CFrame.new(W.Objectives.SecretEnding.Position+Vector3.new(0,1,0)))
+ trigger("SecretEnding"); task.wait(.4)
+ assert(endingSeen==nil,"Secret ending unlocked without records")
+ print("LASTTRAIN_STORY_SECRET_LOCK_PASS")
+end
+local prompt=ending=="Truth" and "TruthEnding" or ending=="Station08" and "SecretEnding" or "LeaveEnding"
+position(CFrame.new(W.Objectives[prompt].Position+Vector3.new(0,1,0))); trigger(prompt)
+untilTrue(function() return endingSeen==ending end,"Ending did not reach the real client: "..ending)
+assert(workspace:GetAttribute("LastTrainStation")==7,"Ending skipped final station")
+local Profiles=require(game.ServerScriptService.LastTrain.ProfileService)
+for _,key in ipairs({"LuxuryPass","RoyalCarriage"}) do
+ local seat
+ for _,candidate in ipairs(train:GetDescendants()) do
+  if candidate:IsA("Seat") and candidate:GetAttribute("RequiredPass")==key then seat=candidate;break end
+ end
+ assert(seat,"Missing paid seat: "..key)
+ root.Anchored=false
+ position(CFrame.new(seat.Position+Vector3.new(1.6,2,0)))
+ trigger("Seat:"..key);task.wait(.3)
+ assert(character.Humanoid.SeatPart==nil,"Unowned seat accepted: "..key)
+ assert(Profiles.SetPass(player,key,true)) -- Fixture grant, never a purchase.
+ trigger("Seat:"..key)
+ untilTrue(function() return character.Humanoid.SeatPart==seat end,"Owned paid seat rejected: "..key)
+ character.Humanoid.Sit=false
+ local weld=seat:FindFirstChild("SeatWeld");if weld then weld:Destroy() end
+ position(Operations.Frame(train)*CFrame.new(0,3.2,0));task.wait(.3)
+ assert(Profiles.SetPass(player,key,false))
+end
+print("LASTTRAIN_PREMIUM_SEAT_PROMPTS_PASS rejected unowned; accepted owned; native prompt input")
+root.Anchored=true
+local bar
+for _,part in ipairs(train:GetDescendants()) do if part:GetAttribute("RoyalFacility")=="TeaBar" then bar=part;break end end
+assert(bar,"Missing tea facility")
+position(CFrame.new(bar.Position+Vector3.new(0,1,2)))
+trigger("RoyalTea");task.wait(.3)
+assert(not player.Backpack:FindFirstChild("皇家茶飲"),"Unowned tea service accepted")
+assert(Profiles.SetPass(player,"RoyalCarriage",true))
+trigger("RoyalTea")
+untilTrue(function() return player.Backpack:FindFirstChild("皇家茶飲")~=nil end,"Owned tea not delivered")
+trigger("DrinkTea")
+untilTrue(function() return not character:FindFirstChild("皇家茶飲") and not player.Backpack:FindFirstChild("皇家茶飲") end,"Tea did not consume")
+assert(Profiles.SetPass(player,"RoyalCarriage",false))
+print("LASTTRAIN_ROYAL_TEA_PASS rejected unowned; served and consumed with native client input")
 root.Anchored=false
-print("LASTTRAIN_STORY_ALL_PASS real client; personal ticket; reader; private anomaly; gate collision; respawn; station-2 waiting; closing exit; station 4 reached")
+print("LASTTRAIN_STORY_ALL_PASS seven stations; ending",ending,"branch",branch)

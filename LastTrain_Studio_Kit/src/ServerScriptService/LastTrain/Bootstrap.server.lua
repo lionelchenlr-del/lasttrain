@@ -29,3 +29,8 @@ ensure("RemoteEvent", "TicketUpdate")
 ensure("RemoteFunction", "ShopRequest")
 ensure("RemoteFunction", "MatchmakingRequest")
 ensure("RemoteEvent", "MatchmakingUpdate")
+
+ensure("RemoteFunction", "PremiumShopRequest")
+ensure("RemoteEvent", "PremiumNotice")
+
+ensure("RemoteEvent", "RoyalFeedback")
