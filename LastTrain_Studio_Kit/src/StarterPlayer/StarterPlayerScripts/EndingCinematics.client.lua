@@ -34,8 +34,10 @@ local replay=ui("TextButton","Replay",UDim2.fromScale(.08,.77),UDim2.fromScale(.
 local close=ui("TextButton","Return",UDim2.fromScale(.53,.77),UDim2.fromScale(.39,.13),Color3.fromRGB(41,51,67),card)
 for _,b in ipairs({replay,close}) do b.TextColor3=Color3.new(1,1,1);b.TextSize=17;b.Font=Enum.Font.GothamBold;b.ZIndex=9 end
 replay.Text="重播動畫";close.Text="返回遊戲畫面"
+local continueRoute=ui("TextButton","ContinueRoute",UDim2.fromScale(.08,.68),UDim2.fromScale(.84,.075),Color3.fromRGB(50,110,140),card)
+continueRoute.Text="繼續調查 · 前往第八站";continueRoute.TextColor3=Color3.new(1,1,1);continueRoute.TextSize=16;continueRoute.Font=Enum.Font.GothamBold;continueRoute.ZIndex=9;continueRoute.Visible=false
 local action=Instance.new("BindableEvent");action.Name="Action";action.Parent=gui
-local titles={Conductor="離開結局 · 晨光之後",Truth="真相結局 · 循環終止",Station08="隱藏結局 · 第八站"}
+local titles={Conductor="離開結局 · 晨光之後",Truth="真相結局 · 循環終止",Station08="隱藏結局 · 第八站",Station09="第九站真相 · 被刪除的名字"}
 local duration=16
 local origin=Vector3.new(0,2400,0)
 local scene,connection,saved,key,started,seen=nil,nil,nil,nil,0,false
@@ -92,7 +94,7 @@ end
 local function finish()
  if not saved then return end
  clearScene();restore();skip.Visible=false;top.Visible=false;bottom.Visible=false;chapter.Visible=false;subtitle.Visible=false;fade.BackgroundTransparency=1
- card.Visible=true;gui:SetAttribute("State","Card")
+ card.Visible=true;continueRoute.Visible=key=="Station08" and not player:GetAttribute("HiddenRouteStation");gui:SetAttribute("State","Card")
 end
 local function dismiss()
  clearScene();restore();gui.Enabled=false;card.Visible=false;gui:SetAttribute("State","Closed")
@@ -162,7 +164,7 @@ local function start(ending)
    local p=Vector3.new(18,8,4):Lerp(Vector3.new(-10,5,-13),phase(t,0,15));camera.CFrame=CFrame.lookAt(origin+p,origin+Vector3.new(-3*phase(t,8,12),4,-28))
    subtitle.Text=t<5 and "你關閉核心。七座車站的燈光，開始依序熄滅。" or t<10 and "環繞核心的光停止旋轉，循環終於中斷。" or "站務員恢復原貌：「謝謝你，終於有人讓這趟列車停下來。」"
   end
- else
+ elseif ending=="Station08" then
   corridor(blue)
   local left=part("SealedLeft",Vector3.new(12,16,1),Vector3.new(-6,8,-37),Color3.fromRGB(29,40,64),Enum.Material.Metal)
   local right=part("SealedRight",left.Size,Vector3.new(6,8,-37),left.Color,Enum.Material.Metal)
@@ -182,6 +184,21 @@ local function start(ending)
    camera.CFrame=CFrame.lookAt(origin+Vector3.new(0,6,8):Lerp(Vector3.new(0,7,-68),phase(t,3,15)),origin+Vector3.new(0,9,-104))
    subtitle.Text=t<6 and "封存檔案啟動。七個站名逐一消失。" or t<10 and "密封門後，浮現一條從未出現在路線圖上的月台。" or "「歡迎回來，調查員。」第八站正在等你。"
   end
+ else
+  corridor(gold)
+  local board=textOn(part("OriginalEvidence",Vector3.new(26,10,.6),Vector3.new(0,9,-34),black),"事故名單 · 原始紀錄\n36 名乘客\n009  紅衣孩子",gold)
+  local child=part("RememberedChild",Vector3.new(1.4,2.1,.8),Vector3.new(-5,1.8,-20),Color3.fromRGB(188,53,44))
+  local head=part("ChildHead",Vector3.new(.9,.9,.9),Vector3.new(-5,3.3,-20),Color3.fromRGB(231,190,152))
+  local ticket=part("FinalTicket",Vector3.new(4,2,.15),Vector3.new(0,5,-15),Color3.fromRGB(250,246,230))
+  textOn(ticket,"009  白橘單程票\n目的地：回家",Color3.fromRGB(196,95,35))
+  local exit=part("TrueExit",Vector3.new(18,14,.4),Vector3.new(0,7,-65),Color3.fromRGB(216,186,130),Enum.Material.Neon)
+  animate=function(t)
+   local a=phase(t,4,12);child.CFrame=CFrame.new(origin+Vector3.new(-5,1.8,-20-35*a));head.CFrame=CFrame.new(origin+Vector3.new(-5,3.3,-20-35*a))
+   board.Text=t<6 and "事故名單 · 原始紀錄\n36 名乘客\n009  紅衣孩子" or "原始名單與調度錄音\n已向全站公開\n沒有任何人應該被遺忘"
+   ticket.Transparency=phase(t,11,14)
+   camera.CFrame=CFrame.lookAt(origin+Vector3.new(8,6,7):Lerp(Vector3.new(1,5,-38),phase(t,0,15)),origin+Vector3.new(0,6,-38-28*phase(t,6,13)))
+   subtitle.Text=t<5 and "你公開了未被竄改的名單與錄音。第 009 名乘客，重新有了自己的位置。" or t<10 and "事故被掩蓋的真相傳遍月台，紅衣孩子終於走向出口。" or "最後一張白橘車票，亮起目的地：回家。"
+  end
  end
  started=os.clock()
  -- Rendering only changes movie props and the local camera, never the real train or character.
@@ -196,8 +213,11 @@ end
 local function handle(command)
  if command=="Skip" and gui:GetAttribute("State")=="Playing" and os.clock()-started>=2 then finish()
  elseif command=="Replay" and gui:GetAttribute("State")=="Card" then start(key)
+ elseif command=="Continue" and gui:GetAttribute("State")=="Card" and key=="Station08" then
+  dismiss();task.spawn(function() local ok,result=pcall(shared.Remotes.HiddenRouteRequest.InvokeServer,shared.Remotes.HiddenRouteRequest,"Enter8");if not ok or not result.ok then warn("Hidden route entry unavailable; use the continue investigation button.") end end)
  elseif command=="Close" and gui.Enabled then dismiss() end
 end
+continueRoute.Activated:Connect(function() handle("Continue") end)
 action.Event:Connect(handle)
 skip.Activated:Connect(function() handle("Skip") end)
 replay.Activated:Connect(function() handle("Replay") end)
@@ -209,4 +229,8 @@ end)
 player.CharacterAdded:Connect(dismiss)
 shared.Remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(_,_,completed,_,_,ending)
  if completed and titles[ending] and not seen then seen=true;task.defer(start,ending) end
+end)
+
+shared.Remotes:WaitForChild("HiddenRouteUpdate").OnClientEvent:Connect(function(state)
+ if state.ending=="Station09" then task.defer(start,"Station09") end
 end)

@@ -62,3 +62,7 @@ For the normal Studio lobby path, build `python3 tools/build_story_regression.py
 The native seven-station story driver also waits for each 16-second movie, checks camera animation, replays it, checks the two-second skip guard, skips and returns. It asserts local scenery cleanup, camera type/FOV restoration, input release, and zero train/character drift during the movie. Buttons and the driver share the local `EndingCinema.Action` BindableEvent; no server progression is granted by it. Tests run in disposable places with billing disabled and synthetic entitlements. This is scripted native-client coverage, not a manual mouse/mobile or multi-client network test.
 
 Seat fixtures identify the same seat on server and client by its `RequiredPass` and `SeatNumber`; replicated child ordering is not assumed. A previous post-movie false failure compared two different same-named seats.
+
+## Hidden station 9 (2026-10-25)
+
+`python3 tools/build_hidden_regression.py /tmp/LastTrain-Hidden09-Regression.rbxlx` builds an isolated place with the actual seven-station journey and hidden continuation. Native prompts and remotes check locked entry, three physical evidence consoles, wrong/forged answers, personal ticket gate, station-9 respawn, broadcast order, early publication rejection, the new movie, and stationary real train. The normal seat/tea checks run afterwards. Billing is disabled in the disposable fixture. No real purchase, manual mobile input, or multi-client network coverage is implied.

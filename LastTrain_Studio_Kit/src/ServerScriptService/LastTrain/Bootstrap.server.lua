@@ -37,3 +37,6 @@ ensure("RemoteEvent", "RoyalFeedback")
 
 ensure("RemoteFunction", "PlatformChallengeRequest")
 ensure("RemoteEvent", "PlatformChallengeUpdate")
+
+ensure("RemoteFunction", "HiddenRouteRequest")
+ensure("RemoteEvent", "HiddenRouteUpdate")

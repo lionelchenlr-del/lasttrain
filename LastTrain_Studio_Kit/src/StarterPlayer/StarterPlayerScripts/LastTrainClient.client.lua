@@ -685,7 +685,7 @@ ticketDetails.Size=UDim2.new(1,-20,1,-40); ticketDetails.BackgroundTransparency=
  ticketDetails.TextColor3=Color3.fromRGB(25,29,35); ticketDetails.Font=Enum.Font.GothamMedium
  ticketDetails.TextSize=13; ticketDetails.TextWrapped=true; ticketDetails.Parent=ticketCard
 local function refreshTicket()
- ticketCard.Visible=Workspace:GetAttribute("LastTrainMode")=="Game" and player:GetAttribute("FirstStationHasTicket")==true
+ ticketCard.Visible=Workspace:GetAttribute("LastTrainMode")=="Game" and player:GetAttribute("FirstStationHasTicket")==true and player:GetAttribute("HiddenRouteStation")==nil
  local serial=player:GetAttribute("GalaxyEditionSerial")
  local ticketType=serial and string.format("銀河收藏票 #%03d/500",serial) or player:GetAttribute("Owns_RoyalCarriage") and "皇家乘車票" or player:GetAttribute("Owns_LuxuryPass") and "商務乘車票" or "單程車票"
  ticketDetails.Text="新月站 → 目的地未定\n"..ticketType.."\n"..(player:GetAttribute("FirstStationValidated") and "已驗票 · 本次旅程有效" or "尚未驗票 · 請至閘門感應")
@@ -741,3 +741,14 @@ if leaderstats then
     local coins = leaderstats:WaitForChild("車票幣", 10)
     if coins then coins.Changed:Connect(updateCoins) end
 end
+
+-- The hidden chapter has its own station numbers after the original seven-stop ending.
+remotes:WaitForChild("HiddenRouteUpdate").OnClientEvent:Connect(function(state)
+ if state.left then eyebrow.Text="末班車 · 調查完成";objectiveLabel.Text="隱藏調查已完成，已返回列車月台。"
+ elseif state.station then
+  eyebrow.Text=state.station==9 and "隱藏第九站 · 被刪除的名字" or "隱藏第八站 · 封存檔案室"
+  objectiveLabel.Text=state.ending and GameConfig.Endings.Station09 or state.done and "原始證據已公開，失蹤乘客終於回家。" or state.goal or "繼續調查。"
+ end
+end)
+
+player:GetAttributeChangedSignal("HiddenRouteStation"):Connect(refreshTicket)

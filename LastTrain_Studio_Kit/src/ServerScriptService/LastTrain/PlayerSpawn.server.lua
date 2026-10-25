@@ -11,6 +11,8 @@ end
 Players.CharacterAutoLoads = false
 
 local function getStationSpawnCFrame(player)
+ local hidden=player:GetAttribute("HiddenRouteStation")
+ if (hidden==8 or hidden==9) and Workspace:FindFirstChild("LastTrainHiddenRoute") then return CFrame.new(0,hidden==8 and 800.5 or 1040.5,23) end
 	local world=Workspace:WaitForChild("LastTrainWorld")
 	while not world:GetAttribute("Ready") do world:GetAttributeChangedSignal("Ready"):Wait() end
 	local station = math.clamp(Workspace:GetAttribute("LastTrainStation") or 1, 1, 7)

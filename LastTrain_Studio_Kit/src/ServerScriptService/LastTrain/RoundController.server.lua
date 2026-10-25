@@ -32,6 +32,7 @@ local scenes=require(script.Parent.StationScenes).new(world,GameConfig)
 local entry=FirstStationEntry.new(world,train,GameConfig,function(player,text)
  objectiveEvent:FireClient(player,stage,text,false,GameConfig.Stations[1].Name,"",nil,"Entry",1)
 end)
+local hiddenRoute=require(script.Parent.HiddenRoute).new()
 local completeFirstBoarding
 
 local function storyFor(index) return GameConfig.Stations[index] and GameConfig.Stations[index].Story or "" end
@@ -156,6 +157,7 @@ local function finishObjective(player,anchor,override)
   if endingKey=="Station08" and choice~="Records" then
    objectiveEvent:FireClient(player,stage,"需要先找到終寂站的事故紀錄，封存系統才會解鎖。",false,GameConfig.Stations[station].Name,storyFor(station));return false
   end
+  if endingKey=="Station08" then hiddenRoute:Unlock() end
   completed=true;Workspace:SetAttribute("LastTrainRoundStage",stage);Profiles.AwardCoins(player,GameConfig.ObjectiveRewards[stage+1] or 0)
   objectiveEvent:FireAllClients(stage,GameConfig.Endings[endingKey],true,GameConfig.Stations[station].Name,storyFor(station),endingKey,"Ending",station);return true
  end
