@@ -66,3 +66,7 @@ Seat fixtures identify the same seat on server and client by its `RequiredPass` 
 ## Hidden station 9 (2026-10-25)
 
 `python3 tools/build_hidden_regression.py /tmp/LastTrain-Hidden09-Regression.rbxlx` builds an isolated place with the actual seven-station journey and hidden continuation. Native prompts and remotes check locked entry, three physical evidence consoles, wrong/forged answers, personal ticket gate, station-9 respawn, broadcast order, early publication rejection, the new movie, and stationary real train. The normal seat/tea checks run afterwards. Billing is disabled in the disposable fixture. No real purchase, manual mobile input, or multi-client network coverage is implied.
+
+## Audio regression (2026-10-25)
+
+`python3 tools/build_audio_regression.py /tmp/LastTrain-Audio-Verified.rbxlx` runs native uploaded-asset decode checks alongside the complete hidden-station journey. It checks three unique music assets plus an effects bank, four scene mixes, advancing playback clocks, saved independent controls, mute/unmute, rejection of non-finite input, fixed voice counts, per-cue segment/deadline bounds, respawn reuse and real story-event cues. SoundGroup floating point properties are compared with tolerance. Concurrent legitimate journey effects are permitted while checking voice deadlines. Billing and persistent player data remain isolated in the fixture. This is scripted native-client coverage, not a manual listening review, mobile device test, real purchase, or multi-client network session.

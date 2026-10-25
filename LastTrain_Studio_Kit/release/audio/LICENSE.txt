@@ -1,0 +1,1 @@
+Original Last Train procedural compositions and synthesized effects. Generated from mathematical oscillators and deterministic noise by tools/compose_audio.py. No third-party recordings, lyrics or music samples. Project owner may use and modify these assets for Last Train.

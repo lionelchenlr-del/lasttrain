@@ -41,6 +41,11 @@ local function normalize(raw)
             end
         end
     end
+    local audio=type(raw.Audio)=="table" and raw.Audio or {}
+    local function volume(value,default)
+        return type(value)=="number" and value==value and math.clamp(value,0,1) or default
+    end
+    result.Audio={Music=volume(audio.Music,.45),Effects=volume(audio.Effects,.6),Muted=audio.Muted==true}
     result.OwnedSkins.PlatformWorker = true
     if type(raw.EquippedSkin) == "string" and GameConfig.Skins[raw.EquippedSkin] then
         result.EquippedSkin = raw.EquippedSkin
@@ -182,7 +187,7 @@ function Profiles.GetState(player)
     if not profile then return nil end
     local owned = {}
     for key, value in pairs(profile.OwnedSkins) do owned[key] = value end
-    return { Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
+    return { Audio=table.clone(profile.Audio), Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
 end
 
 function Profiles.AwardCoins(player, amount)
@@ -240,6 +245,12 @@ function Profiles.GrantSkin(player, skinKey)
         profile.OwnedSkins[skinKey] = true
     end)
     return ok
+end
+
+function Profiles.SetAudioSettings(player,settings)
+    return update(player.UserId,function(profile)
+        profile.Audio={Music=settings.Music,Effects=settings.Effects,Muted=settings.Muted}
+    end)
 end
 
 function Profiles.SetPass(player,key,owned)

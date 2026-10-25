@@ -34,9 +34,6 @@ end)
 remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(_,_,_,_,_,_,state)
  if state~="Moving" or not train then return end
  local key=train:GetAttribute("SelectedLivery")
- if key=="Royal" or key=="Starfield" then
-  local chime=Instance.new("Sound");chime.SoundId="rbxasset://sounds/volume_slider.ogg";chime.Volume=.12;chime.PlaybackSpeed=key=="Royal" and 1.2 or .8;chime.Parent=game:GetService("SoundService");chime:Play();game:GetService("Debris"):AddItem(chime,3)
- end
  if key=="Royal" then show("♛  ROYAL LAST TRAIN · 皇家白金列車")
  elseif key=="Starfield" then
   local serial=train:GetAttribute("EditionSerial")

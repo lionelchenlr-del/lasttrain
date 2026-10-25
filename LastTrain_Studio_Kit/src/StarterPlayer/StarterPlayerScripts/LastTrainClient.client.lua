@@ -698,16 +698,8 @@ player:GetAttributeChangedSignal("Owns_LuxuryPass"):Connect(refreshTicket)
 Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(refreshTicket)
 refreshTicket()
 
-local ticketSound=Instance.new("Sound")
-ticketSound.Name="TicketReaderFeedback"
-ticketSound.SoundId="rbxasset://sounds/volume_slider.ogg"
-ticketSound.Volume=.3
-ticketSound.Parent=game:GetService("SoundService")
 local readerVersions={}
 remotes:WaitForChild("TicketUpdate").OnClientEvent:Connect(function(data)
-    ticketSound:Stop()
-    ticketSound.PlaybackSpeed=data.Kind=="Rejected" and .65 or 1.4
-    ticketSound:Play()
     local screen=data.Screen
     if not screen then return end
     local display=screen:FindFirstChild("ReaderDisplay")

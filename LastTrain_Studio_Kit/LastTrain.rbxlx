@@ -41,6 +41,46 @@
         </Properties>
         <Item class="ModuleScript" referent="4">
           <Properties>
+            <string name="Name">AudioBus</string>
+            <string name="Source"><![CDATA[-- Client-local cues; never grants progress, currency, or ownership.
+local event=Instance.new("BindableEvent")
+return {Event=event.Event,Play=function(key,pitch) event:Fire(key,pitch) end}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="5">
+          <Properties>
+            <string name="Name">AudioConfig</string>
+            <string name="Source"><![CDATA[-- Original compositions, uploaded under the experience owner.
+return {
+ DefaultMusic=.45, DefaultEffects=.6,
+ Tracks={
+  Night={Id=127986207153432,Volume=.7},
+  Investigation={Id=78913374052776,Volume=.7,Rate=.92},
+  Mystery={Id=78913374052776,Volume=.7},
+  Home={Id=127343761429644,Volume=.7},
+ },
+ BankId=132688678871137,
+ Cues={
+  Ticket={Start=0.3,Duration=0.9},
+  Rejected={Start=1.5,Duration=0.65},
+  Door={Start=2.5,Duration=1.2},
+  Click={Start=4,Duration=0.2},
+  Anomaly={Start=4.7,Duration=2.3},
+  Rumble={Start=7.5,Duration=4},
+  Shutter={Start=12,Duration=0.3},
+  Countdown={Start=13,Duration=0.45},
+  Success={Start=14,Duration=1.2},
+  Evidence={Start=15.7,Duration=0.9},
+  Arrival={Start=17,Duration=1.4},
+  Tea={Start=19,Duration=0.8},
+ },
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="6">
+          <Properties>
             <string name="Name">CharacterAppearance</string>
             <string name="Source"><![CDATA[-- Shared visual-only uniforms. Currency and unlocks remain in ProfileService.
 local GameConfig = require(script.Parent:WaitForChild("GameConfig"))
@@ -222,7 +262,7 @@ return Appearance
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="5">
+        <Item class="ModuleScript" referent="7">
           <Properties>
             <string name="Name">GameConfig</string>
             <string name="Source"><![CDATA[-- Shared configuration. Replace every 0 marketplace ID with the ID from Creator Dashboard.
@@ -347,7 +387,7 @@ return GameConfig
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="6">
+        <Item class="ModuleScript" referent="8">
           <Properties>
             <string name="Name">InteriorTheme</string>
             <string name="Source"><![CDATA[local Theme={}
@@ -396,7 +436,7 @@ return Theme
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="7">
+        <Item class="ModuleScript" referent="9">
           <Properties>
             <string name="Name">PremiumCatalog</string>
             <string name="Source"><![CDATA[-- Set real PassId values from this experience's Creator Dashboard before sale.
@@ -424,7 +464,7 @@ return Catalog
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="8">
+        <Item class="ModuleScript" referent="10">
           <Properties>
             <string name="Name">TrainFinish</string>
             <string name="Source"><![CDATA[-- A shared finish keeps lobby and playable stock in the same silver livery.
@@ -474,7 +514,7 @@ return Finish
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="9">
+        <Item class="ModuleScript" referent="11">
           <Properties>
             <string name="Name">TrainGeometry</string>
             <string name="Source"><![CDATA[-- Closed, asset-free high-speed cabs. Paint, glazing and lamps are part of the
@@ -583,7 +623,7 @@ return Geometry
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="10">
+        <Item class="ModuleScript" referent="12">
           <Properties>
             <string name="Name">TrainLivery</string>
             <string name="Source"><![CDATA[local Catalog=require(script.Parent.PremiumCatalog)
@@ -644,7 +684,7 @@ return Livery
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="11">
+        <Item class="ModuleScript" referent="13">
           <Properties>
             <string name="Name">TrainLuxury</string>
             <string name="Source"><![CDATA[-- Native, asset-free finishing applied after cloning the three coaches.
@@ -784,7 +824,7 @@ return Luxury
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="12">
+        <Item class="ModuleScript" referent="14">
           <Properties>
             <string name="Name">TrainModelFactory</string>
             <string name="Source"><![CDATA[-- The actual passenger model is shared with the shop preview.
@@ -1190,7 +1230,7 @@ return Factory
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="13">
+        <Item class="ModuleScript" referent="15">
           <Properties>
             <string name="Name">TrainPremium</string>
             <string name="Source"><![CDATA[local Premium={}
@@ -1260,15 +1300,15 @@ return Premium
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="14">
+  <Item class="ServerScriptService" referent="16">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="15">
+    <Item class="Folder" referent="17">
       <Properties>
         <string name="Name">LastTrain</string>
       </Properties>
-      <Item class="Script" referent="16">
+      <Item class="Script" referent="18">
         <Properties>
           <string name="Name">Atmosphere</string>
           <token name="RunContext">0</token>
@@ -1321,7 +1361,29 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="17">
+      <Item class="Script" referent="19">
+        <Properties>
+          <string name="Name">AudioSettings</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[local Players=game:GetService("Players")
+local Profiles=require(script.Parent.ProfileService)
+local remote=game.ReplicatedStorage:WaitForChild("LastTrain"):WaitForChild("Remotes"):WaitForChild("AudioSettingsRequest")
+local last={}
+local function finite(n) return type(n)=="number" and n==n and math.abs(n)<math.huge end
+remote.OnServerInvoke=function(p,action,data)
+ if not Profiles.IsLoaded(p) then return {ok=false,message="音量設定載入中。"} end
+ if action=="Get" then return {ok=true,settings=Profiles.GetState(p).Audio} end
+ if action~="Save" or type(data)~="table" or not finite(data.Music) or not finite(data.Effects) or type(data.Muted)~="boolean" then return {ok=false,message="音量設定格式不正確。"} end
+ if os.clock()-(last[p] or -10)<.8 then return {ok=false,message="請稍候再儲存。"} end;last[p]=os.clock()
+ local settings={Music=math.clamp(data.Music,0,1),Effects=math.clamp(data.Effects,0,1),Muted=data.Muted}
+ local ok=Profiles.SetAudioSettings(p,settings)
+ return {ok=ok,settings=settings,message=ok and "音量已儲存。" or "暫時無法儲存音量，可稍後再試。"}
+end
+Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="20">
         <Properties>
           <string name="Name">Bootstrap</string>
           <token name="RunContext">0</token>
@@ -1367,10 +1429,12 @@ ensure("RemoteEvent", "PlatformChallengeUpdate")
 
 ensure("RemoteFunction", "HiddenRouteRequest")
 ensure("RemoteEvent", "HiddenRouteUpdate")
+
+ensure("RemoteFunction", "AudioSettingsRequest")
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="18">
+      <Item class="Script" referent="21">
         <Properties>
           <string name="Name">CharacterShopServer</string>
           <token name="RunContext">0</token>
@@ -1536,7 +1600,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">DepartureGate</string>
           <string name="Source"><![CDATA[-- Server-owned departure decision. Missing/dead characters stay in the roster
@@ -1569,7 +1633,7 @@ return Gate
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">EditionLedger</string>
           <string name="Source"><![CDATA[-- Pure global-edition ledger. Call mutations only inside one UpdateAsync key.
@@ -1616,7 +1680,7 @@ return Ledger
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="21">
+      <Item class="Script" referent="24">
         <Properties>
           <string name="Name">ExperienceMode</string>
           <token name="RunContext">0</token>
@@ -1627,7 +1691,7 @@ Workspace:SetAttribute("LastTrainMode", mode)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">FirstStationEntry</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -1747,7 +1811,7 @@ return Entry
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">HiddenRoute</string>
           <string name="Source"><![CDATA[-- A round-scoped, free hidden chapter. The real passenger train is never moved.
@@ -1925,7 +1989,7 @@ return Route
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">LimitedEdition</string>
           <string name="Source"><![CDATA[local DSS=game:GetService("DataStoreService")
@@ -1980,7 +2044,7 @@ return Edition
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="25">
+      <Item class="Script" referent="28">
         <Properties>
           <string name="Name">LobbyWorldBuilder</string>
           <token name="RunContext">0</token>
@@ -2430,7 +2494,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="26">
+      <Item class="Script" referent="29">
         <Properties>
           <string name="Name">Matchmaking</string>
           <token name="RunContext">0</token>
@@ -2739,7 +2803,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">PlatformChallenges</string>
           <string name="Source"><![CDATA[-- Round-scoped cooperative platform puzzles. Only this server advances state.
@@ -2898,7 +2962,7 @@ return Challenges
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="28">
+      <Item class="Script" referent="31">
         <Properties>
           <string name="Name">PlayerSpawn</string>
           <token name="RunContext">0</token>
@@ -2971,7 +3035,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">PremiumAccess</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -2992,7 +3056,7 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="30">
+      <Item class="Script" referent="33">
         <Properties>
           <string name="Name">PremiumShop</string>
           <token name="RunContext">0</token>
@@ -3096,7 +3160,7 @@ Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="31">
+      <Item class="Script" referent="34">
         <Properties>
           <string name="Name">ProfileLoader</string>
           <token name="RunContext">0</token>
@@ -3117,7 +3181,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">ProfileService</string>
           <string name="Source"><![CDATA[-- All currency, unlock, and receipt mutations use UpdateAsync so the server owns the result.
@@ -3163,6 +3227,11 @@ local function normalize(raw)
             end
         end
     end
+    local audio=type(raw.Audio)=="table" and raw.Audio or {}
+    local function volume(value,default)
+        return type(value)=="number" and value==value and math.clamp(value,0,1) or default
+    end
+    result.Audio={Music=volume(audio.Music,.45),Effects=volume(audio.Effects,.6),Muted=audio.Muted==true}
     result.OwnedSkins.PlatformWorker = true
     if type(raw.EquippedSkin) == "string" and GameConfig.Skins[raw.EquippedSkin] then
         result.EquippedSkin = raw.EquippedSkin
@@ -3304,7 +3373,7 @@ function Profiles.GetState(player)
     if not profile then return nil end
     local owned = {}
     for key, value in pairs(profile.OwnedSkins) do owned[key] = value end
-    return { Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
+    return { Audio=table.clone(profile.Audio), Coins=profile.Coins, OwnedSkins=owned, EquippedSkin=profile.EquippedSkin, OwnedPasses=table.clone(profile.OwnedPasses), EditionSerials=table.clone(profile.EditionSerials), EquippedLivery=profile.EquippedLivery, EquippedFlashlight=profile.EquippedFlashlight,FlashlightColor=profile.FlashlightColor }
 end
 
 function Profiles.AwardCoins(player, amount)
@@ -3362,6 +3431,12 @@ function Profiles.GrantSkin(player, skinKey)
         profile.OwnedSkins[skinKey] = true
     end)
     return ok
+end
+
+function Profiles.SetAudioSettings(player,settings)
+    return update(player.UserId,function(profile)
+        profile.Audio={Music=settings.Music,Effects=settings.Effects,Muted=settings.Muted}
+    end)
 end
 
 function Profiles.SetPass(player,key,owned)
@@ -3438,7 +3513,7 @@ return Profiles
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="33">
+      <Item class="Script" referent="36">
         <Properties>
           <string name="Name">RecoveryGuard</string>
           <token name="RunContext">0</token>
@@ -3494,7 +3569,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">ReleaseSettings</string>
           <string name="Source"><![CDATA[-- Generated by tools/configure_release.py. Pausing checkout never disables receipt delivery.
@@ -3507,7 +3582,7 @@ return {
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="35">
+      <Item class="Script" referent="38">
         <Properties>
           <string name="Name">RoundController</string>
           <token name="RunContext">0</token>
@@ -3776,7 +3851,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="36">
+      <Item class="Script" referent="39">
         <Properties>
           <string name="Name">RoundLivery</string>
           <token name="RunContext">0</token>
@@ -3818,7 +3893,7 @@ Players.PlayerAdded:Connect(choose);for _,p in ipairs(Players:GetPlayers()) do c
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">RouteSafety</string>
           <string name="Source"><![CDATA[-- The train is the only connection between platforms. Check actual position,
@@ -3834,7 +3909,7 @@ return Safety
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="38">
+      <Item class="Script" referent="41">
         <Properties>
           <string name="Name">RoyalFacilities</string>
           <token name="RunContext">0</token>
@@ -3870,7 +3945,7 @@ Players.PlayerRemoving:Connect(function(p) last[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="42">
         <Properties>
           <string name="Name">StationScenes</string>
           <string name="Source"><![CDATA[-- Station coordinates are local to a fixed passenger train. Only scenery moves.
@@ -3920,7 +3995,7 @@ return Scenes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="40">
+      <Item class="Script" referent="43">
         <Properties>
           <string name="Name">StationmasterAI</string>
           <token name="RunContext">0</token>
@@ -4113,7 +4188,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="41">
+      <Item class="ModuleScript" referent="44">
         <Properties>
           <string name="Name">TicketAccess</string>
           <string name="Source"><![CDATA[-- Per-round, per-player state. This never reads a client-provided credential.
@@ -4140,7 +4215,7 @@ return Access
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="42">
+      <Item class="ModuleScript" referent="45">
         <Properties>
           <string name="Name">TrainOperations</string>
           <string name="Source"><![CDATA[-- Server-only operations shared by the story controller and Studio regression tests.
@@ -4230,7 +4305,7 @@ return Operations
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="43">
+      <Item class="Script" referent="46">
         <Properties>
           <string name="Name">VIPLounge</string>
           <token name="RunContext">0</token>
@@ -4281,7 +4356,7 @@ Players.PlayerRemoving:Connect(function(p) noticeAt[p]=nil end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="44">
+      <Item class="Script" referent="47">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <token name="RunContext">0</token>
@@ -4577,15 +4652,233 @@ world:SetAttribute("Ready",true)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="45">
+  <Item class="StarterPlayer" referent="48">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="46">
+    <Item class="StarterPlayerScripts" referent="49">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="47">
+      <Item class="LocalScript" referent="50">
+        <Properties>
+          <string name="Name">AudioController</string>
+          <string name="Source"><![CDATA[-- Two music decks, six bounded effect voices, and a player-owned volume mixer.
+local Players=game:GetService("Players")
+local RS=game:GetService("ReplicatedStorage")
+local SS=game:GetService("SoundService")
+local Tween=game:GetService("TweenService")
+local Run=game:GetService("RunService")
+local UIS=game:GetService("UserInputService")
+local Content=game:GetService("ContentProvider")
+local player=Players.LocalPlayer
+local shared=RS:WaitForChild("LastTrain")
+local config=require(shared.Shared:WaitForChild("AudioConfig"))
+local bus=require(shared.Shared:WaitForChild("AudioBus"))
+local remotes=shared:WaitForChild("Remotes")
+local root=Instance.new("Folder");root.Name="LastTrainAudio";root.Parent=SS
+local musicGroup=Instance.new("SoundGroup");musicGroup.Name="Music";musicGroup.Parent=root
+local effectsGroup=Instance.new("SoundGroup");effectsGroup.Name="Effects";effectsGroup.Parent=root
+local settings={Music=config.DefaultMusic,Effects=config.DefaultEffects,Muted=false}
+local voices,tokens,lastCue={},{},{}
+local count,nextVoice=0,0
+local function applyVolume()
+ musicGroup.Volume=settings.Muted and 0 or settings.Music
+ effectsGroup.Volume=settings.Muted and 0 or settings.Effects
+ root:SetAttribute("MusicVolume",musicGroup.Volume);root:SetAttribute("EffectsVolume",effectsGroup.Volume);root:SetAttribute("Muted",settings.Muted)
+ if settings.Muted then for _,s in ipairs(voices) do s:Stop() end end
+end
+for i=1,6 do
+ local s=Instance.new("Sound");s.Name="Effect"..i;s.SoundId="rbxassetid://"..config.BankId;s.SoundGroup=effectsGroup;s.Volume=.7;s.Parent=root;voices[i]=s;tokens[i]=0
+end
+local function cue(name,pitch)
+ local c=config.Cues[name];if not c or settings.Muted or settings.Effects<=0 then return end
+ local now=os.clock();if now-(lastCue[name] or -10)<(name=="Click" and .09 or .18) then return end;lastCue[name]=now
+ nextVoice=nextVoice%#voices+1;local index=nextVoice;local s=voices[index]
+ tokens[index]+=1;local token=tokens[index]
+ s:Stop();s.PlaybackSpeed=math.clamp(tonumber(pitch) or 1,.6,1.6);s.Volume=name=="Rumble" and .42 or name=="Anomaly" and .4 or .7
+ s:SetAttribute("Cue",name);s:SetAttribute("StopAt",now+c.Duration/s.PlaybackSpeed)
+ s:Play();s.TimePosition=c.Start
+ count+=1;root:SetAttribute("CueCount",count);root:SetAttribute("LastCue",name)
+ task.delay(c.Duration/s.PlaybackSpeed,function() if tokens[index]==token then s:Stop() end end)
+end
+bus.Event:Connect(cue)
+-- Include native avatar footsteps and other in-world game sounds in the effects mixer.
+local function routeEffect(object)
+ if object:IsA("Sound") and not object:IsDescendantOf(root) then object.SoundGroup=effectsGroup end
+end
+workspace.DescendantAdded:Connect(routeEffect)
+for _,object in ipairs(workspace:GetDescendants()) do routeEffect(object) end
+local decks,tweens={},{}
+for i=1,2 do local s=Instance.new("Sound");s.Name="MusicDeck"..i;s.Looped=true;s.Volume=0;s.SoundGroup=musicGroup;s.Parent=root;decks[i]=s end
+local deck,sceneKey,version=1,nil,0
+local loadedTracks={}
+local cinema,cinemaCycle,hiddenDone,lastEnding=nil,0,false,nil
+local function choose()
+ local ending=cinema and cinema.Enabled and cinema:GetAttribute("Ending")
+ local state=cinema and cinema:GetAttribute("State")
+ if ending and (state=="Playing" or state=="Card") then
+  return "Cinema:"..ending..":"..cinemaCycle,(ending=="Station08" and "Mystery" or "Home"),1
+ end
+ local hidden=player:GetAttribute("HiddenRouteStation")
+ if hidden==8 then return "Hidden8","Mystery",1 end
+ if hidden==9 then return hiddenDone and "Hidden9Done" or "Hidden9",hiddenDone and "Home" or "Investigation",1 end
+ if workspace:GetAttribute("LastTrainMode")~="Game" then return "Lobby","Night",1 end
+ if lastEnding and lastEnding~="Station08" then return "After:"..lastEnding,"Home",1 end
+ if workspace:GetAttribute("LastTrainTraveling") then return "Moving","Night",1.08 end
+ local station=workspace:GetAttribute("LastTrainStation") or 1
+ local track=station==4 and "Mystery" or (station==2 or station==3 or station==5 or station==7) and "Investigation" or "Night"
+ return "Station:"..station,track,1
+end
+local function refreshMusic()
+ local key,track,pitch=choose()
+ local playback=track
+ if loadedTracks[track]==false then playback=loadedTracks.Mystery and "Mystery" or loadedTracks.Night and "Night" or track end
+ local mixerKey=key..":"..playback;if mixerKey==sceneKey then return end
+ sceneKey=mixerKey;version+=1;local current=version;root:SetAttribute("Scene",key);root:SetAttribute("Track",track);root:SetAttribute("PlayingTrack",playback);root:SetAttribute("FallbackActive",playback~=track)
+ local info=config.Tracks[playback];local previous=decks[deck];deck=deck%2+1;local target=decks[deck]
+ for _,s in ipairs(decks) do if tweens[s] then tweens[s]:Cancel();tweens[s]=nil end end
+ target:Stop();target.SoundId="rbxassetid://"..info.Id;target.PlaybackSpeed=pitch*(info.Rate or 1);target.TimePosition=0;target.Volume=0;target:Play()
+ tweens[target]=Tween:Create(target,TweenInfo.new(1.2),{Volume=info.Volume});tweens[target]:Play()
+ tweens[previous]=Tween:Create(previous,TweenInfo.new(1.2),{Volume=0});tweens[previous]:Play()
+ task.delay(1.25,function() if current==version and previous~=decks[deck] then previous:Stop() end end)
+end
+local function attachCinema(g)
+ if g.Name~="EndingCinema" or cinema==g then return end;cinema=g
+ g:GetAttributeChangedSignal("State"):Connect(function()
+  local state=g:GetAttribute("State")
+  if state=="Playing" then cinemaCycle+=1;cue("Evidence") elseif state=="Card" then cue("Success") end
+  refreshMusic()
+ end)
+ g:GetAttributeChangedSignal("Ending"):Connect(refreshMusic)
+end
+local pg=player:WaitForChild("PlayerGui")
+pg.ChildAdded:Connect(attachCinema);for _,g in ipairs(pg:GetChildren()) do attachCinema(g) end
+for _,name in ipairs({"LastTrainMode","LastTrainStation","LastTrainTraveling"}) do workspace:GetAttributeChangedSignal(name):Connect(refreshMusic) end
+player:GetAttributeChangedSignal("HiddenRouteStation"):Connect(refreshMusic)
+-- Old per-ticket/per-livery sounds were consolidated into this mixer.
+remotes:WaitForChild("TicketUpdate").OnClientEvent:Connect(function(data)
+ cue(data.Kind=="Rejected" and "Rejected" or "Ticket")
+ if data.Anomaly then task.delay(.35,function() cue("Anomaly") end) end
+end)
+local lastStage,lastState=nil,nil
+remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(stage,_,completed,_,_,ending,state)
+ if lastStage and stage>lastStage then cue("Success") end;lastStage=stage
+ if state=="Countdown" then cue("Countdown") end
+ if state=="Moving" and lastState~="Moving" then cue("Arrival") end
+ if completed and ending then lastEnding=ending end
+ lastState=state;refreshMusic()
+end)
+local challengeToken,challengeCount,challengeProgress=nil,0,0
+remotes:WaitForChild("PlatformChallengeUpdate").OnClientEvent:Connect(function(s)
+ if s.closed then challengeToken=nil;return end
+ if s.token~=challengeToken then challengeToken=s.token;challengeCount=s.count or 0;challengeProgress=s.progress or 0;cue("Click")
+ else
+  if (s.count or 0)>challengeCount or (s.progress or 0)>challengeProgress then cue("Evidence") end
+  challengeCount=s.count or 0;challengeProgress=s.progress or 0
+ end
+end)
+local hiddenClues,hiddenSequence,hadTicket=0,0,false
+remotes:WaitForChild("HiddenRouteUpdate").OnClientEvent:Connect(function(s)
+ if (s.clues or 0)>hiddenClues or (s.sequence or 0)>hiddenSequence then cue("Evidence") end
+ hiddenClues=s.clues or hiddenClues;hiddenSequence=s.sequence or hiddenSequence;hiddenDone=s.done==true
+ if s.ticket and not hadTicket then cue("Ticket") end;hadTicket=s.ticket==true
+ refreshMusic()
+end)
+remotes:WaitForChild("RoyalFeedback").OnClientEvent:Connect(function() cue("Tea") end)
+game:GetService("ProximityPromptService").PromptTriggered:Connect(function(_,who) if who==player then cue("Click") end end)
+local train=nil
+local function hookTrain(t)
+ if train then return end;train=t
+ local prior=t:GetAttribute("DoorsOpen")
+ t:GetAttributeChangedSignal("DoorsOpen"):Connect(function()
+  local open=t:GetAttribute("DoorsOpen")
+  if open~=prior then cue("Door");if open then cue("Arrival") end;prior=open end
+ end)
+end
+task.spawn(function()
+ while workspace:GetAttribute("LastTrainMode")~="Game" do workspace:GetAttributeChangedSignal("LastTrainMode"):Wait() end
+ local w=workspace:WaitForChild("LastTrainWorld");hookTrain(w:WaitForChild("Props"):WaitForChild("LastTrainCar"))
+end)
+local rumbleAt=0
+Run.Heartbeat:Connect(function()
+ local active=0;for _,s in ipairs(voices) do if s.IsPlaying then active+=1 end end;root:SetAttribute("ActiveVoices",active)
+ if workspace:GetAttribute("LastTrainTraveling") and not player:GetAttribute("HiddenRouteStation") and not player:GetAttribute("LastTrainCinematic") and os.clock()-rumbleAt>3.95 then rumbleAt=os.clock();cue("Rumble") end
+end)
+-- A small touch/keyboard settings panel. The two volume controls persist in the profile.
+local gui=Instance.new("ScreenGui");gui.Name="LastTrainAudioSettings";gui.ResetOnSpawn=false;gui.DisplayOrder=56;gui.Parent=pg
+local function label(parent,name,value,pos,size)
+ local t=Instance.new("TextLabel");t.Name=name;t.Text=value;t.Position=pos;t.Size=size;t.BackgroundTransparency=1;t.TextColor3=Color3.fromRGB(246,241,228);t.TextSize=18;t.Font=Enum.Font.GothamMedium;t.TextWrapped=true;t.Parent=parent;return t
+end
+local function button(parent,name,value,pos,size,fn)
+ local b=Instance.new("TextButton");b.Name=name;b.Text=value;b.Position=pos;b.Size=size;b.BackgroundColor3=Color3.fromRGB(207,110,42);b.TextColor3=Color3.new(1,1,1);b.TextSize=17;b.BorderSizePixel=0;b.Parent=parent;b.Activated:Connect(fn);local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,8);c.Parent=b;return b
+end
+local panel=Instance.new("Frame");panel.Name="Panel";panel.AnchorPoint=Vector2.new(.5,.5);panel.Position=UDim2.fromScale(.5,.5);panel.Size=UDim2.new(.88,0,0,300);panel.BackgroundColor3=Color3.fromRGB(23,34,48);panel.BorderSizePixel=0;panel.Visible=false;panel.Parent=gui
+local limit=Instance.new("UISizeConstraint");limit.MaxSize=Vector2.new(430,300);limit.MinSize=Vector2.new(260,300);limit.Parent=panel
+label(panel,"Title","音樂與音效",UDim2.new(.05,0,0,14),UDim2.new(.8,0,0,34))
+local musicText=label(panel,"Music","",UDim2.new(.08,0,0,71),UDim2.new(.54,0,0,35))
+local effectsText=label(panel,"Effects","",UDim2.new(.08,0,0,126),UDim2.new(.54,0,0,35))
+local status=label(panel,"Status","設定會保留到下次遊玩。",UDim2.new(.06,0,0,248),UDim2.new(.88,0,0,36));status.TextSize=14
+local muteButton
+local function render()
+ musicText.Text="背景音樂  "..math.floor(settings.Music*100+.5).."%";effectsText.Text="音效  "..math.floor(settings.Effects*100+.5).."%"
+ muteButton.Text=settings.Muted and "恢復聲音" or "全部靜音";applyVolume()
+end
+local saveVersion=0;local edited=false
+local function saveLater()
+ edited=true;saveVersion+=1;local token=saveVersion
+ task.delay(1,function()
+  if token~=saveVersion then return end
+  local ok,r=pcall(remotes.AudioSettingsRequest.InvokeServer,remotes.AudioSettingsRequest,"Save",table.clone(settings))
+  if token==saveVersion then status.Text=ok and r.message or "暫時無法儲存；目前音量已套用。" end
+ end)
+end
+local function adjust(key,delta) settings[key]=math.clamp(math.floor((settings[key]+delta)*100+.5)/100,0,1);render();cue("Click");saveLater() end
+for _,row in ipairs({{"Music",77},{"Effects",132}}) do
+ button(panel,row[1].."Down","−",UDim2.new(.67,0,0,row[2]),UDim2.fromOffset(40,34),function() adjust(row[1],-.1) end)
+ button(panel,row[1].."Up","＋",UDim2.new(.83,0,0,row[2]),UDim2.fromOffset(40,34),function() adjust(row[1],.1) end)
+end
+muteButton=button(panel,"Mute","全部靜音",UDim2.new(.08,0,0,193),UDim2.new(.84,0,0,40),function() settings.Muted=not settings.Muted;render();saveLater() end)
+button(panel,"Close","×",UDim2.new(1,-43,0,10),UDim2.fromOffset(32,32),function() panel.Visible=false end)
+local function toggle() if not player:GetAttribute("LastTrainCinematic") then panel.Visible=not panel.Visible end end
+button(gui,"Open","音量 [N]",UDim2.fromOffset(18,80),UDim2.fromOffset(106,32),toggle)
+UIS.InputBegan:Connect(function(i,processed) if not processed and i.KeyCode==Enum.KeyCode.N then toggle() elseif i.KeyCode==Enum.KeyCode.Escape then panel.Visible=false end end)
+local settingsAction=Instance.new("BindableEvent");settingsAction.Name="Action";settingsAction.Parent=gui
+settingsAction.Event:Connect(function(action,value)
+ if action=="Music" or action=="Effects" then if type(value)=="number" and value==value then settings[action]=math.clamp(value,0,1);render();saveLater() end
+ elseif action=="Mute" and type(value)=="boolean" then settings.Muted=value;render();saveLater()
+ elseif action=="Open" then toggle() end
+end)
+render();refreshMusic()
+task.spawn(function()
+ for _=1,8 do
+  local ok,r=pcall(remotes:WaitForChild("AudioSettingsRequest").InvokeServer,remotes.AudioSettingsRequest,"Get")
+  if ok and r.ok then if not edited then settings=r.settings;render() end;return end
+  task.wait(.75)
+ end
+ status.Text="目前使用預設音量；可再調整並儲存。"
+end)
+task.spawn(function()
+ local preload={};for name,info in pairs(config.Tracks) do local s=Instance.new("Sound");s.Name="Preload"..name;s.SoundId="rbxassetid://"..info.Id;s.Volume=0;s.Parent=root;table.insert(preload,s) end
+ local bank=Instance.new("Sound");bank.Name="PreloadEffects";bank.SoundId="rbxassetid://"..config.BankId;bank.Volume=0;bank.Parent=root;table.insert(preload,bank)
+ for attempt=1,4 do
+  local ok,err=pcall(Content.PreloadAsync,Content,preload)
+  local loaded=0;for _,s in ipairs(preload) do if s.IsLoaded then loaded+=1 end;local name=s.Name:match("^Preload(.+)$");if config.Tracks[name] then loadedTracks[name]=s.IsLoaded end end
+  refreshMusic()
+  root:SetAttribute("ReadyCount",loaded);root:SetAttribute("Ready",loaded==5)
+  if loaded==5 then
+   local current=decks[deck]
+   if not current.IsLoaded or not current.IsPlaying then sceneKey=nil;refreshMusic() end
+   return
+  end
+  if attempt==1 then warn("LastTrain audio is still loading",err,loaded) end
+  task.wait(attempt*8)
+ end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="51">
         <Properties>
           <string name="Name">EndingCinematics</string>
           <string name="Source"><![CDATA[-- Local movie sets are isolated from the physical train and all server progression.
@@ -4827,7 +5120,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="48">
+      <Item class="LocalScript" referent="52">
         <Properties>
           <string name="Name">HiddenRoute</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -4921,7 +5214,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="49">
+      <Item class="LocalScript" referent="53">
         <Properties>
           <string name="Name">LastTrainClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -5624,16 +5917,8 @@ player:GetAttributeChangedSignal("Owns_LuxuryPass"):Connect(refreshTicket)
 Workspace:GetAttributeChangedSignal("LastTrainMode"):Connect(refreshTicket)
 refreshTicket()
 
-local ticketSound=Instance.new("Sound")
-ticketSound.Name="TicketReaderFeedback"
-ticketSound.SoundId="rbxasset://sounds/volume_slider.ogg"
-ticketSound.Volume=.3
-ticketSound.Parent=game:GetService("SoundService")
 local readerVersions={}
 remotes:WaitForChild("TicketUpdate").OnClientEvent:Connect(function(data)
-    ticketSound:Stop()
-    ticketSound.PlaybackSpeed=data.Kind=="Rejected" and .65 or 1.4
-    ticketSound:Play()
     local screen=data.Screen
     if not screen then return end
     local display=screen:FindFirstChild("ReaderDisplay")
@@ -5681,7 +5966,7 @@ player:GetAttributeChangedSignal("HiddenRouteStation"):Connect(refreshTicket)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="50">
+      <Item class="LocalScript" referent="54">
         <Properties>
           <string name="Name">LobbyClient</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -6026,13 +6311,14 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="51">
+      <Item class="LocalScript" referent="55">
         <Properties>
           <string name="Name">PlatformChallenges</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
 local RS=game:GetService("ReplicatedStorage")
 local UIS=game:GetService("UserInputService")
 local Run=game:GetService("RunService")
+local Audio=require(RS:WaitForChild("LastTrain").Shared:WaitForChild("AudioBus"))
 local player=Players.LocalPlayer
 local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
 local request=remotes:WaitForChild("PlatformChallengeRequest")
@@ -6084,6 +6370,7 @@ local function activate(nextData)
 end
 send=function(action,value,origin,direction)
  if not data or busy then return end
+ if action=="Photo" then Audio.Play("Shutter") elseif action=="Evidence" then Audio.Play("Evidence") elseif action~="Focus" and action~="Close" then Audio.Play("Click") end
  busy=true;local token=data.token
  task.spawn(function()
   local ok,result=pcall(request.InvokeServer,request,token,action,value,origin,direction);busy=false
@@ -6129,6 +6416,7 @@ render=function()
    task.spawn(function()
     for i,id in ipairs(sequence) do
      if not data or data.token~=token or playbackVersion~=version or not cue.Parent then replaying=false;return end
+     Audio.Play("Countdown",.8+id*.16)
      cue.Text=string.format("第 %d 次：%s",i,words[id]);lights[id].BackgroundColor3=Color3.fromRGB(243,242,221)
      task.wait(.6);if not cue.Parent then replaying=false;return end;lights[id].BackgroundColor3=palette[id];cue.Text="· · ·";task.wait(.2)
     end
@@ -6229,7 +6517,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="52">
+      <Item class="LocalScript" referent="56">
         <Properties>
           <string name="Name">PremiumFlashlight</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -6262,7 +6550,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="53">
+      <Item class="LocalScript" referent="57">
         <Properties>
           <string name="Name">PremiumShop</string>
           <string name="Source"><![CDATA[local Players=game:GetService("Players")
@@ -6542,7 +6830,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="54">
+      <Item class="LocalScript" referent="58">
         <Properties>
           <string name="Name">RidePresentation</string>
           <string name="Source"><![CDATA[local RS=game:GetService("ReplicatedStorage")
@@ -6581,9 +6869,6 @@ end)
 remotes:WaitForChild("ObjectiveUpdate").OnClientEvent:Connect(function(_,_,_,_,_,_,state)
  if state~="Moving" or not train then return end
  local key=train:GetAttribute("SelectedLivery")
- if key=="Royal" or key=="Starfield" then
-  local chime=Instance.new("Sound");chime.SoundId="rbxasset://sounds/volume_slider.ogg";chime.Volume=.12;chime.PlaybackSpeed=key=="Royal" and 1.2 or .8;chime.Parent=game:GetService("SoundService");chime:Play();game:GetService("Debris"):AddItem(chime,3)
- end
  if key=="Royal" then show("♛  ROYAL LAST TRAIN · 皇家白金列車")
  elseif key=="Starfield" then
   local serial=train:GetAttribute("EditionSerial")
@@ -6593,7 +6878,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="55">
+      <Item class="LocalScript" referent="59">
         <Properties>
           <string name="Name">TravelScenery</string>
           <string name="Source"><![CDATA[-- The passenger carriage and camera never receive travel transforms.
@@ -6663,13 +6948,13 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="56">
+  <Item class="Workspace" referent="60">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="57">
+    <Item class="SpawnLocation" referent="61">
       <Properties>
         <string name="Name">PlatformSpawn</string>
         <bool name="Anchored">true</bool>

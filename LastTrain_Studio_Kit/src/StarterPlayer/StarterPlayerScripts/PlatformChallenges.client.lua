@@ -2,6 +2,7 @@ local Players=game:GetService("Players")
 local RS=game:GetService("ReplicatedStorage")
 local UIS=game:GetService("UserInputService")
 local Run=game:GetService("RunService")
+local Audio=require(RS:WaitForChild("LastTrain").Shared:WaitForChild("AudioBus"))
 local player=Players.LocalPlayer
 local remotes=RS:WaitForChild("LastTrain"):WaitForChild("Remotes")
 local request=remotes:WaitForChild("PlatformChallengeRequest")
@@ -53,6 +54,7 @@ local function activate(nextData)
 end
 send=function(action,value,origin,direction)
  if not data or busy then return end
+ if action=="Photo" then Audio.Play("Shutter") elseif action=="Evidence" then Audio.Play("Evidence") elseif action~="Focus" and action~="Close" then Audio.Play("Click") end
  busy=true;local token=data.token
  task.spawn(function()
   local ok,result=pcall(request.InvokeServer,request,token,action,value,origin,direction);busy=false
@@ -98,6 +100,7 @@ render=function()
    task.spawn(function()
     for i,id in ipairs(sequence) do
      if not data or data.token~=token or playbackVersion~=version or not cue.Parent then replaying=false;return end
+     Audio.Play("Countdown",.8+id*.16)
      cue.Text=string.format("第 %d 次：%s",i,words[id]);lights[id].BackgroundColor3=Color3.fromRGB(243,242,221)
      task.wait(.6);if not cue.Parent then replaying=false;return end;lights[id].BackgroundColor3=palette[id];cue.Text="· · ·";task.wait(.2)
     end

@@ -40,3 +40,5 @@ ensure("RemoteEvent", "PlatformChallengeUpdate")
 
 ensure("RemoteFunction", "HiddenRouteRequest")
 ensure("RemoteEvent", "HiddenRouteUpdate")
+
+ensure("RemoteFunction", "AudioSettingsRequest")

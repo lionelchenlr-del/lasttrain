@@ -1,0 +1,89 @@
+{
+  "Night": {
+    "file": "LastTrain_Night.ogg",
+    "duration": 32.0,
+    "peak": 0.2879,
+    "rms": 0.0845,
+    "assetId": 127986207153432
+  },
+  "Investigation": {
+    "file": "LastTrain_Mystery.ogg",
+    "duration": 32.0,
+    "peak": 0.2668,
+    "rms": 0.0807,
+    "assetId": 78913374052776,
+    "variantOf": "Mystery",
+    "playbackSpeed": 0.92
+  },
+  "Mystery": {
+    "file": "LastTrain_Mystery.ogg",
+    "duration": 32.0,
+    "peak": 0.2668,
+    "rms": 0.0807,
+    "assetId": 78913374052776
+  },
+  "Home": {
+    "file": "LastTrain_Home.ogg",
+    "duration": 32.0,
+    "peak": 0.385,
+    "rms": 0.1077,
+    "assetId": 127343761429644
+  },
+  "Effects": {
+    "file": "LastTrain_Effects.ogg",
+    "duration": 25.0,
+    "peak": 0.464,
+    "rms": 0.057,
+    "assetId": 132688678871137
+  },
+  "cues": {
+    "Ticket": {
+      "start": 0.3,
+      "duration": 0.9
+    },
+    "Rejected": {
+      "start": 1.5,
+      "duration": 0.65
+    },
+    "Door": {
+      "start": 2.5,
+      "duration": 1.2
+    },
+    "Click": {
+      "start": 4,
+      "duration": 0.2
+    },
+    "Anomaly": {
+      "start": 4.7,
+      "duration": 2.3
+    },
+    "Rumble": {
+      "start": 7.5,
+      "duration": 4
+    },
+    "Shutter": {
+      "start": 12,
+      "duration": 0.3
+    },
+    "Countdown": {
+      "start": 13,
+      "duration": 0.45
+    },
+    "Success": {
+      "start": 14,
+      "duration": 1.2
+    },
+    "Evidence": {
+      "start": 15.7,
+      "duration": 0.9
+    },
+    "Arrival": {
+      "start": 17,
+      "duration": 1.4
+    },
+    "Tea": {
+      "start": 19,
+      "duration": 0.8
+    }
+  }
+}
